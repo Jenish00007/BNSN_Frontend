@@ -1,0 +1,55 @@
+{
+  "cli": {
+    "version": ">= 15.0.15",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "channel": "development",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "autoIncrement": "versionCode"
+      }
+    },
+    "preview": {
+      "channel": "preview",
+      "distribution": "internal",
+      "android": {
+        "autoIncrement": "versionCode"
+      }
+    },
+    "staging": {
+      "channel": "staging",
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease",
+        "autoIncrement": "versionCode",
+        "env": {
+          "GRADLE_OPTS": "-Dorg.gradle.internal.http.connectionTimeout=180000 -Dorg.gradle.internal.http.socketTimeout=180000 -Dandroid.compileSdkVersion=35 -Dandroid.targetSdkVersion=35"
+        }
+      }
+    },
+    "production": {
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease",
+        "autoIncrement": "versionCode",
+        "env": {
+          "GRADLE_OPTS": "-Dorg.gradle.internal.http.connectionTimeout=180000 -Dorg.gradle.internal.http.socketTimeout=180000 -Dandroid.compileSdkVersion=35 -Dandroid.targetSdkVersion=35"
+        }
+      }
+    },
+    "apk": {
+      "channel": "production",
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "versionCode"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
