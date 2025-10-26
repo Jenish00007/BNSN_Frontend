@@ -6,22 +6,18 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "workflow": "bare"
+      "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "workflow": "bare"
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": false,
-      "workflow": "bare"
+      "autoIncrement": false
     },
     "apk": {
       "android": {
         "buildType": "app-bundle"
-      },
-      "workflow": "bare"
+      }
     }
   },
   "submit": {
