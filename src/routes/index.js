@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useCallback } from 'react'
-import { theme } from '../utils/themeColors';
+import { theme } from '../utils/themeColors'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
@@ -58,7 +58,11 @@ import AllPopularItems from '../screens/Menu/AllPopularItems'
 import AllCategories from '../screens/Menu/AllCategories'
 import useEnvVars from '../../environment'
 import * as Sentry from '@sentry/react-native'
-import { initializeSentry, addBreadcrumb, setUserContext } from '../utils/sentryUtils'
+import {
+  initializeSentry,
+  addBreadcrumb,
+  setUserContext
+} from '../utils/sentryUtils'
 import SearchModal from '../components/Address/SearchModal'
 import { Searchbar } from 'react-native-paper'
 import SearchPage from '../screens/Searchbar/Searchbar'
@@ -83,8 +87,7 @@ import ChatList from '../screens/ChatList/ChatList'
 import Chat from '../screens/Chat/Chat'
 import MyAds from '../screens/MyAds/MyAds'
 import Sell from '../screens/Sell/Sell'
-
-
+import CreateAd from '../screens/Sell/CreateAd'
 
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
@@ -92,8 +95,6 @@ const SideDrawer = createDrawerNavigator()
 const Location = createStackNavigator()
 
 function Drawer() {
-
- 
   return (
     <SideDrawer.Navigator drawerContent={(props) => <SideBar {...props} />}>
       <SideDrawer.Screen
@@ -106,9 +107,9 @@ function Drawer() {
 }
 function NoDrawer() {
   const themeContext = useContext(ThemeContext)
-  const branding = useAppBranding();
-  const { getAppType } = useContext(ConfigurationContext);
-  const appType = getAppType ? getAppType() : undefined;
+  const branding = useAppBranding()
+  const { getAppType } = useContext(ConfigurationContext)
+  const appType = getAppType ? getAppType() : undefined
 
   return (
     <NavigationStack.Navigator
@@ -127,8 +128,16 @@ function NoDrawer() {
       {appType === 'multivendor' && (
         <NavigationStack.Screen name='Main' component={Main} />
       )}
-      <NavigationStack.Screen  options={{ header: () => null }}  name='AllPopularItems' component={AllPopularItems} />
-      <NavigationStack.Screen  options={{ header: () => null }}  name='AllCategories' component={AllCategories} />
+      <NavigationStack.Screen
+        options={{ header: () => null }}
+        name='AllPopularItems'
+        component={AllPopularItems}
+      />
+      <NavigationStack.Screen
+        options={{ header: () => null }}
+        name='AllCategories'
+        component={AllCategories}
+      />
       <NavigationStack.Screen
         name='Restaurant'
         component={Restaurant}
@@ -159,7 +168,7 @@ function NoDrawer() {
       />
       <NavigationStack.Screen name='Settings' component={Settings} />
       <NavigationStack.Screen name='MyOrders' component={MyOrders} />
-   
+
       <NavigationStack.Screen name='Help' component={Help} />
       <NavigationStack.Screen name='HelpBrowser' component={HelpBrowser} />
       <NavigationStack.Screen
@@ -167,7 +176,7 @@ function NoDrawer() {
         component={About}
         options={{ header: () => null }}
       />
-     
+
       <NavigationStack.Screen name='RateAndReview' component={RateAndReview} />
 
       <NavigationStack.Screen
@@ -203,50 +212,69 @@ function NoDrawer() {
       <NavigationStack.Screen name='AddNewAddress' component={AddNewAddress} />
       <NavigationStack.Screen name='SaveAddress' component={SaveAddress} />
       <NavigationStack.Screen name='Favourite' component={Favourite} />
-    
-      <NavigationStack.Screen name='Notification' component={Notification}/>
-      <NavigationStack.Screen name='ProductDetail' component={ProductDetails}/>
-      <NavigationStack.Screen name='Profile' component={Options}/>
-      <NavigationStack.Screen name='OrderSummary' component={OrderSummary}/>
-      <NavigationStack.Screen name='OrderDetails' component={OrderDetail}/>
-      <NavigationStack.Screen name='OrderConfirmation' component={OrderConfirmation}/>
+
+      <NavigationStack.Screen name='Notification' component={Notification} />
+      <NavigationStack.Screen name='ProductDetail' component={ProductDetails} />
+      <NavigationStack.Screen name='Profile' component={Options} />
+      <NavigationStack.Screen name='OrderSummary' component={OrderSummary} />
+      <NavigationStack.Screen name='OrderDetails' component={OrderDetail} />
+      <NavigationStack.Screen
+        name='OrderConfirmation'
+        component={OrderConfirmation}
+      />
 
       {/* Policy Screens */}
-      <NavigationStack.Screen name='TermsAndConditions' component={TermsAndConditions} />
+      <NavigationStack.Screen
+        name='TermsAndConditions'
+        component={TermsAndConditions}
+      />
       <NavigationStack.Screen name='PrivacyPolicy' component={PrivacyPolicy} />
       <NavigationStack.Screen name='RefundPolicy' component={RefundPolicy} />
-      <NavigationStack.Screen name='CancellationPolicy' component={CancellationPolicy} />
-      <NavigationStack.Screen name='ShippingPolicy' component={ShippingPolicy} />
+      <NavigationStack.Screen
+        name='CancellationPolicy'
+        component={CancellationPolicy}
+      />
+      <NavigationStack.Screen
+        name='ShippingPolicy'
+        component={ShippingPolicy}
+      />
 
-      <NavigationStack.Screen name='ChangePassword' component={ChangePassword} />
-  
+      <NavigationStack.Screen
+        name='ChangePassword'
+        component={ChangePassword}
+      />
+
       <NavigationStack.Screen name='ResetWithOTP' component={ResetWithOTP} />
       {/* Chat Screens */}
-      <NavigationStack.Screen 
-        name='Chats' 
+      <NavigationStack.Screen
+        name='Chats'
         component={ChatList}
         options={{ title: 'Messages' }}
       />
-      <NavigationStack.Screen 
-        name='Chat' 
+      <NavigationStack.Screen
+        name='Chat'
         component={Chat}
-        options={({ route }) => ({ 
-          title: route.params?.groupTitle || 'Chat' 
+        options={({ route }) => ({
+          title: route.params?.groupTitle || 'Chat'
         })}
       />
-            {/* My Ads Screen */}
-            <NavigationStack.Screen 
-        name='MyAds' 
+      {/* My Ads Screen */}
+      <NavigationStack.Screen
+        name='MyAds'
         component={MyAds}
         options={{ title: 'My Ads' }}
       />
-            {/* Sell Screen */}
-            <NavigationStack.Screen 
-        name='Sell' 
+      <NavigationStack.Screen
+        name='CreateAd'
+        component={CreateAd}
+        options={{ headerShown: false }}
+      />
+      {/* Sell Screen */}
+      <NavigationStack.Screen
+        name='Sell'
         component={Sell}
         options={{ title: 'Sell' }}
       />
-      
     </NavigationStack.Navigator>
   )
 }
@@ -312,7 +340,7 @@ function AppContainer() {
     if (SENTRY_DSN) {
       initializeSentry({
         dsn: SENTRY_DSN,
-        environment: __DEV__ ? "development" : "production",
+        environment: __DEV__ ? 'development' : 'production',
         enableInExpoDevelopment: true,
         debug: __DEV__, // Enable debug mode in development
         tracesSampleRate: __DEV__ ? 1.0 : 0.1, // Higher sample rate in development
@@ -321,34 +349,36 @@ function AppContainer() {
           // In development, you might want to filter certain events
           if (__DEV__) {
             // You can add development-specific filtering here
-            console.log('Sentry event:', event);
+            console.log('Sentry event:', event)
           }
-          return event;
+          return event
         },
         beforeBreadcrumb(breadcrumb) {
-          return breadcrumb;
-        },
-      });
-      
-      console.log(`Sentry enabled in ${__DEV__ ? 'development' : 'production'} mode`);
+          return breadcrumb
+        }
+      })
+
+      console.log(
+        `Sentry enabled in ${__DEV__ ? 'development' : 'production'} mode`
+      )
     } else {
-      console.log('Sentry DSN not found, Sentry disabled');
+      console.log('Sentry DSN not found, Sentry disabled')
     }
   }, [SENTRY_DSN])
 
   // Set user context when profile changes
   useEffect(() => {
     if (profile) {
-      setUserContext(profile);
-      addBreadcrumb('User logged in', 'auth', { userId: profile._id });
+      setUserContext(profile)
+      addBreadcrumb('User logged in', 'auth', { userId: profile._id })
     } else {
-      setUserContext(null);
-      addBreadcrumb('User logged out', 'auth');
+      setUserContext(null)
+      addBreadcrumb('User logged out', 'auth')
     }
   }, [profile])
 
   if (isLoading) {
-    return null; // Or a loading screen component
+    return null // Or a loading screen component
   }
 
   return (
@@ -360,11 +390,11 @@ function AppContainer() {
         onStateChange={(state) => {
           // Add navigation breadcrumbs
           if (state?.routes?.length > 0) {
-            const currentRoute = state.routes[state.index];
+            const currentRoute = state.routes[state.index]
             addBreadcrumb(`Navigated to ${currentRoute.name}`, 'navigation', {
               routeName: currentRoute.name,
               params: currentRoute.params
-            });
+            })
           }
         }}
       >
