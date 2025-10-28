@@ -1,2 +1,2 @@
-export const API_URL = 'https://qauds.in/api/v2'
-// export const API_URL = 'http://172.16.229.15:8000/v2'
+// export const API_URL = 'https://qauds.in/api/v2'
+export const API_URL = 'http://192.168.31.121:8000/v2'

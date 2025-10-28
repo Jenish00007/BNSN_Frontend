@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react'
 import {
   View,
   FlatList,
@@ -7,280 +7,197 @@ import {
   RefreshControl,
   StatusBar,
   Image,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import AuthContext from '../../context/Auth';
-import UserContext from '../../context/User';
-import TextDefault from '../../components/Text/TextDefault/TextDefault';
-import { useAppBranding } from '../../utils/translationHelper';
-import { API_URL } from '../../config/api';
-import styles from './styles';
+  Alert
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
+import AuthContext from '../../context/Auth'
+import UserContext from '../../context/User'
+import TextDefault from '../../components/Text/TextDefault/TextDefault'
+import { useAppBranding } from '../../utils/translationHelper'
+import { API_URL } from '../../config/api'
+import styles from './styles'
 
 const MyAds = () => {
-  const [myAds, setMyAds] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userShop, setUserShop] = useState(null);
-  
-  const navigation = useNavigation();
-  const { token } = useContext(AuthContext);
-  const { profile, isLoggedIn } = useContext(UserContext);
-  const branding = useAppBranding();
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [sellerData, setSellerData] = useState(null)
 
-  // Fetch user's shop and ads when screen comes into focus
+  const navigation = useNavigation()
+  const branding = useAppBranding()
+  const { token } = useContext(AuthContext)
+  const { isLoggedIn, formetedProfileData } = useContext(UserContext)
+
+  // ✅ Get user ID from available sources
+  const getUserId = () => {
+    if (sellerData?._id) {
+      return { id: sellerData._id, type: 'seller' }
+    } else if (formetedProfileData?._id) {
+      return { id: formetedProfileData._id, type: 'user' }
+    } else {
+      return null
+    }
+  }
+
+  // ✅ Fetch seller data when user logs in
+  useEffect(() => {
+    if (isLoggedIn && token) {
+      fetchSellerData()
+    }
+  }, [isLoggedIn, token])
+
+  // ✅ Fetch products when we have user data
+  useEffect(() => {
+    const userId = getUserId()
+    if (userId) {
+      fetchProducts()
+    }
+  }, [sellerData, formetedProfileData])
+
+  // ✅ Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      if (token && profile) {
-        fetchUserShop();
-      } else {
-        setLoading(false);
+      const userId = getUserId()
+      if (userId) {
+        fetchProducts()
       }
-    }, [token, profile])
-  );
+    }, [sellerData, formetedProfileData])
+  )
 
-  const fetchUserShop = async () => {
+  const fetchSellerData = async () => {
     try {
-      // First, get user's shop information
-      // Assuming user's email or phone is linked to shop
-      const shopResponse = await fetch(
-        `${API_URL}/shop/get-shop-info`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/shop/getSeller`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
-      
-      if (shopResponse.ok) {
-        const shopData = await shopResponse.json();
-        if (shopData.shop) {
-          setUserShop(shopData.shop);
-          fetchMyAds(shopData.shop._id);
-        } else {
-          setLoading(false);
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.user || data.seller || data.data) {
+          const seller = data.user || data.seller || data.data
+          setSellerData(seller)
         }
-      } else {
-        setLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching user shop:', error);
-      setLoading(false);
+      console.error('Error fetching seller data:', error)
     }
-  };
+  }
 
-  const fetchMyAds = async (shopId) => {
+  const fetchProducts = async () => {
+    const userId = getUserId()
+    if (!userId) {
+      setLoading(false)
+      setRefreshing(false)
+      return
+    }
+
+    setLoading(true)
     try {
-      setLoading(true);
-      const response = await fetch(
-        `${API_URL}/product/get-all-products-shop/${shopId}`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      let url
+      if (userId.type === 'seller') {
+        url = `${API_URL}/product/get-all-products/${userId.id}`
+      } else {
+        url = `${API_URL}/product/get-user-products/${userId.id}`
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
-      
-      const data = await response.json();
-      if (data.success) {
-        setMyAds(data.products || []);
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const productsData = data.products || data.data || []
+        setProducts(productsData)
+      } else {
+        const data = await response.json()
+        Alert.alert('Error', data.message || 'Failed to fetch ads')
       }
     } catch (error) {
-      console.error('Error fetching my ads:', error);
+      console.error('Error fetching products:', error)
+      Alert.alert('Error', 'Failed to load your ads')
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
     }
-  };
+  }
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    if (userShop) {
-      fetchMyAds(userShop._id);
-    } else {
-      fetchUserShop();
-    }
-  };
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchProducts()
+  }
 
-  const handleAdPress = (ad) => {
-    navigation.navigate('ProductDetail', {
-      id: ad._id,
-      product: ad,
-    });
-  };
+  const handleDeleteProduct = async (productId) => {
+    Alert.alert('Delete Ad', 'Are you sure you want to delete this ad?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const response = await fetch(
+              `${API_URL}/product/delete-shop-product/${productId}`,
+              {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            )
 
-  const handleEditAd = (ad) => {
-    // Navigate to edit product screen (you'll need to create this)
-    Alert.alert('Edit Ad', `Edit functionality for ${ad.name} coming soon!`);
-  };
-
-  const handleDeleteAd = (ad) => {
-    Alert.alert(
-      'Delete Ad',
-      `Are you sure you want to delete "${ad.name}"?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteAd(ad._id),
-        },
-      ]
-    );
-  };
-
-  const deleteAd = async (productId) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/product/delete-shop-product/${productId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+            const result = await response.json()
+            if (response.ok && result.success) {
+              Alert.alert('Success', 'Ad deleted successfully')
+              fetchProducts()
+            } else {
+              Alert.alert('Error', result.message || 'Failed to delete ad')
+            }
+          } catch (error) {
+            console.error('Error deleting ad:', error)
+            Alert.alert('Error', 'Failed to delete ad')
+          }
         }
-      );
-      
-      const data = await response.json();
-      if (data.success) {
-        Alert.alert('Success', 'Ad deleted successfully');
-        // Refresh the list
-        if (userShop) {
-          fetchMyAds(userShop._id);
-        }
-      } else {
-        Alert.alert('Error', data.message || 'Failed to delete ad');
       }
-    } catch (error) {
-      console.error('Error deleting ad:', error);
-      Alert.alert('Error', 'Failed to delete ad');
-    }
-  };
+    ])
+  }
 
-  const formatPrice = (price) => {
-    return `₹${price?.toLocaleString() || 0}`;
-  };
+  const handleEditProduct = (product) => {
+    navigation.navigate('EditProduct', { product })
+  }
 
-  const renderAdItem = ({ item }) => {
-    const hasDiscount = item.originalPrice && item.originalPrice > item.discountPrice;
-    const imageUrl = item.images && item.images.length > 0 
-      ? item.images[0] 
-      : null;
+  const handleCreateAd = () => {
+    navigation.navigate('CreateAd')
+  }
 
-    return (
-      <TouchableOpacity
-        style={[
-          styles.adCard,
-          { backgroundColor: branding.backgroundColor || '#fff' }
-        ]}
-        onPress={() => handleAdPress(item)}
-      >
-        <View style={styles.adImageContainer}>
-          {imageUrl ? (
-            <Image 
-              source={{ uri: imageUrl }} 
-              style={styles.adImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.adImagePlaceholder, { backgroundColor: '#f0f0f0' }]}>
-              <MaterialIcons name="image" size={50} color="#ccc" />
-            </View>
-          )}
-          {item.stock <= 0 && (
-            <View style={styles.outOfStockBadge}>
-              <TextDefault style={styles.outOfStockText}>Out of Stock</TextDefault>
-            </View>
-          )}
-        </View>
+  const handleAdPress = (product) => {
+    navigation.navigate('ProductDetail', {
+      id: product._id,
+      product: product
+    })
+  }
 
-        <View style={styles.adContent}>
-          <TextDefault H5 bold numberOfLines={2} style={styles.adTitle}>
-            {item.name}
-          </TextDefault>
-          
-          <View style={styles.priceContainer}>
-            <TextDefault H4 bold style={{ color: branding.primaryColor }}>
-              {formatPrice(item.discountPrice)}
-            </TextDefault>
-            {hasDiscount && (
-              <TextDefault 
-                style={styles.originalPrice}
-                numberOfLines={1}
-              >
-                {formatPrice(item.originalPrice)}
-              </TextDefault>
-            )}
-          </View>
-
-          <View style={styles.adInfo}>
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons 
-                name="package-variant" 
-                size={16} 
-                color="#666" 
-              />
-              <TextDefault style={styles.infoText}>
-                Stock: {item.stock} {item.unit}
-              </TextDefault>
-            </View>
-            
-            {item.category?.name && (
-              <View style={styles.infoRow}>
-                <MaterialIcons name="category" size={16} color="#666" />
-                <TextDefault style={styles.infoText} numberOfLines={1}>
-                  {item.category.name}
-                </TextDefault>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.adActions}>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: branding.primaryColor }
-              ]}
-              onPress={() => handleEditAd(item)}
-            >
-              <MaterialIcons name="edit" size={18} color="#fff" />
-              <TextDefault bold style={styles.actionButtonText}>
-                Edit
-              </TextDefault>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDeleteAd(item)}
-            >
-              <MaterialIcons name="delete" size={18} color="#fff" />
-              <TextDefault bold style={styles.actionButtonText}>
-                Delete
-              </TextDefault>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
+  // Show login prompt if not logged in
   if (!isLoggedIn || !token) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar 
-          barStyle="light-content" 
-          backgroundColor={branding.headerColor} 
+        <StatusBar
+          barStyle='light-content'
+          backgroundColor={branding.headerColor}
         />
         <View style={styles.emptyContainer}>
-          <MaterialIcons 
-            name="shopping-bag" 
-            size={80} 
-            color={branding.iconColor || '#ccc'} 
+          <MaterialIcons
+            name='shopping-bag'
+            size={80}
+            color={branding.iconColor || '#ccc'}
           />
           <TextDefault H4 bold style={styles.emptyText}>
             Please login to view your ads
@@ -298,96 +215,140 @@ const MyAds = () => {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
-    );
+    )
   }
+
+  const renderProductCard = ({ item }) => (
+    <View style={styles.productCard}>
+      <TouchableOpacity onPress={() => handleAdPress(item)}>
+        <Image
+          source={{
+            uri:
+              item.images?.[0]?.url ||
+              item.images?.[0] ||
+              'https://via.placeholder.com/100'
+          }}
+          style={styles.productImage}
+        />
+        {item.stock <= 0 && (
+          <View style={styles.badge}>
+            <TextDefault style={styles.badgeText}>Out of Stock</TextDefault>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <View style={styles.productInfo}>
+        <TouchableOpacity onPress={() => handleAdPress(item)}>
+          <TextDefault bold numberOfLines={2} style={styles.productName}>
+            {item.name}
+          </TextDefault>
+          <TextDefault
+            style={[styles.productPrice, { color: branding.primaryColor }]}
+          >
+            ₹{item.discountPrice || item.originalPrice}
+          </TextDefault>
+          <TextDefault style={styles.productStock}>
+            Stock: {item.stock} {item.unit ? `• ${item.unit}` : ''}
+          </TextDefault>
+          {item.category?.name && (
+            <TextDefault small style={{ color: '#666666', marginTop: 4 }}>
+              {item.category.name}
+            </TextDefault>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.productActions}>
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            { backgroundColor: branding.primaryColor }
+          ]}
+          onPress={() => handleEditProduct(item)}
+        >
+          <MaterialIcons name='edit' size={20} color='white' />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#F44336' }]}
+          onPress={() => handleDeleteProduct(item._id)}
+        >
+          <MaterialIcons name='delete' size={20} color='white' />
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyStateContainer}>
+      <MaterialIcons
+        name='add-shopping-cart'
+        size={80}
+        color={branding.primaryColor}
+      />
+      <TextDefault H3 bold style={styles.emptyStateTitle}>
+        No Ads Yet
+      </TextDefault>
+      <TextDefault style={styles.emptyStateSubtitle}>
+        Start selling by creating your first ad
+      </TextDefault>
+      <TouchableOpacity
+        style={[
+          styles.createAdButton,
+          { backgroundColor: branding.primaryColor, marginTop: 20 }
+        ]}
+        onPress={handleCreateAd}
+      >
+        <MaterialIcons name='add' size={24} color='white' />
+        <TextDefault bold style={{ color: 'white', marginLeft: 8 }}>
+          Create Your First Ad
+        </TextDefault>
+      </TouchableOpacity>
+    </View>
+  )
 
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar 
-          barStyle="light-content" 
-          backgroundColor={branding.headerColor} 
+        <StatusBar
+          barStyle='light-content'
+          backgroundColor={branding.headerColor}
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator 
-            size="large" 
-            color={branding.primaryColor} 
-          />
+          <ActivityIndicator size='large' color={branding.primaryColor} />
+          <TextDefault style={{ marginTop: 16, color: '#002F34' }}>
+            Loading your ads...
+          </TextDefault>
         </View>
       </SafeAreaView>
-    );
+    )
   }
 
   return (
-    <SafeAreaView 
-      style={styles.container}
-      edges={['bottom', 'left', 'right']}
-    >
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor={branding.headerColor} 
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+      <StatusBar
+        barStyle='light-content'
+        backgroundColor={branding.headerColor}
       />
-      
-      {myAds.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <MaterialIcons 
-            name="add-shopping-cart" 
-            size={80} 
-            color={branding.iconColor || '#ccc'} 
-          />
-          <TextDefault H4 bold style={styles.emptyText}>
-            You haven't posted any ads yet
-          </TextDefault>
-          <TextDefault style={styles.emptySubtext}>
-            Start selling by creating your first ad!
-          </TextDefault>
-          <TouchableOpacity
-            style={[
-              styles.createButton,
-              { backgroundColor: branding.primaryColor }
-            ]}
-            onPress={() => navigation.navigate('Sell')}
-          >
-            <MaterialIcons name="add" size={24} color="#fff" />
-            <TextDefault bold style={{ color: '#fff', marginLeft: 8 }}>
-              Create Ad
-            </TextDefault>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          <View style={styles.header}>
-            <TextDefault H4 bold>
-              My Ads ({myAds.length})
-            </TextDefault>
-            <TouchableOpacity
-              style={[
-                styles.createButtonSmall,
-                { backgroundColor: branding.primaryColor }
-              ]}
-              onPress={() => navigation.navigate('Sell')}
-            >
-              <MaterialIcons name="add" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          
-          <FlatList
-            data={myAds}
-            renderItem={renderAdItem}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[branding.primaryColor]}
-              />
-            }
-          />
-        </>
-      )}
-    </SafeAreaView>
-  );
-};
 
-export default MyAds;
+      <FlatList
+        data={products}
+        renderItem={renderProductCard}
+        keyExtractor={(item) => item._id}
+        ListEmptyComponent={renderEmptyState}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[branding.primaryColor]}
+            tintColor={branding.primaryColor}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
+    </SafeAreaView>
+  )
+}
+
+export default MyAds

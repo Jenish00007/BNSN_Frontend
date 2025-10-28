@@ -29,9 +29,10 @@ const CreateAd = () => {
   const navigation = useNavigation()
   const branding = useAppBranding()
   const { token } = useContext(AuthContext)
-  const { dataProfile } = useContext(UserContext)
 
-  // Local state instead of Redux
+  // FIX: Use the same property name as ProfilePage
+  const { formetedProfileData, dataProfile } = useContext(UserContext)
+
   const [loading, setLoading] = useState(false)
 
   // Form state
@@ -62,13 +63,33 @@ const CreateAd = () => {
 
   const [availableUnits, setAvailableUnits] = useState([])
 
+  // FIX: Use formetedProfileData (same as ProfilePage) or fallback to dataProfile
   useEffect(() => {
-    fetchCategories()
-    fetchUnits()
-    if (!localSellerData && AsyncStorage.getItem('token')) {
-      fetchSellerDataDirectly()
+    const initializeData = async () => {
+      setLoading(true)
+
+      // Check if we have user data from context
+      const userData = formetedProfileData || dataProfile
+
+      console.log('CreateAd - formetedProfileData:', formetedProfileData)
+      console.log('CreateAd - dataProfile:', dataProfile)
+      console.log('CreateAd - Using userData:', userData)
+
+      if (userData && userData._id) {
+        console.log('CreateAd - User data available from context:', userData)
+        setLocalSellerData(userData)
+      } else {
+        console.log('CreateAd - No user data in context, fetching...')
+        await fetchSellerDataDirectly()
+      }
+
+      await fetchCategories()
+      await fetchUnits()
+      setLoading(false)
     }
-  }, [])
+
+    initializeData()
+  }, [formetedProfileData, dataProfile])
 
   useEffect(() => {
     if (formData.category) {
@@ -81,28 +102,93 @@ const CreateAd = () => {
 
   const fetchSellerDataDirectly = async () => {
     try {
-      console.log('CreateAd - Fetching seller data directly...')
-      const token = await AsyncStorage.getItem('token')
-      const response = await fetch(`${API_URL}/shop/getSeller`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      console.log('CreateAd - Fetching user data directly...')
+
+      const storedToken = await AsyncStorage.getItem('token')
+
+      if (!storedToken) {
+        console.log('CreateAd - No token found')
+        Alert.alert('Error', 'Please login to continue')
+        navigation.goBack()
+        return
+      }
+
+      // Try the same endpoint that ProfilePage might be using
+      const endpoints = [
+        `${API_URL}/user/getUserInfo`,
+        `${API_URL}/user/me`,
+        `${API_URL}/user/profile`
+      ]
+
+      let userData = null
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log('CreateAd - Trying endpoint:', endpoint)
+          const userResponse = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          console.log('CreateAd - Response status:', userResponse.status)
+
+          // Check if response is JSON
+          const contentType = userResponse.headers.get('content-type')
+          if (!contentType || !contentType.includes('application/json')) {
+            console.log('CreateAd - Response is not JSON, skipping...')
+            continue
+          }
+
+          const data = await userResponse.json()
+          console.log('CreateAd - Response from', endpoint, ':', data)
+
+          if (userResponse.ok && (data.user || data.data || data._id)) {
+            userData = data.user || data.data || data
+            console.log('CreateAd - Successfully fetched user data:', userData)
+            break
+          }
+        } catch (error) {
+          console.log('CreateAd - Failed endpoint:', endpoint, error.message)
+          continue
         }
-      })
+      }
 
-      const data = await response.json()
-      console.log('CreateAd - Direct API Response:', data)
-
-      if (response.ok && (data.user || data.seller)) {
-        const sellerData = data.user || data.seller
-        console.log('CreateAd - Setting seller data directly:', sellerData)
-        setLocalSellerData(sellerData)
+      if (userData && userData._id) {
+        console.log('CreateAd - Setting user data for ad posting')
+        setLocalSellerData(userData)
       } else {
-        console.log('CreateAd - Failed to fetch seller data:', data)
+        console.error('CreateAd - All endpoints failed')
+        Alert.alert(
+          'Error',
+          'Unable to fetch your profile. Please make sure you are logged in.',
+          [
+            {
+              text: 'Go Back',
+              onPress: () => navigation.goBack()
+            }
+          ]
+        )
       }
     } catch (error) {
-      console.error('CreateAd - Error fetching seller data directly:', error)
+      console.error('CreateAd - Error fetching user data:', error)
+      Alert.alert(
+        'Error',
+        'Failed to load your profile. Please check your connection and try again.',
+        [
+          {
+            text: 'Retry',
+            onPress: () => fetchSellerDataDirectly()
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => navigation.goBack()
+          }
+        ]
+      )
     }
   }
 
@@ -135,6 +221,7 @@ const CreateAd = () => {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Units fetched:', data.data)
         setAvailableUnits(data.data || [])
       } else {
         console.error('Error response:', response.status, response.statusText)
@@ -307,15 +394,24 @@ const CreateAd = () => {
   const handleSubmit = async () => {
     if (!validateForm()) return
 
-    const sellerData = localSellerData
-
     console.log('Submit clicked - localSellerData:', localSellerData)
     console.log('Form data:', formData)
     console.log('Selected images count:', selectedImages.length)
 
-    if (!sellerData?._id) {
-      console.log('Seller data missing or no _id:', sellerData)
-      Alert.alert('Error', 'Seller data not found. Please login again.')
+    if (!localSellerData?._id) {
+      console.log('User data missing or no _id:', localSellerData)
+      Alert.alert('Error', 'User data not found. Please try again.', [
+        {
+          text: 'Retry',
+          onPress: async () => {
+            await fetchSellerDataDirectly()
+          }
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        }
+      ])
       return
     }
 
@@ -333,22 +429,44 @@ const CreateAd = () => {
         })
       })
 
+      // Append all form fields
       Object.entries(formData).forEach(([key, value]) => {
-        formDataToSend.append(key, value)
+        if (value) {
+          // Only append non-empty values
+          formDataToSend.append(key, value)
+        }
       })
-      formDataToSend.append('shopId', sellerData._id)
 
-      const response = await fetch(`${API_URL}/product`, {
+      // Add userId for user-posted ads
+      formDataToSend.append('userId', localSellerData._id)
+
+      // IMPORTANT: Don't send shopId for user ads, leave it undefined
+      // The backend will handle user products without shopId
+
+      console.log('Submitting product with userId:', localSellerData._id)
+      console.log('Form data being sent:')
+
+      // FIX: Create a separate object for logging instead of using formDataToSend.entries()
+      const logData = {
+        ...formData,
+        userId: localSellerData._id,
+        imagesCount: selectedImages.length
+      }
+      console.log('Form data being sent:', logData)
+
+      const response = await fetch(`${API_URL}/product/create-product`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
+          // Note: Don't set Content-Type for FormData, let the browser set it with boundary
         },
         body: formDataToSend
       })
 
       const result = await response.json()
+      console.log('Product creation response:', result)
 
-      if (response.ok) {
+      if (response.ok && result.success) {
         Alert.alert('Success', 'Product created successfully!', [
           {
             text: 'OK',
@@ -356,7 +474,9 @@ const CreateAd = () => {
           }
         ])
       } else {
-        Alert.alert('Error', result.message || 'Failed to create product')
+        const errorMsg = result.message || 'Failed to create product'
+        console.error('Product creation failed:', errorMsg)
+        Alert.alert('Error', errorMsg)
       }
     } catch (error) {
       console.error('Error creating product:', error)
@@ -399,59 +519,60 @@ const CreateAd = () => {
             showsVerticalScrollIndicator={false}
           >
             {data.length > 0 ? (
-              data.map((item) => (
-                <TouchableOpacity
-                  key={item.id || item._id}
-                  style={[
-                    styles.selectionItem,
-                    {
-                      backgroundColor:
-                        selectedValue === (item.id || item._id)
+              data.map((item) => {
+                const itemId = item.id || item._id
+                const isSelected = selectedValue === itemId
+
+                return (
+                  <TouchableOpacity
+                    key={itemId}
+                    style={[
+                      styles.selectionItem,
+                      {
+                        backgroundColor: isSelected
                           ? branding.primaryColor
                           : branding.backgroundColor,
-                      borderColor: branding.borderColor
-                    }
-                  ]}
-                  onPress={() => {
-                    onSelect(item.id || item._id)
-                    onClose()
-                  }}
-                >
-                  <View style={styles.selectionItemContent}>
-                    <Text
-                      style={[
-                        styles.selectionItemText,
-                        {
-                          color:
-                            selectedValue === (item.id || item._id)
-                              ? 'white'
-                              : branding.textColor
-                        }
-                      ]}
-                    >
-                      {item.name}
-                    </Text>
-                    {showDescription && item.description && (
+                        borderColor: branding.borderColor
+                      }
+                    ]}
+                    onPress={() => {
+                      console.log('Selected item:', item.name, 'ID:', itemId)
+                      onSelect(itemId)
+                      onClose()
+                    }}
+                  >
+                    <View style={styles.selectionItemContent}>
                       <Text
                         style={[
-                          styles.selectionItemDescription,
+                          styles.selectionItemText,
                           {
-                            color:
-                              selectedValue === (item.id || item._id)
-                                ? 'rgba(255,255,255,0.8)'
-                                : 'rgba(0,0,0,0.6)'
+                            color: isSelected ? 'white' : branding.textColor
                           }
                         ]}
                       >
-                        {item.description}
+                        {item.name}
                       </Text>
+                      {showDescription && item.description && (
+                        <Text
+                          style={[
+                            styles.selectionItemDescription,
+                            {
+                              color: isSelected
+                                ? 'rgba(255,255,255,0.8)'
+                                : 'rgba(0,0,0,0.6)'
+                            }
+                          ]}
+                        >
+                          {item.description}
+                        </Text>
+                      )}
+                    </View>
+                    {isSelected && (
+                      <Icon name='check' size={20} color='white' />
                     )}
-                  </View>
-                  {selectedValue === (item.id || item._id) && (
-                    <Icon name='check' size={20} color='white' />
-                  )}
-                </TouchableOpacity>
-              ))
+                  </TouchableOpacity>
+                )
+              })
             ) : (
               <View style={styles.emptyState}>
                 <Icon name='inbox' size={48} color={branding.textColor} />
@@ -483,7 +604,7 @@ const CreateAd = () => {
     </View>
   )
 
-  if (loading) {
+  if (loading && !localSellerData) {
     return (
       <View
         style={[
@@ -493,6 +614,9 @@ const CreateAd = () => {
         ]}
       >
         <ActivityIndicator size='large' color={branding.primaryColor} />
+        <Text style={{ marginTop: 16, color: branding.textColor }}>
+          Loading your profile...
+        </Text>
       </View>
     )
   }
@@ -801,8 +925,9 @@ const CreateAd = () => {
                     { color: formData.unit ? branding.textColor : '#999' }
                   ]}
                 >
-                  {availableUnits.find((u) => u._id === formData.unit)?.name ||
-                    'Select'}
+                  {availableUnits.find(
+                    (u) => u._id === formData.unit || u.id === formData.unit
+                  )?.name || 'Select'}
                 </Text>
                 <Icon name='arrow-drop-down' size={24} color='#999' />
               </TouchableOpacity>
@@ -937,6 +1062,7 @@ const CreateAd = () => {
         data={availableUnits}
         selectedValue={formData.unit}
         onSelect={(unitId) => {
+          console.log('Unit selected:', unitId)
           setFormData((prev) => ({ ...prev, unit: unitId }))
         }}
         emptyMessage='No units available'
