@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react'
 import {
   View,
+  Text,
   FlatList,
   TextInput,
   TouchableOpacity,
@@ -8,104 +9,378 @@ import {
   Platform,
   ActivityIndicator,
   StatusBar,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useRoute } from '@react-navigation/native';
-import AuthContext from '../../context/Auth';
-import UserContext from '../../context/User';
-import TextDefault from '../../components/Text/TextDefault/TextDefault';
-import { useAppBranding } from '../../utils/translationHelper';
-import { API_URL } from '../../config/api';
-import styles from './styles';
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  Modal
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useRoute, useFocusEffect } from '@react-navigation/native'
+import io from 'socket.io-client'
+import AuthContext from '../../context/Auth'
+import UserContext from '../../context/User'
+import TextDefault from '../../components/Text/TextDefault/TextDefault'
+import { useAppBranding } from '../../utils/translationHelper'
+import { API_URL } from '../../config/api'
+// Import StyleSheet if not using external styles
+import styles from './styles' // Comment this out if using inline styles below
 
-const Chat = () => {
-  const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  
-  const route = useRoute();
-  const { conversationId, groupTitle } = route.params || {};
-  
-  const flatListRef = useRef(null);
-  const { token } = useContext(AuthContext);
-  const { profile } = useContext(UserContext);
-  const branding = useAppBranding();
+// Or add this at the end of the file for inline styles:
+
+const Chat = ({ navigation }) => {
+  const route = useRoute()
+  const {
+    conversationId: initialConversationId,
+    groupTitle,
+    otherUser,
+    shopId,
+    shopName
+  } = route.params || {}
+
+  const [messages, setMessages] = useState([])
+  const [inputText, setInputText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [socket, setSocket] = useState(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const [conversationId, setConversationId] = useState(initialConversationId)
+
+  const flatListRef = useRef(null)
+  const sendButtonScale = useRef(new Animated.Value(1)).current
+  const typingOpacity = useRef(new Animated.Value(0)).current
+
+  const { token } = useContext(AuthContext)
+  const { formetedProfileData: profile } = useContext(UserContext)
+  const branding = useAppBranding()
+  console.log(profile)
+  // Socket URL - Update this with your actual socket server URL
+  const SOCKET_URL = 'http://192.168.31.121:8000'
 
   useEffect(() => {
-    if (conversationId && token) {
-      fetchMessages();
-      // Set up polling for new messages every 3 seconds
-      const interval = setInterval(fetchMessages, 3000);
-      return () => clearInterval(interval);
+    initializeChat()
+    return () => {
+      if (socket) {
+        if (profile?._id && (conversationId || route.params?.conversationId)) {
+          socket.emit('leave-chat-room', {
+            userId: profile._id,
+            conversationId: conversationId || route.params?.conversationId
+          })
+        }
+        socket.disconnect()
+      }
     }
-  }, [conversationId, token]);
+  }, [])
 
-  const fetchMessages = async () => {
+  // Refresh messages and mark as read when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (socket && profile?._id && isConnected && conversationId) {
+        // Refetch messages when screen comes into focus
+        fetchMessages(conversationId)
+        socket.emit('mark-as-read', {
+          userId: profile._id,
+          conversationId: conversationId
+        })
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, profile?._id, isConnected, conversationId])
+  )
+
+  // Effect to scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0 && !loading) {
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
+    }
+  }, [messages, loading])
+
+  // Enhanced header
+  useEffect(() => {
+    navigation.setOptions({
+      title: groupTitle || 'Chat',
+      headerStyle: {
+        backgroundColor: branding.primaryColor || '#007AFF',
+        shadowColor: branding.primaryColor || '#007AFF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8
+      },
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: '700',
+        fontSize: 18
+      }
+    })
+  }, [navigation, groupTitle, branding])
+
+  // Animation for send button
+  const animateSendButton = () => {
+    Animated.sequence([
+      Animated.timing(sendButtonScale, {
+        toValue: 0.9,
+        duration: 100,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true
+      }),
+      Animated.timing(sendButtonScale, {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true
+      })
+    ]).start()
+  }
+
+  const initializeChat = async () => {
     try {
+      if (!token || !profile?._id) {
+        Alert.alert('Error', 'Authentication required')
+        navigation.goBack()
+        return
+      }
+
+      // If shopId is provided but no conversationId, create a new conversation
+      let currentConversationId = conversationId
+      if (shopId && !conversationId) {
+        try {
+          const response = await fetch(
+            `${API_URL}/conversation/create-new-conversation`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                groupTitle: shopName || 'Chat',
+                userId: profile._id,
+                sellerId: shopId
+              })
+            }
+          )
+
+          const data = await response.json()
+          if (data.success && data.conversation) {
+            currentConversationId = data.conversation._id
+            setConversationId(currentConversationId)
+            // Update navigation params with the new conversation ID
+            navigation.setParams({
+              conversationId: currentConversationId,
+              groupTitle: shopName || 'Chat'
+            })
+          }
+        } catch (error) {
+          console.error('Error creating conversation:', error)
+        }
+      }
+
+      // Initialize socket connection
+      const socketInstance = io(SOCKET_URL, {
+        auth: {
+          token: token
+        },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      })
+
+      setSocket(socketInstance)
+
+      // Socket event listeners
+      socketInstance.on('connect', () => {
+        console.log('Connected to socket server')
+        setIsConnected(true)
+
+        // Join chat room
+        if (currentConversationId) {
+          socketInstance.emit('join-chat-room', {
+            userId: profile._id,
+            conversationId: currentConversationId
+          })
+
+          // Mark messages as read
+          socketInstance.emit('mark-as-read', {
+            userId: profile._id,
+            conversationId: currentConversationId
+          })
+
+          // Fetch chat history with the correct conversation ID
+          fetchMessages(currentConversationId)
+        }
+      })
+
+      socketInstance.on('connect_error', (error) => {
+        console.error('Socket connection error:', error)
+        setIsConnected(false)
+        setLoading(false)
+        Alert.alert('Connection Error', 'Failed to connect to chat server.')
+      })
+
+      socketInstance.on('disconnect', (reason) => {
+        console.log('Disconnected from socket server:', reason)
+        setIsConnected(false)
+        if (reason === 'io server disconnect') {
+          socketInstance.connect()
+        }
+      })
+
+      socketInstance.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected after', attemptNumber, 'attempts')
+        setIsConnected(true)
+        if (currentConversationId) {
+          socketInstance.emit('join-chat-room', {
+            userId: profile._id,
+            conversationId: currentConversationId
+          })
+          fetchMessages(currentConversationId)
+        }
+      })
+
+      socketInstance.on('receive-message', (message) => {
+        if (message && message.text) {
+          setMessages((prevMessages) => [...prevMessages, message])
+          scrollToBottom()
+
+          // Mark message as read if from other user
+          if (message.sender !== profile._id) {
+            socketInstance.emit('mark-as-read', {
+              userId: profile._id,
+              conversationId: conversationId
+            })
+          }
+        }
+      })
+
+      socketInstance.on('messages-marked-read', (data) => {
+        console.log('Messages marked as read:', data)
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => ({
+            ...msg,
+            read: true
+          }))
+        )
+      })
+
+      socketInstance.on('user-typing', (data) => {
+        if (data.userId !== profile._id) {
+          showTypingIndicator()
+        }
+      })
+
+      socketInstance.on('user-stopped-typing', (data) => {
+        if (data.userId !== profile._id) {
+          hideTypingIndicator()
+        }
+      })
+    } catch (error) {
+      console.error('Initialization error:', error)
+      setLoading(false)
+      Alert.alert('Error', 'Failed to initialize chat')
+    }
+  }
+
+  const showTypingIndicator = () => {
+    setIsTyping(true)
+    Animated.timing(typingOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true
+    }).start()
+  }
+
+  const hideTypingIndicator = () => {
+    Animated.timing(typingOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true
+    }).start(() => setIsTyping(false))
+  }
+
+  const fetchMessages = async (convId = null) => {
+    try {
+      const convIdToUse = convId || conversationId
+      if (!convIdToUse) {
+        console.log('No conversation ID available to fetch messages')
+        setLoading(false)
+        return
+      }
+
+      console.log('Fetching messages for conversation:', convIdToUse)
       const response = await fetch(
-        `${API_URL}/message/get-all-messages/${conversationId}`,
+        `${API_URL}/message/get-all-messages/${convIdToUse}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-          },
+            Authorization: `Bearer ${token}`
+          }
         }
-      );
-      
-      const data = await response.json();
+      )
+
+      const data = await response.json()
       if (data.success) {
-        setMessages(data.messages);
+        console.log('Messages fetched:', data.messages?.length || 0)
+        setMessages(data.messages)
+        setLoading(false)
+        setTimeout(() => {
+          scrollToBottom()
+        }, 200)
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching messages:', error)
+      setLoading(false)
     }
-  };
+  }
 
   const sendMessage = async () => {
-    if (!inputText.trim() || sending) return;
+    if (!inputText.trim() || sending || !isConnected) return
 
-    const messageText = inputText.trim();
-    setInputText('');
-    setSending(true);
+    const messageText = inputText.trim()
+    setInputText('')
+    setSending(true)
+    animateSendButton()
 
     try {
-      const formData = new FormData();
-      formData.append('conversationId', conversationId);
-      formData.append('sender', profile._id);
-      formData.append('text', messageText);
+      if (socket) {
+        socket.emit('send-message', {
+          conversationId: conversationId,
+          sender: profile._id,
+          text: messageText
+        })
+      } else {
+        // Fallback to HTTP if socket not available
+        const formData = new FormData()
+        formData.append('conversationId', conversationId)
+        formData.append('sender', profile._id)
+        formData.append('text', messageText)
 
-      const response = await fetch(
-        `${API_URL}/message/create-new-message`,
-        {
+        const response = await fetch(`${API_URL}/message/create-new-message`, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`
           },
-          body: formData,
-        }
-      );
+          body: formData
+        })
 
-      const data = await response.json();
-      if (data.success) {
-        // Update last message in conversation
-        await updateLastMessage(messageText, data.message._id);
-        // Fetch messages to update the list
-        await fetchMessages();
-        // Scroll to bottom
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        const data = await response.json()
+        if (data.success) {
+          await updateLastMessage(messageText, data.message._id)
+          await fetchMessages()
+        }
       }
+
+      setSending(false)
     } catch (error) {
-      console.error('Error sending message:', error);
-      setInputText(messageText); // Restore message on error
-    } finally {
-      setSending(false);
+      console.error('Error sending message:', error)
+      setSending(false)
+      Alert.alert('Error', 'Failed to send message')
+      setInputText(messageText)
     }
-  };
+  }
 
   const updateLastMessage = async (text, messageId) => {
     try {
@@ -115,143 +390,347 @@ const Chat = () => {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
             lastMessage: text,
-            lastMessageId: messageId,
-          }),
+            lastMessageId: messageId
+          })
         }
-      );
+      )
     } catch (error) {
-      console.error('Error updating last message:', error);
+      console.error('Error updating last message:', error)
     }
-  };
+  }
 
-  const renderMessage = ({ item }) => {
-    const isMyMessage = item.sender === profile._id;
-    
+  const scrollToBottom = () => {
+    if (flatListRef.current && messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current.scrollToEnd({ animated: true })
+      }, 100)
+    }
+  }
+
+  const formatMessageTime = (timestamp) => {
+    const messageDate = new Date(timestamp)
+    const now = new Date()
+    const diffInHours = (now - messageDate) / (1000 * 60 * 60)
+
+    if (diffInHours < 24) {
+      return messageDate.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } else {
+      return messageDate.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric'
+      })
+    }
+  }
+
+  const formatDate = (timestamp) => {
+    const messageDate = new Date(timestamp)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    if (messageDate.toDateString() === today.toDateString()) {
+      return 'Today'
+    } else if (messageDate.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday'
+    } else {
+      return messageDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year:
+          messageDate.getFullYear() !== today.getFullYear()
+            ? 'numeric'
+            : undefined
+      })
+    }
+  }
+
+  const renderDateHeader = ({ item, index }) => {
+    if (index === 0) {
+      return (
+        <View style={styles.dateHeader}>
+          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+        </View>
+      )
+    }
+
+    const previousMessage = messages[index - 1]
+    const currentDate = new Date(item.createdAt).toDateString()
+    const previousDate = new Date(previousMessage.createdAt).toDateString()
+
+    if (currentDate !== previousDate) {
+      return (
+        <View style={styles.dateHeader}>
+          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+        </View>
+      )
+    }
+
+    return null
+  }
+
+  const getAvatarColor = (name) => {
+    const colors = [
+      '#FF6B6B',
+      '#4ECDC4',
+      '#45B7D1',
+      '#96CEB4',
+      '#FFEAA7',
+      '#DDA0DD',
+      '#98D8C8',
+      '#F7DC6F',
+      '#BB8FCE',
+      '#85C1E9'
+    ]
+    const index = name ? name.charCodeAt(0) % colors.length : 0
+    return colors[index]
+  }
+
+  const renderMessage = ({ item, index }) => {
+    const isMyMessage = item.sender === profile._id
+
+    const isFirstInGroup =
+      index === 0 || messages[index - 1].sender !== item.sender
+
+    const isLastInGroup =
+      index === messages.length - 1 ||
+      messages[index + 1].sender !== item.sender
+
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isMyMessage ? styles.myMessage : styles.otherMessage,
-        ]}
-      >
-        <View
+      <>
+        {renderDateHeader({ item, index })}
+        <Animated.View
           style={[
-            styles.messageBubble,
+            styles.messageContainer,
             isMyMessage
-              ? { backgroundColor: branding.primaryColor }
-              : { backgroundColor: '#f0f0f0' },
+              ? styles.myMessageContainer
+              : styles.otherMessageContainer,
+            isFirstInGroup && styles.firstInGroup,
+            isLastInGroup && styles.lastInGroup
           ]}
         >
-          <TextDefault
+          {!isMyMessage && isFirstInGroup && otherUser && (
+            <View style={styles.messageHeader}>
+              <View style={styles.avatarContainer}>
+                {otherUser.avatar || otherUser.profilePicture ? (
+                  <Image
+                    source={{
+                      uri: otherUser.avatar || otherUser.profilePicture
+                    }}
+                    style={styles.userAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.userAvatar,
+                      styles.avatarPlaceholder,
+                      { backgroundColor: getAvatarColor(otherUser.name) }
+                    ]}
+                  >
+                    <Text style={styles.avatarText}>
+                      {otherUser.name
+                        ? otherUser.name.charAt(0).toUpperCase()
+                        : 'U'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.userName}>{otherUser.name}</Text>
+            </View>
+          )}
+
+          <View
             style={[
-              styles.messageText,
-              isMyMessage ? { color: '#fff' } : { color: '#000' },
+              styles.messageBubble,
+              isMyMessage
+                ? {
+                    backgroundColor: branding.primaryColor,
+                    borderBottomRightRadius: isLastInGroup ? 20 : 4
+                  }
+                : {
+                    backgroundColor: '#f0f0f0',
+                    borderBottomLeftRadius: isLastInGroup ? 20 : 4
+                  }
             ]}
           >
-            {item.text}
-          </TextDefault>
-          <TextDefault
-            style={[
-              styles.messageTime,
-              isMyMessage ? { color: '#ffffff90' } : { color: '#666' },
-            ]}
-          >
-            {new Date(item.createdAt).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </TextDefault>
-        </View>
-      </View>
-    );
-  };
+            <TextDefault
+              style={[
+                styles.messageText,
+                isMyMessage ? { color: '#fff' } : { color: '#000' }
+              ]}
+            >
+              {item.text}
+            </TextDefault>
+
+            <View style={styles.messageFooter}>
+              <TextDefault
+                style={[
+                  styles.messageTime,
+                  isMyMessage ? { color: '#ffffff90' } : { color: '#666' }
+                ]}
+              >
+                {formatMessageTime(item.createdAt)}
+              </TextDefault>
+              {isMyMessage && (
+                <MaterialIcons
+                  name={item.read ? 'done-all' : 'done'}
+                  size={14}
+                  color={
+                    item.read
+                      ? 'rgba(255, 255, 255, 0.9)'
+                      : 'rgba(255, 255, 255, 0.7)'
+                  }
+                  style={styles.readIndicator}
+                />
+              )}
+            </View>
+          </View>
+        </Animated.View>
+      </>
+    )
+  }
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={branding.primaryColor} />
+          <ActivityIndicator size='large' color={branding.primaryColor} />
+          <TextDefault style={styles.loadingText}>Loading chat...</TextDefault>
         </View>
       </SafeAreaView>
-    );
+    )
   }
 
   return (
-    <SafeAreaView 
-      style={styles.container}
-      edges={['bottom', 'left', 'right']}
-    >
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor={branding.headerColor} 
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+      <StatusBar
+        barStyle='light-content'
+        backgroundColor={branding.primaryColor}
       />
-      
+
+      {/* Connection Status */}
+      {!isConnected && (
+        <View style={styles.connectionStatus}>
+          <Text style={styles.connectionText}>Connecting...</Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => 
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
+          keyExtractor={(item, index) => item._id || index.toString()}
+          contentContainerStyle={[
+            styles.messagesList,
+            {
+              flexGrow: 1,
+              justifyContent: messages.length === 0 ? 'center' : 'flex-end'
+            }
+          ]}
+          onContentSizeChange={() => {
+            if (messages.length > 0) {
+              scrollToBottom()
+            }
+          }}
+          onLayout={() => {
+            if (messages.length > 0) {
+              scrollToBottom()
+            }
+          }}
+          showsVerticalScrollIndicator={false}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10
+          }}
+          removeClippedSubviews={false}
+          keyboardShouldPersistTaps='handled'
+          keyboardDismissMode='interactive'
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
-              <MaterialIcons 
-                name="chat-bubble-outline" 
-                size={60} 
-                color="#ccc" 
+              <MaterialIcons
+                name='chat-bubble-outline'
+                size={64}
+                color='#cbd5e0'
               />
               <TextDefault style={styles.emptyText}>
-                No messages yet. Start the conversation!
+                No messages yet
+              </TextDefault>
+              <TextDefault style={styles.emptySubText}>
+                Start the conversation!
               </TextDefault>
             </View>
           )}
         />
 
-        <View 
+        {/* Typing Indicator */}
+        {isTyping && (
+          <Animated.View
+            style={[styles.typingIndicator, { opacity: typingOpacity }]}
+          >
+            <TextDefault style={styles.typingText}>
+              {otherUser?.name || 'User'} is typing...
+            </TextDefault>
+          </Animated.View>
+        )}
+
+        {/* Message Input */}
+        <View
           style={[
             styles.inputContainer,
             { borderTopColor: branding.borderColor || '#f0f0f0' }
           ]}
         >
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            placeholderTextColor="#999"
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: branding.primaryColor },
-              (!inputText.trim() || sending) && styles.sendButtonDisabled,
-            ]}
-            onPress={sendMessage}
-            disabled={!inputText.trim() || sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <MaterialIcons name="send" size={24} color="#fff" />
-            )}
-          </TouchableOpacity>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder='Type a message...'
+              placeholderTextColor='#999'
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={1000}
+              editable={!sending && isConnected}
+              textAlignVertical='top'
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollToBottom()
+                }, 300)
+              }}
+            />
+            <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  { backgroundColor: branding.primaryColor },
+                  (!inputText.trim() || sending || !isConnected) &&
+                    styles.sendButtonDisabled
+                ]}
+                onPress={sendMessage}
+                disabled={!inputText.trim() || sending || !isConnected}
+              >
+                {sending ? (
+                  <ActivityIndicator size='small' color='#fff' />
+                ) : (
+                  <MaterialIcons name='send' size={20} color='#fff' />
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-};
+  )
+}
 
-export default Chat;
+export default Chat
