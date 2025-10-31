@@ -63,48 +63,51 @@ export const useLogin = () => {
 
   // Helper: Get Expo push token with enhanced error handling
   const getExpoPushToken = async () => {
-    let token = null;
+    let token = null
     if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync()
+      let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+        const { status } = await Notifications.requestPermissionsAsync()
+        finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        console.warn('Push notification permission not granted');
-        return null;
+        console.warn('Push notification permission not granted')
+        return null
       }
       try {
-        token = (await Notifications.getExpoPushTokenAsync({
-          projectId: Constants.expoConfig?.extra?.eas?.projectId,
-        })).data;
-        console.log('Expo push token obtained:', token);
+        token = (
+          await Notifications.getExpoPushTokenAsync({
+            projectId: Constants.expoConfig?.extra?.eas?.projectId
+          })
+        ).data
+        console.log('Expo push token obtained:', token)
       } catch (error) {
-        console.error('Error getting push token:', error);
-        return null;
+        console.error('Error getting push token:', error)
+        return null
       }
     } else {
-      console.warn('Physical device required for push notifications');
+      console.warn('Physical device required for push notifications')
     }
-    
+
     // Android: set notification channel
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
+        lightColor: '#FF231F7C'
+      })
     }
-    return token;
-  };
+    return token
+  }
 
   // Helper: Send push token to backend
   const sendPushTokenToBackend = async (expoPushToken, accessToken) => {
     if (!expoPushToken || !accessToken) {
-      console.warn('Missing push token or access token');
-      return;
+      console.warn('Missing push token or access token')
+      return
     }
 
     try {
@@ -112,116 +115,126 @@ export const useLogin = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ token: expoPushToken }),
-      });
-      
-      console.log('Push token update response status:', response.status);
-      
+        body: JSON.stringify({ token: expoPushToken })
+      })
+
+      console.log('Push token update response status:', response.status)
+
       if (!response.ok) {
-        const text = await response.text();
-        console.warn('Failed to update push token:', text);
+        const text = await response.text()
+        console.warn('Failed to update push token:', text)
       } else {
-        console.log('Push token updated successfully on backend');
+        console.log('Push token updated successfully on backend')
       }
     } catch (err) {
-      console.error('Failed to send push token to backend:', err);
+      console.error('Failed to send push token to backend:', err)
     }
-  };
+  }
 
   async function loginAction() {
     if (!validateCredentials()) return
 
     setLoading(true)
     try {
-      console.log('Starting login process with:', { 
+      console.log('Starting login process with:', {
         input: input.toLowerCase().trim(),
         isEmail: isEmail(input),
         isPhoneNumber: isPhoneNumber(input)
-      });
-      
+      })
+
       // Get push notification token
-      const expoPushToken = await getExpoPushToken();
+      const expoPushToken = await getExpoPushToken()
 
       const response = await fetch(`${API_URL}/user/login-user`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(
-          isEmail(input) 
+          isEmail(input)
             ? { email: input.toLowerCase().trim(), password }
             : { phoneNumber: input, password }
         )
       })
 
-      console.log('Login response status:', response.status);
+      console.log('Login response status:', response.status)
       const data = await response.json()
-      console.log('Login response data:', data);
+      console.log('Login response data:', data)
 
       if (response.ok) {
         // Store token and user data
         if (data.token) {
-          console.log('Login successful, storing token');
+          console.log('Login successful, storing token')
           await setTokenAsync(data.token)
-          
+
           // Store user data if available
           if (data.user) {
-            await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+            await AsyncStorage.setItem('userData', JSON.stringify(data.user))
           }
 
           // Send push token to backend if available
           if (expoPushToken && data.token) {
-            await sendPushTokenToBackend(expoPushToken, data.token);
+            await sendPushTokenToBackend(expoPushToken, data.token)
           }
 
           // Show success message
           FlashMessage({
             message: 'Login successful!',
             type: 'success'
-          });
+          })
 
           // Navigate to main screen
           navigation.reset({
             index: 0,
-            routes: [{ name: 'Menu' }],
-          });
+            routes: [{ name: 'Menu' }]
+          })
         } else {
-          console.log('No token in response');
+          console.log('No token in response')
           throw new Error('Invalid response from server')
         }
       } else {
-        console.log('Login failed:', data);
-        let errorMessage = data.message || 'Login failed';
-        
+        console.log('Login failed:', data)
+        let errorMessage = data.message || 'Login failed'
+
         // Provide more specific error messages
         if (response.status === 400) {
-          if (data.message?.includes("doesn't exists") || data.message?.includes("not found")) {
-            errorMessage = 'No account found with this email/phone. Please check your credentials or register a new account.';
-          } else if (data.message?.includes("correct information") || data.message?.includes("invalid")) {
-            errorMessage = 'Invalid email/phone or password. Please check your credentials.';
+          if (
+            data.message?.includes("doesn't exists") ||
+            data.message?.includes('not found')
+          ) {
+            errorMessage =
+              'No account found with this email/phone. Please check your credentials or register a new account.'
+          } else if (
+            data.message?.includes('correct information') ||
+            data.message?.includes('invalid')
+          ) {
+            errorMessage =
+              'Invalid email/phone or password. Please check your credentials.'
           }
         } else if (response.status === 401) {
-          errorMessage = 'Invalid credentials. Please check your email/phone and password.';
+          errorMessage =
+            'Invalid credentials. Please check your email/phone and password.'
         } else if (response.status === 404) {
-          errorMessage = 'Account not found. Please check your email/phone or contact support.';
+          errorMessage =
+            'Account not found. Please check your email/phone or contact support.'
         } else if (response.status === 500) {
-          errorMessage = 'Server error. Please try again later.';
+          errorMessage = 'Server error. Please try again later.'
         }
-        
-        throw new Error(errorMessage);
+
+        throw new Error(errorMessage)
       }
     } catch (error) {
       console.error('Login error details:', {
         message: error.message,
         stack: error.stack
-      });
-      
+      })
+
       FlashMessage({
         message: error.message || t('errorWhileLogging'),
         type: 'danger'
-      });
+      })
     } finally {
       setLoading(false)
     }
@@ -234,8 +247,8 @@ export const useLogin = () => {
       setTokenAsync(null)
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Login' }],
-      });
+        routes: [{ name: 'Login' }]
+      })
     } catch (error) {
       console.error('Error during logout:', error)
     }

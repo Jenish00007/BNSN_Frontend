@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react'
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import {
   View,
   Text,
@@ -36,7 +36,8 @@ const Chat = ({ navigation }) => {
     groupTitle,
     otherUser,
     shopId,
-    shopName
+    shopName,
+    productId
   } = route.params || {}
 
   const [messages, setMessages] = useState([])
@@ -51,16 +52,23 @@ const Chat = ({ navigation }) => {
   const flatListRef = useRef(null)
   const sendButtonScale = useRef(new Animated.Value(1)).current
   const typingOpacity = useRef(new Animated.Value(0)).current
+  const socketInitializedRef = useRef(false)
+  const handlingShopIdRef = useRef(false)
+  const lastMarkedReadRef = useRef({ conversationId: null, timestamp: 0 })
 
   const { token } = useContext(AuthContext)
   const { formetedProfileData: profile } = useContext(UserContext)
   const branding = useAppBranding()
-  console.log(profile)
   // Socket URL - Update this with your actual socket server URL
   const SOCKET_URL = 'http://192.168.31.121:8000'
 
   useEffect(() => {
-    initializeChat()
+    // Only initialize once
+    if (!socketInitializedRef.current) {
+      initializeChat()
+      socketInitializedRef.current = true
+    }
+    
     return () => {
       if (socket) {
         if (profile?._id && (conversationId || route.params?.conversationId)) {
@@ -70,20 +78,116 @@ const Chat = ({ navigation }) => {
           })
         }
         socket.disconnect()
+        socketInitializedRef.current = false
       }
     }
   }, [])
 
+  // Handle conversation ID changes (when navigating to different chat)
+  useEffect(() => {
+    if (socket && isConnected) {
+      // Check if we have route params that should trigger a switch
+      if (initialConversationId && initialConversationId !== conversationId) {
+        console.log('Conversation ID changed, switching room:', initialConversationId)
+        // Clear existing messages to avoid showing wrong messages
+        setMessages([])
+        setLoading(true)
+        
+        // Leave old room if conversationId exists
+        if (conversationId) {
+          socket.emit('leave-chat-room', {
+            userId: profile._id,
+            conversationId: conversationId
+          })
+        }
+        
+        // Join new room
+        socket.emit('join-chat-room', {
+          userId: profile._id,
+          conversationId: initialConversationId
+        })
+        
+        // Fetch messages for new conversation
+        fetchMessages(initialConversationId)
+        
+        // Update conversationId state
+        setConversationId(initialConversationId)
+      }
+    }
+  }, [initialConversationId, socket, isConnected, conversationId])
+
+  // Handle when shopId is provided (from ProductDetail) - need to create conversation and join
+  useEffect(() => {
+    const handleShopId = async () => {
+      // Only run once per shopId to prevent multiple API calls
+      if (handlingShopIdRef.current) return
+      
+      if (socket && isConnected && shopId && !conversationId) {
+        handlingShopIdRef.current = true
+        console.log('shopId provided without conversationId, creating conversation')
+        try {
+          const response = await fetch(
+            `${API_URL}/conversation/create-new-conversation`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                groupTitle: shopName || 'Chat',
+                userId: profile._id,
+                sellerId: shopId,
+                productId: productId || null
+              })
+            }
+          )
+
+          const data = await response.json()
+          if (data.success && data.conversation) {
+            const newConversationId = data.conversation._id
+            console.log('New conversation created:', newConversationId)
+            
+            // Clear existing messages
+            setMessages([])
+            setLoading(true)
+            
+            // Join new room
+            socket.emit('join-chat-room', {
+              userId: profile._id,
+              conversationId: newConversationId
+            })
+            
+            // Fetch messages for new conversation
+            fetchMessages(newConversationId)
+            
+            // Update conversationId state
+            setConversationId(newConversationId)
+            
+            // Update navigation params
+            navigation.setParams({
+              conversationId: newConversationId,
+              groupTitle: shopName || 'Chat'
+            })
+          }
+        } catch (error) {
+          console.error('Error creating conversation:', error)
+        } finally {
+          handlingShopIdRef.current = false
+        }
+      }
+    }
+    
+    handleShopId()
+  }, [shopId, socket, isConnected, conversationId])
+
   // Refresh messages and mark as read when screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       if (socket && profile?._id && isConnected && conversationId) {
         // Refetch messages when screen comes into focus
         fetchMessages(conversationId)
-        socket.emit('mark-as-read', {
-          userId: profile._id,
-          conversationId: conversationId
-        })
+        markMessagesAsRead(conversationId)
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, profile?._id, isConnected, conversationId])
@@ -136,47 +240,31 @@ const Chat = ({ navigation }) => {
     ]).start()
   }
 
+  // Helper function to mark messages as read with duplicate prevention
+  const markMessagesAsRead = (convId) => {
+    const now = Date.now()
+    // Only mark as read if:
+    // 1. We have a socket connection
+    // 2. Conv ID is provided
+    // 3. Either different conv or same conv but > 1 second since last mark
+    if (socket && convId && (
+      lastMarkedReadRef.current.conversationId !== convId ||
+      now - lastMarkedReadRef.current.timestamp > 1000
+    )) {
+      lastMarkedReadRef.current = { conversationId: convId, timestamp: now }
+      socket.emit('mark-as-read', {
+        userId: profile._id,
+        conversationId: convId
+      })
+    }
+  }
+
   const initializeChat = async () => {
     try {
       if (!token || !profile?._id) {
         Alert.alert('Error', 'Authentication required')
         navigation.goBack()
         return
-      }
-
-      // If shopId is provided but no conversationId, create a new conversation
-      let currentConversationId = conversationId
-      if (shopId && !conversationId) {
-        try {
-          const response = await fetch(
-            `${API_URL}/conversation/create-new-conversation`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                groupTitle: shopName || 'Chat',
-                userId: profile._id,
-                sellerId: shopId
-              })
-            }
-          )
-
-          const data = await response.json()
-          if (data.success && data.conversation) {
-            currentConversationId = data.conversation._id
-            setConversationId(currentConversationId)
-            // Update navigation params with the new conversation ID
-            navigation.setParams({
-              conversationId: currentConversationId,
-              groupTitle: shopName || 'Chat'
-            })
-          }
-        } catch (error) {
-          console.error('Error creating conversation:', error)
-        }
       }
 
       // Initialize socket connection
@@ -197,21 +285,18 @@ const Chat = ({ navigation }) => {
         console.log('Connected to socket server')
         setIsConnected(true)
 
-        // Join chat room
-        if (currentConversationId) {
+        // If we already have a conversationId, join the room
+        if (conversationId) {
           socketInstance.emit('join-chat-room', {
             userId: profile._id,
-            conversationId: currentConversationId
-          })
-
-          // Mark messages as read
-          socketInstance.emit('mark-as-read', {
-            userId: profile._id,
-            conversationId: currentConversationId
+            conversationId: conversationId
           })
 
           // Fetch chat history with the correct conversation ID
-          fetchMessages(currentConversationId)
+          fetchMessages(conversationId)
+          
+          // Mark messages as read
+          markMessagesAsRead(conversationId)
         }
       })
 
@@ -233,32 +318,37 @@ const Chat = ({ navigation }) => {
       socketInstance.on('reconnect', (attemptNumber) => {
         console.log('Reconnected after', attemptNumber, 'attempts')
         setIsConnected(true)
-        if (currentConversationId) {
+        if (conversationId) {
           socketInstance.emit('join-chat-room', {
             userId: profile._id,
-            conversationId: currentConversationId
+            conversationId: conversationId
           })
-          fetchMessages(currentConversationId)
+          fetchMessages(conversationId)
         }
       })
 
       socketInstance.on('receive-message', (message) => {
-        if (message && message.text) {
-          setMessages((prevMessages) => [...prevMessages, message])
+        if (message && message.text && message._id) {
+          setMessages((prevMessages) => {
+            // Check if message already exists to prevent duplicates
+            const messageExists = prevMessages.some(msg => msg._id === message._id)
+            if (messageExists) {
+              console.log('Duplicate message detected, skipping:', message._id)
+              return prevMessages
+            }
+            return [...prevMessages, message]
+          })
           scrollToBottom()
 
           // Mark message as read if from other user
           if (message.sender !== profile._id) {
-            socketInstance.emit('mark-as-read', {
-              userId: profile._id,
-              conversationId: conversationId
-            })
+            markMessagesAsRead(conversationId)
           }
         }
       })
 
       socketInstance.on('messages-marked-read', (data) => {
-        console.log('Messages marked as read:', data)
+        // Messages marked as read, update UI
         setMessages((prevMessages) =>
           prevMessages.map((msg) => ({
             ...msg,

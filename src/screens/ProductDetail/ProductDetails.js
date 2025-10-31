@@ -289,7 +289,8 @@ const ProductDetail = () => {
     if (sellerId) {
       navigation.navigate('Chat', {
         shopId: sellerId,
-        shopName: sellerName
+        shopName: sellerName,
+        productId: product._id  // Pass productId to create product-specific conversation
       })
     } else {
       Alert.alert('Error', 'Unable to contact seller at this time.')
