@@ -65,7 +65,7 @@ const Chat = ({ navigation }) => {
   useEffect(() => {
     // Only initialize once
     if (!socketInitializedRef.current) {
-      initializeChat()
+    initializeChat()
       socketInitializedRef.current = true
     }
     
@@ -287,15 +287,15 @@ const Chat = ({ navigation }) => {
 
         // If we already have a conversationId, join the room
         if (conversationId) {
-          socketInstance.emit('join-chat-room', {
-            userId: profile._id,
-            conversationId: conversationId
-          })
+        socketInstance.emit('join-chat-room', {
+          userId: profile._id,
+          conversationId: conversationId
+        })
 
           // Fetch chat history with the correct conversation ID
           fetchMessages(conversationId)
-          
-          // Mark messages as read
+
+        // Mark messages as read
           markMessagesAsRead(conversationId)
         }
       })
@@ -319,10 +319,10 @@ const Chat = ({ navigation }) => {
         console.log('Reconnected after', attemptNumber, 'attempts')
         setIsConnected(true)
         if (conversationId) {
-          socketInstance.emit('join-chat-room', {
-            userId: profile._id,
-            conversationId: conversationId
-          })
+        socketInstance.emit('join-chat-room', {
+          userId: profile._id,
+          conversationId: conversationId
+        })
           fetchMessages(conversationId)
         }
       })

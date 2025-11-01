@@ -5,7 +5,7 @@ import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
 import { theme } from '../../utils/themeColors'
-import * as Notifications from 'expo-notifications'
+import messaging from '@react-native-firebase/messaging'
 import { FlashMessage } from '../../ui/FlashMessage/FlashMessage'
 import AuthContext from '../../context/Auth'
 import { useNavigation } from '@react-navigation/native'
@@ -61,63 +61,54 @@ export const useLogin = () => {
     return result
   }
 
-  // Helper: Get Expo push token with enhanced error handling
-  const getExpoPushToken = async () => {
+  // Helper: Get FCM push token with enhanced error handling
+  const getFCMPushToken = async () => {
     let token = null
     if (Device.isDevice) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync()
-      let finalStatus = existingStatus
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync()
-        finalStatus = status
-      }
-      if (finalStatus !== 'granted') {
-        console.warn('Push notification permission not granted')
-        return null
-      }
       try {
-        token = (
-          await Notifications.getExpoPushTokenAsync({
-            projectId: Constants.expoConfig?.extra?.eas?.projectId
-          })
-        ).data
-        console.log('Expo push token obtained:', token)
+        // Request permission (iOS)
+        const authStatus = await messaging().requestPermission()
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL
+
+        if (enabled) {
+          // Get FCM token
+          token = await messaging().getToken()
+          console.log('FCM push token obtained:', token)
+
+          // Save token to AsyncStorage
+          await AsyncStorage.setItem('fcmToken', token)
+        } else {
+          console.warn('Push notification permission not granted')
+          return null
+        }
       } catch (error) {
-        console.error('Error getting push token:', error)
+        console.error('Error getting FCM push token:', error)
         return null
       }
     } else {
       console.warn('Physical device required for push notifications')
     }
 
-    // Android: set notification channel
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C'
-      })
-    }
     return token
   }
 
   // Helper: Send push token to backend
-  const sendPushTokenToBackend = async (expoPushToken, accessToken) => {
-    if (!expoPushToken || !accessToken) {
+  const sendPushTokenToBackend = async (fcmToken, accessToken) => {
+    if (!fcmToken || !accessToken) {
       console.warn('Missing push token or access token')
       return
     }
 
     try {
-      const response = await fetch(`${API_URL}/user/expo-push-token`, {
+      const response = await fetch(`${API_URL}/user/push-token`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ token: expoPushToken })
+        body: JSON.stringify({ token: fcmToken })
       })
 
       console.log('Push token update response status:', response.status)
@@ -145,7 +136,7 @@ export const useLogin = () => {
       })
 
       // Get push notification token
-      const expoPushToken = await getExpoPushToken()
+      const fcmToken = await getFCMPushToken()
 
       const response = await fetch(`${API_URL}/user/login-user`, {
         method: 'POST',
@@ -154,8 +145,12 @@ export const useLogin = () => {
         },
         body: JSON.stringify(
           isEmail(input)
-            ? { email: input.toLowerCase().trim(), password }
-            : { phoneNumber: input, password }
+            ? {
+                email: input.toLowerCase().trim(),
+                password,
+                pushToken: fcmToken
+              }
+            : { phoneNumber: input, password, pushToken: fcmToken }
         )
       })
 
@@ -172,11 +167,6 @@ export const useLogin = () => {
           // Store user data if available
           if (data.user) {
             await AsyncStorage.setItem('userData', JSON.stringify(data.user))
-          }
-
-          // Send push token to backend if available
-          if (expoPushToken && data.token) {
-            await sendPushTokenToBackend(expoPushToken, data.token)
           }
 
           // Show success message
