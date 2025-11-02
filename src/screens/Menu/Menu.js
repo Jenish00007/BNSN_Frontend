@@ -1067,7 +1067,7 @@ function Menu() {
                               <View style={styles().sectionHeader}>
                                 <TextDefault style={styles().sectionTitle}>Near By Products</TextDefault>
                                 <TouchableOpacity
-                                  onPress={() => navigation.navigate('AllPopularItems', { type: 'offers' })}
+                                  onPress={() => navigation.navigate('AllPopularItems', { type: 'nearby' })}
                                   style={styles().viewAllButton}
                                 >
                                   <Text style={[styles().viewAllText, { color: primaryColor }]}>

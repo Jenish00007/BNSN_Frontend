@@ -4,8 +4,8 @@
     "scheme": "qauds",
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",
-    "slug": "qauds",
-    "owner": "jenish1111",
+    "slug": "bnsn",
+    "owner": "bnsn.info7",
     "privacy": "public",
     "androidStatusBar": {
       "backgroundColor": "#000000"
@@ -145,7 +145,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "21d6d508-2431-4e52-acc9-55a234289189"
+        "projectId": "1bd50086-c028-4741-97f3-d5783c0aa106"
       }
     }
   }

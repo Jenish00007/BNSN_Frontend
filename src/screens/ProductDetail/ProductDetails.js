@@ -53,19 +53,13 @@ const ProductDetail = () => {
 
   const [quantity, setQuantity] = useState(1)
 
-  // Check if product is in stock
-  const isInStock = product?.stock > 0
-  const maxQuantity = product?.stock || 0
-
   const handleIncreaseQty = () => {
-    if (isInStock && quantity < maxQuantity) {
-      setQuantity((q) => Math.min(q + 1, maxQuantity))
-    }
+    setQuantity((q) => q + 1)
   }
 
   const handleDecreaseQty = () => {
     if (quantity > 1) {
-      setQuantity((q) => Math.max(q - 1, 1))
+      setQuantity((q) => q - 1)
     }
   }
 
@@ -120,9 +114,6 @@ const ProductDetail = () => {
   // If no valid images, use fallback
   const finalImages = validImages.length > 0 ? validImages : [IMAGE_LINK]
   console.log('finalImages', finalImages)
-  // Stock status display
-  const stockStatus = product?.stock > 0 ? 'In Stock' : 'Out of Stock'
-  const stockColor = product?.stock > 0 ? '#2E7D32' : '#D32F2F'
 
   // Function to get shop image source with fallback
   const getShopImageSource = () => {
@@ -476,29 +467,11 @@ const ProductDetail = () => {
           <View style={styles.favIconContainer}>
             <AddToFavourites product={product} />
           </View>
-          {/* Discount Badge (Offer) at top-right */}
-          {product?.originalPrice > product?.discountPrice && (
-            <View style={styles.discountBadgeAbsolute}>
-              <Text style={styles.badgeText}>
-                -
-                {Math.round(
-                  (100 * (product.originalPrice - product.discountPrice)) /
-                    product.originalPrice
-                )}
-                %
-              </Text>
-            </View>
-          )}
           {/* Badges Row (left) */}
           <View style={styles.badgeRow}>
             {product?.bestSeller && (
               <View style={[styles.badge, styles.bestSellerBadge]}>
                 <Text style={styles.badgeText}>Best Seller</Text>
-              </View>
-            )}
-            {product?.stock > 0 && product?.stock <= 10 && (
-              <View style={[styles.badge, styles.limitedStockBadge]}>
-                <Text style={styles.badgeText}>Limited Stock</Text>
               </View>
             )}
           </View>
@@ -560,12 +533,6 @@ const ProductDetail = () => {
                 ₹{product?.discountPrice}{' '}
               </Text>
             </View>
-            {/* Unit Count and Unit */}
-            {product?.unitCount && product?.unit && (
-              <Text style={styles.unitText}>
-                {product.unitCount} {product.unit}
-              </Text>
-            )}
           </View>
 
           {/* Category and Subcategory */}

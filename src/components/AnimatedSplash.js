@@ -36,11 +36,7 @@ const AnimatedSplash = ({ onAnimationComplete }) => {
           resizeMode="contain"
         />
       </View>
-      <View style={[styles.messageContainer]}>
-        <Text style={[styles.welcomeText, { color: branding.whiteColorText }]}>
-          Welcome to {branding.appName}
-        </Text>
-      </View>
+     
     </View>
   );
 };

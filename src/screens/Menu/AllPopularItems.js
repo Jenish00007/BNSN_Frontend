@@ -47,6 +47,8 @@ const AllPopularItems = () => {
         return 'top-offers';
       case 'latest':
         return 'latest';
+      case 'nearby':
+        return 'popular';
       case 'popular':
       default:
         return 'popular';
@@ -61,6 +63,8 @@ const AllPopularItems = () => {
         return 'Top Offers';
       case 'latest':
         return `New on ${appName}`;
+      case 'nearby':
+        return 'Near By Products';
       case 'popular':
       default:
         return 'Most Popular Items';
@@ -156,7 +160,7 @@ const AllPopularItems = () => {
         No {getTitle()} Found
       </Text>
       <Text style={[styles.emptySubtitle, { color: textColor }]}>
-        Check back later for {type === 'popular' ? 'trending' : type === 'latest' ? 'new' : type === 'offers' ? 'discounted' : 'recommended'} products
+        Check back later for {type === 'popular' ? 'trending' : type === 'latest' ? 'new' : type === 'offers' ? 'discounted' : type === 'nearby' ? 'nearby' : 'recommended'} products
       </Text>
     </View>
   );
