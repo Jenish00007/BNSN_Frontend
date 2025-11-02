@@ -63,6 +63,9 @@ function BackButton(props) {
    else if (props.icon === 'notification') {
     return <MaterialIcons name='notifications-none' size={26} color={props.iconColor} />
   } 
+  else if (props.icon === 'favourite') {
+    return <MaterialIcons name='favorite-border' size={26} color={props.iconColor} />
+  }
   else {
     return (
       <EvilIcons
@@ -262,7 +265,25 @@ function RightButton(props) {
     )
   } else if (props.icon === 'menu') {
     return (
-      <View style={{ flexDirection: 'row' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {/* Favorite Icon */}
+        <HeaderBackButton
+          truncatedLabel=''
+          pressColorAndroid={route.name === 'Main' && rippleColor}
+          labelVisible={false}
+          backImage={() => (
+            <View style={styles().favContainer}>
+              {BackButton({ iconColor: "#FFFFFF", icon: 'favourite' })}
+            </View>
+          )}
+          bolder
+          onPress={() =>
+            isLoggedIn 
+              ? navigation.navigate('Favourite')
+              : navigation.navigate('CreateAccount')
+          }
+        />
+        {/* Notification Icon */}
         <HeaderBackButton
           truncatedLabel=''
           pressColorAndroid={route.name === 'Main' && rippleColor}

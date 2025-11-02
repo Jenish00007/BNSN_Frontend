@@ -986,7 +986,7 @@ function Menu() {
                       { type: 'events', id: 'events' },
                       { type: 'recommended', id: 'recommended' },
                       { type: 'offers', id: 'offers' },
-                      { type: 'popular', id: 'popular' },
+                      // { type: 'popular', id: 'popular' },
                       { type: 'allProducts', id: 'allProducts' }
                     ]}
                     keyExtractor={(item) => item.id}

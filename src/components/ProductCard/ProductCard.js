@@ -199,6 +199,29 @@ export const ProductCard = ({ item }) => {
             </View>
             <Text style={[styles.cardTitle, { color: branding.textColor }]} numberOfLines={2}>{getShortenedName(item.name)}</Text>
             
+            {/* Shop/Seller Information */}
+            {item.shop && (
+              <View style={styles.sellerContainer}>
+                <Image
+                  source={{ 
+                    uri: item.shop.avatar || item.shop.logo || item.shop.image || ''
+                  }}
+                  style={styles.sellerAvatar}
+                  defaultSource={require('../../assets/images/placeholder.png')}
+                />
+                <View style={styles.sellerInfo}>
+                  <Text style={[styles.sellerName, { color: branding.textColor }]} numberOfLines={1}>
+                    {item.shop.name}
+                  </Text>
+                  {item.shop.address && (
+                    <Text style={[styles.sellerAddress, { color: branding.textColor, opacity: 0.7 }]} numberOfLines={1}>
+                      {item.shop.address}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+            
             {/* Weight/Unit Information */}
             {getUnitDisplay() && (
               <View style={[styles.unitContainer, { backgroundColor: branding.secondaryColor }]}>
@@ -335,6 +358,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     lineHeight: 20,
     minHeight: 40, // Space for 2 lines
+  },
+  sellerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sellerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  sellerInfo: {
+    flex: 1,
+  },
+  sellerName: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  sellerAddress: {
+    fontSize: 9,
   },
   unitContainer: {
     flexDirection: 'row',

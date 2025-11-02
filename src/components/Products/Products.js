@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ImageBackground,
+  Image,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -348,10 +349,26 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
               {getShortenedName(item?.name)}
             </Text>
 
+            {/* Shop/Seller Information */}
+            {item.shop && (
+              <View style={styles.sellerContainer}>
+                <Image
+                  source={{ 
+                    uri: item.shop.avatar || item.shop.logo || item.shop.image || ''
+                  }}
+                  style={styles.sellerAvatar}
+                  defaultSource={require('../../assets/images/placeholder.png')}
+                />
+                <View style={styles.sellerInfo}>
+                  <Text style={[styles.sellerName, { color: branding.textColor }]} numberOfLines={1}>
+                    {item.shop.name}
+                  </Text>
+                </View>
+              </View>
+            )}
 
-            {/* Price + Unit (unit on right end; only unit text has gray pill) */}
-            {/* {getUnitCountDisplay() && (
-              <View style={styles.unitRowCompact}>
+          
+              <View style={styles.priceRowOnly}>
                 <View style={styles.currentPriceRow}>
                   <Text style={[styles.currencySymbol, { color: branding.primaryColor }]}>₹</Text>
                   <Text style={[styles.currentPrice, { color: branding.textColor }]}>
@@ -361,11 +378,8 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
                     <Text style={[styles.originalPrice, { marginLeft: 6 }]}>₹{getOriginalPrice()}</Text>
                   )}
                 </View>
-                <Text style={[styles.unitText, styles.unitPill]}>
-                  {getUnitCountDisplay()}
-                </Text>
               </View>
-            )} */}
+          
 
           {/* Location with Address - Replace lines 389-440 */}
 <View style={styles.bottomControls}>
@@ -589,6 +603,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
+  priceRowOnly: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
 
   unitCountContainer: {
     flexDirection: 'row',
@@ -767,6 +786,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     flexShrink: 0,
+  },
+  sellerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  sellerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  sellerInfo: {
+    flex: 1,
+  },
+  sellerName: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   locationAddressContainer: {
     flexDirection: 'row',

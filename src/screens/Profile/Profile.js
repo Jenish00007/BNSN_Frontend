@@ -12,7 +12,7 @@ import {
   Platform,
   StatusBar
 } from "react-native";
-import { Feather } from "@expo/vector-icons";  
+import { Feather, MaterialIcons } from "@expo/vector-icons";  
 import { useNavigation } from '@react-navigation/native';
 import UserContext from "../../context/User";
 import AuthContext from "../../context/Auth";
@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 
 const ProfilePage = () => {
   const navigation = useNavigation();
-  const { formetedProfileData, refreshProfile } = useContext(UserContext);
+  const { formetedProfileData, refreshProfile, isLoggedIn } = useContext(UserContext);
   const { token } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [userData, setUserDataLocal] = useState({});
@@ -50,9 +50,34 @@ const ProfilePage = () => {
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       ),
-      headerRight: () => null,
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginRight: 16 }}>
+          {/* Favorite Icon */}
+          <TouchableOpacity
+            onPress={() =>
+              isLoggedIn 
+                ? navigation.navigate('Favourite')
+                : navigation.navigate('CreateAccount')
+            }
+            style={{ padding: 4 }}
+          >
+            <MaterialIcons name="favorite-border" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+          {/* Notification Icon */}
+          <TouchableOpacity
+            onPress={() =>
+              isLoggedIn 
+                ? navigation.navigate('Notification')
+                : navigation.navigate('CreateAccount')
+            }
+            style={{ padding: 4 }}
+          >
+            <MaterialIcons name="notifications-none" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      ),
     });
-  }, [navigation, branding.headerColor]);
+  }, [navigation, branding.headerColor, isLoggedIn]);
 
   // Initialize user data when profile data is available
   useEffect(() => {

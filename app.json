@@ -15,7 +15,7 @@
     "icon": "./assets/logo.png",
     "splash": {
       "resizeMode": "cover",
-      "backgroundColor": "#23e5db"
+      "backgroundColor": "#645faa"
     },
     "assetBundlePatterns": ["**/*"],
     "userInterfaceStyle": "automatic",

@@ -599,73 +599,73 @@ const ProductDetail = () => {
             style={[styles.divider, { backgroundColor: branding.textColor }]}
           />
 
-          {/* Shop Information - Hidden as requested */}
-          {/* {product?.shop ? (
-                        <View style={styles.shopContainer}>
-                            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-                                Shop Information
-                            </Text>
-                            <View style={styles.shopInfo}>
-                                <Image 
-                                    source={getShopImageSource()}
-                                    style={styles.shopAvatar}
-                                    defaultSource={require('../../assets/images/placeholder.png')}
-                                    onLoadStart={() => setShopImageLoading(true)}
-                                    onLoadEnd={() => setShopImageLoading(false)}
-                                    onError={(error) => {
-                                        console.log('Shop avatar load error:', error.nativeEvent);
-                                        setShopImageError(true);
-                                        setShopImageLoading(false);
-                                    }}
-                                />
-                                {shopImageLoading && (
-                                    <View style={[styles.shopAvatar, styles.shopAvatarLoading]}>
-                                        <ActivityIndicator size="small" color={branding.primaryColor} />
-                                    </View>
-                                )}
-                                {shopImageError && !shopImageLoading && (
-                                    <TouchableOpacity 
-                                        style={[styles.shopAvatar, styles.shopAvatarError]}
-                                        onPress={() => {
-                                            setShopImageError(false);
-                                            fetchShopData();
-                                        }}
-                                    >
-                                        <MaterialIcons name="refresh" size={20} color={branding.primaryColor} />
-                                    </TouchableOpacity>
-                                )}
-                                <View style={styles.shopDetails}>
-                                    <Text style={[styles.shopName, { color: branding.textColor }]}>
-                                        {product?.shop?.name || 'Shop Name Not Available'}
-                                    </Text>
-                                    <Text style={[styles.shopAddress, { color: branding.textColor }]}>
-                                        {product?.shop?.address || 'Address Not Available'}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={styles.shopContainer}>
-                            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-                                Shop Information
-                            </Text>
-                            <View style={styles.shopInfo}>
-                                <View style={[styles.shopAvatar, styles.shopAvatarError]}>
-                                    <MaterialIcons name="store" size={24} color={branding.primaryColor} />
-                                </View>
-                                <View style={styles.shopDetails}>
-                                    <Text style={[styles.shopName, { color: branding.textColor }]}>
-                                        Shop Information Not Available
-                                    </Text>
-                                    <Text style={[styles.shopAddress, { color: branding.textColor }]}>
-                                        Contact support for shop details
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                    )} */}
+          {/* Shop/User Information */}
+          {product?.shop ? (
+            <View style={styles.shopContainer}>
+              <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+                User Information
+              </Text>
+              <View style={styles.shopInfo}>
+                <Image 
+                  source={getShopImageSource()}
+                  style={styles.shopAvatar}
+                  defaultSource={require('../../assets/images/placeholder.png')}
+                  onLoadStart={() => setShopImageLoading(true)}
+                  onLoadEnd={() => setShopImageLoading(false)}
+                  onError={(error) => {
+                    console.log('Shop avatar load error:', error.nativeEvent);
+                    setShopImageError(true);
+                    setShopImageLoading(false);
+                  }}
+                />
+                {shopImageLoading && (
+                  <View style={[styles.shopAvatar, styles.shopAvatarLoading]}>
+                    <ActivityIndicator size="small" color={branding.primaryColor} />
+                  </View>
+                )}
+                {shopImageError && !shopImageLoading && (
+                  <TouchableOpacity 
+                    style={[styles.shopAvatar, styles.shopAvatarError]}
+                    onPress={() => {
+                      setShopImageError(false);
+                      fetchShopData();
+                    }}
+                  >
+                    <MaterialIcons name="refresh" size={20} color={branding.primaryColor} />
+                  </TouchableOpacity>
+                )}
+                <View style={styles.shopDetails}>
+                  <Text style={[styles.shopName, { color: branding.textColor }]}>
+                    {product?.shop?.name || 'Name Not Available'}
+                  </Text>
+                  <Text style={[styles.shopAddress, { color: branding.textColor }]}>
+                    {product?.shop?.address || 'Address Not Available'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.shopContainer}>
+              <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+                Seller Information
+              </Text>
+              <View style={styles.shopInfo}>
+                <View style={[styles.shopAvatar, styles.shopAvatarError]}>
+                  <MaterialIcons name="person" size={24} color={branding.primaryColor} />
+                </View>
+                <View style={styles.shopDetails}>
+                  <Text style={[styles.shopName, { color: branding.textColor }]}>
+                    Seller Information Not Available
+                  </Text>
+                  <Text style={[styles.shopAddress, { color: branding.textColor }]}>
+                    Contact support for seller details
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
-          {/* <View style={[styles.divider, { backgroundColor: branding.textColor }]} /> */}
+          <View style={[styles.divider, { backgroundColor: branding.textColor }]} />
 
           {/* Product Description */}
           <View style={styles.descriptionContainer}>

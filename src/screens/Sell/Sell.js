@@ -269,9 +269,6 @@ const Sell = () => {
         >
           ₹{item.discountPrice || item.originalPrice}
         </TextDefault>
-        <TextDefault small style={styles.productStock}>
-          Stock: {item.stock}
-        </TextDefault>
       </View>
 
       <View style={styles.productActions}>
@@ -315,30 +312,6 @@ const Sell = () => {
 
   const renderHeader = () => (
     <View style={styles.headerSection}>
-      <View style={styles.statsContainer}>
-        <View
-          style={[styles.statCard, { backgroundColor: branding.primaryColor }]}
-        >
-          <MaterialIcons name='inventory' size={24} color='white' />
-          <TextDefault bold style={styles.statNumber}>
-            {products.length}
-          </TextDefault>
-          <TextDefault small style={styles.statLabel}>
-            Total Products
-          </TextDefault>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: '#4CAF50' }]}>
-          <MaterialIcons name='trending-up' size={24} color='white' />
-          <TextDefault bold style={styles.statNumber}>
-            {products.filter((p) => p.stock > 0).length}
-          </TextDefault>
-          <TextDefault small style={styles.statLabel}>
-            In Stock
-          </TextDefault>
-        </View>
-      </View>
-
       <TouchableOpacity
         style={[
           styles.createAdButton,

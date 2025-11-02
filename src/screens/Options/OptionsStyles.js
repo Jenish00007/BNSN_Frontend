@@ -31,42 +31,64 @@ const OptionsStyles = (currentTheme) => StyleSheet.create({
     width: 40,
   },
   profile: {
-    padding: 24,
-    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 24,
+    padding: 20,
+    borderRadius: 20,
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: currentTheme.borderBottomColor,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   profileAvatarWrapper: {
     position: 'relative',
+    marginBottom: 16,
   },
   profileAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 2,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 4,
+  },
+  profileAvatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileAvatarText: {
+    fontSize: 36,
+    fontWeight: 'bold',
   },
   profileAction: {
     position: 'absolute',
-    right: -4,
-    bottom: -4,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profileInfo: {
-    marginLeft: 20,
+    alignItems: 'center',
   },
   profileName: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   profileRole: {
-    marginTop: 4,
     fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.7,
   },
   section: {
     paddingHorizontal: 16,
@@ -156,62 +178,6 @@ const OptionsStyles = (currentTheme) => StyleSheet.create({
   },
   
   // Language selection modal styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 30,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  languageItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-  },
-  selectedLanguageItem: {
-    backgroundColor: '#F8F8F8',
-  },
-  languageItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  flagIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 16,
-  },
-  languageTexts: {
-    flex: 1,
-  },
-  languageText: {
-    fontSize: 17,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  nativeText: {
-    fontSize: 15,
-    opacity: 0.7,
-  },
   modal: {
     margin: 0,
     justifyContent: 'flex-end',
@@ -296,15 +262,6 @@ const OptionsStyles = (currentTheme) => StyleSheet.create({
   scrollViewContent: {
     flexGrow: 1,
     paddingBottom: 30,
-  },
-  detailContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  rowValue: {
-    fontSize: 12,
-    marginTop: 2,
-    opacity: 0.8,
   },
 });
 

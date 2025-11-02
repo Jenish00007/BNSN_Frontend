@@ -88,6 +88,7 @@ import Chat from '../screens/Chat/Chat'
 import MyAds from '../screens/MyAds/MyAds'
 import Sell from '../screens/Sell/Sell'
 import CreateAd from '../screens/Sell/CreateAd'
+import EditProduct from '../screens/Sell/EditProduct'
 
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
@@ -267,6 +268,11 @@ function NoDrawer() {
       <NavigationStack.Screen
         name='CreateAd'
         component={CreateAd}
+        options={{ headerShown: false }}
+      />
+      <NavigationStack.Screen
+        name='EditProduct'
+        component={EditProduct}
         options={{ headerShown: false }}
       />
       {/* Sell Screen */}

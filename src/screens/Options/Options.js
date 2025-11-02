@@ -131,18 +131,23 @@ export default function SettingsScreen() {
         {/* Profile Section */}
         <View style={[styles.profile, { backgroundColor: branding.secondaryColor }]}>
           <TouchableOpacity 
-            style={styles.profileCenter}
-            onPress={() => navigation.navigate("Profile")}>
+            onPress={() => navigation.navigate("Profile")}
+            activeOpacity={0.8}>
             <View style={styles.profileAvatarWrapper}>
-              <Image
-                alt="Profile"
-                source={{
-                  uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-                }}
-                style={[styles.profileAvatar, { borderColor: branding.primaryColor }]} />
-
+              {formetedProfileData?.avatar ? (
+                <Image
+                  source={{ uri: formetedProfileData.avatar }}
+                  style={[styles.profileAvatar, { borderColor: branding.primaryColor }]}
+                />
+              ) : (
+                <View style={[styles.profileAvatar, styles.profileAvatarPlaceholder, { borderColor: branding.primaryColor, backgroundColor: branding.primaryColor + '20' }]}>
+                  <Text style={[styles.profileAvatarText, { color: branding.primaryColor }]}>
+                    {fullName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <View style={[styles.profileAction, { backgroundColor: branding.primaryColor, borderColor: branding.secondaryColor }]}>
-                <FeatherIcon color="#fff" name="edit-3" size={15} />
+                <FeatherIcon color="#fff" name="edit-3" size={16} />
               </View>
             </View>
           </TouchableOpacity>

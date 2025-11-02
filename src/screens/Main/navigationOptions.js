@@ -1,6 +1,6 @@
 /* eslint-disable react/display-name */
 import React, { useContext, useEffect } from 'react'
-import { LeftButton } from '../../components/Header/HeaderIcons/HeaderIcons'
+import { LeftButton, RightButton } from '../../components/Header/HeaderIcons/HeaderIcons'
 import SelectedLocation from '../../components/Main/Location/Location'
 import { alignment } from '../../utils/alignment'
 import { theme } from '../../utils/themeColors'
@@ -21,6 +21,7 @@ const navigationOptions = props => ({
   },
   headerTitleAlign: 'left',
   headerLeft: () => <LeftButton icon={props.icon} iconColor={props.iconColor || props.fontMainColor} />,
+  headerRight: () => <RightButton icon="menu" />,
   headerTitle: headerProp => (
     <SelectedLocation
       {...headerProp}

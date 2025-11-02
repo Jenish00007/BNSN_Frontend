@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React from 'react';
 
 import {
   StyleSheet,
@@ -6,78 +6,26 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
+  ImageBackground,
+  Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import AddToFavourites from '../Favourites/AddtoFavourites';
-import UserContext from '../../context/User';
 import { useAppBranding } from '../../utils/translationHelper';
 
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width * 0.62; // 62% of screen width
+const CARD_HEIGHT = 260;
 
 // CategoryListView component
 const CategoryListView = ({ data }) => {
 
   const navigation = useNavigation();
-  const { addToCart, isLoggedIn } = useContext(UserContext);
   const branding = useAppBranding();
   
   const styles = stylesFn(branding);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Function to truncate text longer than 15 letters
-  const truncateText = (text) => {
-    if (text && text.length > 12) {
-      return text.substring(0, 12) + '...';
-    }
-    return text;
-  };
-
-  // Function to format unit information
-  const getUnitDisplay = () => {
-    const { weight, unit, quantity, unitCount } = item || {};
-    
-    // If unitCount is provided, use it with unit
-    if (unitCount && unit) {
-      return `${unitCount} ${unit}`;
-    }
-    
-    // If quantity is provided, use it with "Pcs"
-    if (quantity) {
-      return `${quantity} Pcs`;
-    }
-    
-    // If weight is provided, use it
-    if (weight) {
-      return weight;
-    }
-    
-    // If only unit is provided, use it
-    if (unit) {
-      return unit;
-    }
-    
-    return null;
-  };
-
-  // Function to get unit count specifically for display
-  const getUnitCountDisplay = () => {
-    const { unitCount, unit } = item || {};
-    if (unitCount && unit) {
-      return `${unitCount} ${unit}`;
-    }
-    return null;
-  };
-
-
-  // Calculate discount percentage
-  const getDiscountPercentage = () => {
-    if (item?.originalPrice && (item?.originalPrice > (item?.discountPrice || item?.price || 0))) {
-      return Math.round(((item.originalPrice - (item.discountPrice || item.price || 0)) / item.originalPrice) * 100);
-    }
-    return 0;
-  };
 
   // Check if data is properly passed
   if (!data) {
@@ -91,287 +39,349 @@ const CategoryListView = ({ data }) => {
     return null;
   }
 
-  const handleAddToCart = async () => {
-    if (!isLoggedIn) {
-      navigation.navigate('Login');
-      return;
+  // Function to truncate text
+  const truncateText = (text, maxLength = 30) => {
+    if (text && text.length > maxLength) {
+      return text.substring(0, maxLength) + '...';
     }
-
-    // Check if product is in stock
-    if (item?.stock <= 0) {
-      Alert.alert(
-        'Out of Stock',
-        'This item is currently not available.',
-        [{ text: 'OK', style: 'cancel' }],
-        { cancelable: true }
-      );
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const result = await addToCart(item);
-      if (result.success) {
-        Alert.alert("Success", result.message);
-      } else {
-        Alert.alert("Error", result.message);
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      Alert.alert("Error", "An error occurred while adding to cart.");
-    } finally {
-      setIsLoading(false);
-    }
+    return text || '';
   };
 
-  const formattedDistance = item?.distance ? `${Math.round(item?.distance / 1000) || '100+'} km` : 'N/A';
+  // Function to get unit count display
+  const getUnitCountDisplay = () => {
+    const { unitCount, unit, quantity, weight } = item || {};
+    if (unitCount && unit) {
+      return `${unitCount} ${unit}`;
+    }
+    if (quantity) {
+      return `${quantity} Pcs`;
+    }
+    if (weight) {
+      return weight;
+    }
+    if (unit) {
+      return unit;
+    }
+    return null;
+  };
+
+  // Calculate discount percentage
+  const getDiscountPercentage = () => {
+    const original = parseFloat(item?.originalPrice ?? 0) || 0;
+    const current = parseFloat(item?.discountPrice ?? item?.price ?? 0) || 0;
+    if (original && original > current) {
+      return Math.round(((original - current) / original) * 100);
+    }
+    return 0;
+  };
+
+  // Price helpers
+  const getCurrentPrice = () => {
+    const val = item?.discountPrice ?? item?.price ?? 0;
+    const num = parseFloat(val);
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const getOriginalPrice = () => {
+    const val = item?.originalPrice ?? 0;
+    const num = parseFloat(val);
+    return Number.isFinite(num) ? num : 0;
+  };
+
+
+  const discountPercent = getDiscountPercentage();
+  const imageUri = item?.image || item?.images?.[0]?.url || item?.images?.[0] || 'https://via.placeholder.com/400x300?text=No+Image';
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { product: item })} style={{ height: 134, width: 280 }} touchOpacity={0.6} >
-        <View style={styles.bgColorView} />
-        <View style={{ ...StyleSheet.absoluteFillObject, flexDirection: 'row' }}>
-          <View style={{ paddingVertical: 24, paddingLeft: 16, }}>
-            <Image
-              style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0, }}
-              source={{ uri: item?.image || item?.images?.[0] }}
+    <TouchableOpacity 
+      onPress={() => navigation.navigate('ProductDetail', { product: item })} 
+      activeOpacity={0.9}
+      style={styles.cardWrapper}
+    >
+      <View style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+        {/* Image Section with Gradient Overlay */}
+        <View style={styles.imageSection}>
+          <ImageBackground
+            source={{ uri: imageUri }}
+            style={styles.productImage}
+            resizeMode="cover"
+          >
+            {/* Gradient Overlay */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)']}
+              style={styles.imageGradient}
             />
-            {/* Discount Badge */}
-            {/* {getDiscountPercentage() > 0 && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>{getDiscountPercentage()}% OFF</Text>
-              </View>
-            )} */}
-          </View>
-          <View style={{ flex: 1, paddingLeft: 16, paddingVertical: 16 }}>
-            <Text style={styles.title}>{truncateText(item?.title)}</Text>
-            <View style={styles.lessionCountRatingContainer}>
-              <Text style={[styles.textStyle, { flex: 1, fontSize: 16 }]}>
-                {truncateText(item?.name)}
-              </Text>
-              <Text style={styles.textStyle}>{item?.rating}</Text>
-              <AddToFavourites product={item}/>
-            </View>
             
-            {/* Unit Count Display */}
-            {/* {getUnitCountDisplay() && (
-              <View style={styles.unitCountContainer}>
-               
-                <Text style={styles.unitCountText}>
-                  {getUnitCountDisplay()}
-                </Text>
+            {/* Top Badges Row */}
+            <View style={styles.topBadgesRow}>
+              {/* Discount Badge */}
+              {discountPercent > 0 && (
+                <View style={[styles.discountBadge, { backgroundColor: branding.primaryColor }]}>
+                  <Text style={styles.discountText}>-{discountPercent}%</Text>
+                </View>
+              )}
+              
+              {/* Favorite Button */}
+              <View style={styles.favoriteButtonContainer}>
+                <AddToFavourites product={item} />
               </View>
-            )} */}
-            {/* Location with Address - Replace lines 182-192 */}
-<View style={styles.locationAddressContainer}>
-  <Icon name="location-on" size={14} color={branding.primaryColor} />
-  <Text style={styles.addressText} numberOfLines={1}>
-    {item?.shop?.address || item?.address || 'Location not available'}
-  </Text>
-</View>
-            <View style={{ flexDirection: 'row', paddingRight: 16, alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={styles.locationContainer}>
-                {/* Current Price */}
-                <View style={styles.priceContainer}>
-                  <View style={styles.currentPriceRow}>
-                    <Text style={styles.currencySymbol}>₹</Text>
-                    <Text style={styles.currentPrice}>
-                      {item?.discountPrice || item?.price || 0}
-                    </Text>
-                  </View>
-                  {/* Original Price (if discounted) */}
-                  {item?.originalPrice && item?.originalPrice > (item?.discountPrice || item?.price || 0) && (
-                    <Text style={styles.originalPrice}>₹{item.originalPrice}</Text>
-                  )}
+            </View>
+
+            {/* Bottom Gradient for Text Readability */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={styles.bottomGradient}
+            />
+          </ImageBackground>
+        </View>
+
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          {/* Product Name */}
+          <Text style={[styles.productName, { color: branding.textColor }]} numberOfLines={2}>
+            {item?.name || item?.title || 'Product Name'}
+          </Text>
+
+          {/* Shop Info */}
+          {item?.shop && (
+            <View style={styles.shopInfoRow}>
+              <Image
+                source={{ 
+                  uri: item.shop.avatar || item.shop.logo || item.shop.image || ''
+                }}
+                style={styles.shopAvatar}
+                defaultSource={require('../../assets/images/placeholder.png')}
+              />
+              <View style={styles.shopInfo}>
+                <Text style={[styles.shopName, { color: branding.textColor }]} numberOfLines={1}>
+                  {item.shop.name || 'Shop'}
+                </Text>
+                <View style={styles.locationRow}>
+                  <Icon name="location-on" size={12} color={branding.primaryColor} />
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {item?.shop?.address || item?.address || 'Location'}
+                  </Text>
                 </View>
               </View>
-              
-             
-              {/* <TouchableOpacity 
-                onPress={handleAddToCart}
-                style={[styles.addButton, { backgroundColor: branding.primaryColor }]}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Icon name="add-shopping-cart" size={18} color="#FFFFFF" />
-                )}
-              </TouchableOpacity> */}
             </View>
+          )}
+
+          {/* Price and Unit Row */}
+          <View style={styles.priceSection}>
+            <View style={styles.priceRow}>
+              <View style={styles.priceContainer}>
+                <Text style={[styles.currencySymbol, { color: branding.primaryColor }]}>₹</Text>
+                <Text style={[styles.currentPrice, { color: branding.textColor }]}>
+                  {getCurrentPrice()}
+                </Text>
+              </View>
+              {getOriginalPrice() > getCurrentPrice() && (
+                <Text style={styles.originalPrice}>₹{getOriginalPrice()}</Text>
+              )}
+            </View>
+            
+          
+          </View>
+
+          {/* Location Display */}
+          <View style={[styles.locationContainer, { backgroundColor: branding.secondaryColor }]}>
+            <Icon name="location-on" size={12} color={branding.primaryColor} />
+            <Text style={[styles.locationDisplayText, { color: branding.textColor }]} numberOfLines={2}>
+              {item?.shop?.address || item?.address || item?.location || 'Location not available'}
+            </Text>
           </View>
         </View>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 };
 
 // Styles for the component
 const stylesFn = (branding) => StyleSheet.create({
+  cardWrapper: {
+    width: CARD_WIDTH,
+    marginRight: 10,
+    marginBottom: 8,
+  },
   container: {
-    backgroundColor: branding.backgroundColor
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
-  bgColorView: {
-    flex: 1,
-    marginLeft: 55,
-    borderRadius: 10,
-    backgroundColor: branding.secondaryColor,
+  imageSection: {
+    height: 135,
+    width: '100%',
+    position: 'relative',
   },
-  discountBadge: {
+  productImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'space-between',
+  },
+  imageGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+  },
+  topBadgesRow: {
     position: 'absolute',
     top: 8,
     left: 8,
-    paddingHorizontal: 6,
+    right: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    zIndex: 10,
+  },
+  discountBadge: {
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 10,
-    shadowColor: '#FF6B6B',
+    borderRadius: 14,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
-    backgroundColor: branding.primaryColor
+    elevation: 6,
   },
   discountText: {
     color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
-  closedBadge: {
-    backgroundColor: '#E0E0E0',
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+  favoriteButtonContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  closedText: {
-    color: '#666666',
-    fontSize: 10,
+  contentSection: {
+    flex: 1,
+    padding: 10,
+    justifyContent: 'space-between',
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginBottom: 5,
+    letterSpacing: 0.2,
+  },
+  shopInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  shopAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  shopInfo: {
+    flex: 1,
+  },
+  shopName: {
+    fontSize: 12,
     fontWeight: '600',
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
-  title: {
-    fontSize: 16,
-    fontFamily: 'WorkSans-SemiBold',
-    letterSpacing: 0.27,
-    color: branding.textColor,
-  },
-  lessionCountRatingContainer: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 16,
-    paddingBottom: 8,
+    gap: 3,
   },
-  textStyle: {
-    fontSize: 18,
-    fontFamily: 'WorkSans-Regular',
-    letterSpacing: 0.27,
-    color: branding.textColor,
-  },
-  moneyText: {
-    fontFamily: 'WorkSans-SemiBold',
+  locationText: {
+    fontSize: 9,
     color: '#666666',
-    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
-  locationContainer: {
+  priceSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     flex: 1,
   },
   priceContainer: {
-    flex: 1,
-  },
-  currentPriceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
   },
   currencySymbol: {
-    color: branding.primaryColor,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     marginRight: 2,
   },
   currentPrice: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: branding.textColor,
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   originalPrice: {
     textDecorationLine: 'line-through',
     color: '#999999',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
+    marginLeft: 4,
+  },
+  unitBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  unitText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 5,
     marginTop: 2,
   },
-  statusBadge: {
-    backgroundColor: '#E0E0E0',
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginLeft: 8,
-  },
-  statusText: {
-    color: '#666666',
+  locationDisplayText: {
     fontSize: 10,
-    fontWeight: '600',
-  },
-  openBadge: {
-    backgroundColor: '#FFF8E1',
-  },
-  openText: {
-    color: branding.primaryColor,
-  },
-  addIconView: {
-    padding: 4,
-    backgroundColor: branding.primaryColor,
-    borderRadius: 8,
-    marginRight: 4,
-  },
-  addButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  unitCountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: branding.primaryColor,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  unitCountText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 3,
-  },
-  locationAddressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: 140,
-  },
-  addressText: {
-    fontSize: 10,
-    color: '#666666',
     fontWeight: '500',
     flex: 1,
+    lineHeight: 14,
   },
 });
 
