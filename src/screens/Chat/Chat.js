@@ -60,7 +60,7 @@ const Chat = ({ navigation }) => {
   const { formetedProfileData: profile } = useContext(UserContext)
   const branding = useAppBranding()
   // Socket URL - Update this with your actual socket server URL
-  const SOCKET_URL = 'http://192.168.31.121:8000'
+  const SOCKET_URL = 'https://bnsn.in'
 
   useEffect(() => {
     // Only initialize once

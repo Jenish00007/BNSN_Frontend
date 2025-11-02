@@ -1,4 +1,4 @@
-package com.qauds.qauds
+package com.bnsn.bnsn
 
 import android.app.Application
 import android.content.res.Configuration

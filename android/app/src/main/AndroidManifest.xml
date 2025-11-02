@@ -38,7 +38,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="qauds"/>
-        <data android:scheme="com.qauds.qauds"/>
+        <data android:scheme="com.bnsn.bnsn"/>
         <data android:scheme="exp+qauds"/>
       </intent-filter>
       <intent-filter android:autoVerify="true" data-generated="true">

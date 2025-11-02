@@ -1,4 +1,4 @@
-package com.qauds.qauds
+package com.bnsn.bnsn
 
 import android.os.Build
 import android.os.Bundle
