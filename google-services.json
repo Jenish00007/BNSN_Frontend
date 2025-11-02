@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:598946733359:android:8e7dcb4826078c910355da",
+        "mobilesdk_app_id": "1:598946733359:android:ef1df127254769a70355da",
         "android_client_info": {
-          "package_name": "com.figgo.partner"
+          "package_name": "com.bnsn.bnsn"
         }
       },
       "oauth_client": [],
@@ -26,9 +26,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:598946733359:android:205bf558d0f03f020355da",
+        "mobilesdk_app_id": "1:598946733359:android:8e7dcb4826078c910355da",
         "android_client_info": {
-          "package_name": "com.qauds.qauds"
+          "package_name": "com.figgo.partner"
         }
       },
       "oauth_client": [],

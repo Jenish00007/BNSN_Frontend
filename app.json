@@ -10,19 +10,14 @@
     "androidStatusBar": {
       "backgroundColor": "#000000"
     },
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "platforms": ["ios", "android"],
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "splash": {
       "resizeMode": "cover",
       "backgroundColor": "#23e5db"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
@@ -34,9 +29,7 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to use location to determine the delivery address for your orders.",
-        "UIBackgroundModes": [
-          "remote-notification"
-        ],
+        "UIBackgroundModes": ["remote-notification"],
         "NSUserTrackingUsageDescription": "Allow this app to collect app-related data that can be used for tracking you or your device.",
         "CFBundleURLTypes": [
           {
@@ -56,7 +49,7 @@
     },
     "android": {
       "versionCode": 26,
-      "package": "com.qauds.qauds",
+      "package": "com.bnsn.bnsn",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "intentFilters": [
@@ -68,10 +61,7 @@
               "scheme": "qauds"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
@@ -81,10 +71,7 @@
               "scheme": "exp+qauds-awgr9sutfyddrgo3dqakf"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "config": {
