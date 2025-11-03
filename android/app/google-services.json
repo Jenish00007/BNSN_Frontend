@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "598946733359",
-    "project_id": "qauds-notification",
-    "storage_bucket": "qauds-notification.firebasestorage.app"
+    "project_number": "862286395471",
+    "project_id": "bnsn-fe953",
+    "storage_bucket": "bnsn-fe953.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:598946733359:android:ef1df127254769a70355da",
+        "mobilesdk_app_id": "1:862286395471:android:9662f0994fc8ea8f2ad23a",
         "android_client_info": {
           "package_name": "com.bnsn.bnsn"
         }
@@ -15,45 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyC3oaUxDysakDkVV3c99ICT5HmMYtmQ7Zg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:598946733359:android:8e7dcb4826078c910355da",
-        "android_client_info": {
-          "package_name": "com.figgo.partner"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyC3oaUxDysakDkVV3c99ICT5HmMYtmQ7Zg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:598946733359:android:7193f9f2f42460910355da",
-        "android_client_info": {
-          "package_name": "com.qauds.vendor"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyC3oaUxDysakDkVV3c99ICT5HmMYtmQ7Zg"
+          "current_key": "AIzaSyDbyT9H9zd7k2rPlJSmzsjBNUZNijRZgyE"
         }
       ],
       "services": {
