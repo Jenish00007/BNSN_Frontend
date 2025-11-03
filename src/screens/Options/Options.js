@@ -366,54 +366,6 @@ export default function SettingsScreen() {
             <FeatherIcon color={branding.textColor} name="chevron-right" size={20} />
           </TouchableOpacity>
 
-          {/* Refund Policy */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('RefundPolicy')}
-            style={[styles.row, { backgroundColor: branding.secondaryColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
-              <FeatherIcon color="#fff" name="refresh-cw" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: branding.textColor }]}>Refund Policy</Text>
-              <Text style={[styles.rowValue, { color: branding.textColor }]}>
-                View our refund policy
-              </Text>
-            </View>
-            <FeatherIcon color={branding.textColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
-
-          {/* Cancellation Policy */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('CancellationPolicy')}
-            style={[styles.row, { backgroundColor: branding.secondaryColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
-              <FeatherIcon color="#fff" name="x-circle" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: branding.textColor }]}>Cancellation Policy</Text>
-              <Text style={[styles.rowValue, { color: branding.textColor }]}>
-                View our cancellation policy
-              </Text>
-            </View>
-            <FeatherIcon color={branding.textColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
-
-          {/* Shipping Policy */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('ShippingPolicy')}
-            style={[styles.row, { backgroundColor: branding.secondaryColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
-              <FeatherIcon color="#fff" name="truck" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: branding.textColor }]}>Shipping Policy</Text>
-              <Text style={[styles.rowValue, { color: branding.textColor }]}>
-                View our shipping policy
-              </Text>
-            </View>
-            <FeatherIcon color={branding.textColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
-
           <TouchableOpacity 
             style={[styles.row, { backgroundColor: branding.secondaryColor }]}
             onPress={() => navigation.navigate('Help')}>

@@ -19,7 +19,7 @@ export default function Help() {
   const navigation = useNavigation();
   const themeContext = useContext(ThemeContext);
   const currentTheme = theme[themeContext.ThemeValue];
-  const appBranding = useAppBranding();
+  const { appName, contactInfo, ...appBranding } = useAppBranding();
 
   const styles = StyleSheet.create({
     container: {
@@ -95,7 +95,7 @@ export default function Help() {
   });
 
   const handleEmailPress = () => {
-    Linking.openURL('mailto:bnsn.info@gmail.com');
+    Linking.openURL(`mailto:${contactInfo?.email || 'bnsn.info@gmail.com'}`);
   };
 
   const handlePhonePress = () => {
@@ -111,26 +111,51 @@ export default function Help() {
           <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
           
           <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>How do I track my order?</Text>
+            <Text style={styles.faqQuestion}>How do I post an ad?</Text>
             <Text style={styles.faqAnswer}>
-              You can track your order in real-time through the "My Orders" section of the app. 
-              Once your order is placed, you'll receive updates about its status.
+              To post an ad, simply click the "Post Ad" button on the home screen, fill in the details of your item, add photos, set your price, and publish. Your ad will be live immediately and visible to buyers in your area.
             </Text>
           </View>
 
           <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>What payment methods do you accept?</Text>
+            <Text style={styles.faqQuestion}>Is posting ads free?</Text>
             <Text style={styles.faqAnswer}>
-              We accept all major credit cards, debit cards, and digital payment methods. 
-              Some restaurants may also accept cash on delivery.
+              Yes! Posting ads on {appBranding.appName || 'BNSN'} is completely free. There are no hidden fees, no subscription costs, and no charges for posting as many ads as you want.
             </Text>
           </View>
 
           <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>How do I change my delivery address?</Text>
+            <Text style={styles.faqQuestion}>How do I contact a seller?</Text>
             <Text style={styles.faqAnswer}>
-              You can update your delivery address in the "Profile" section of the app. 
-              Make sure to save the new address before placing your next order.
+              When you find an item you're interested in, click on it to view details. You'll see the seller's contact information or a "Contact Seller" button to send them a message directly through the app.
+            </Text>
+          </View>
+
+          <View style={styles.faqItem}>
+            <Text style={styles.faqQuestion}>How do I edit or delete my ad?</Text>
+            <Text style={styles.faqAnswer}>
+              Go to "My Ads" in your profile section. From there, you can edit, update, or delete any of your posted ads at any time.
+            </Text>
+          </View>
+
+          <View style={styles.faqItem}>
+            <Text style={styles.faqQuestion}>How do I report a suspicious ad or user?</Text>
+            <Text style={styles.faqAnswer}>
+              If you come across a suspicious ad or user, click the "Report" button on the ad or user profile. Our team will review the report and take appropriate action to ensure the safety of our platform.
+            </Text>
+          </View>
+
+          <View style={styles.faqItem}>
+            <Text style={styles.faqQuestion}>What items can I sell?</Text>
+            <Text style={styles.faqAnswer}>
+              You can sell almost anything on {appBranding.appName || 'BNSN'} - from cars and electronics to furniture, clothing, and more. However, illegal items, weapons, drugs, and other prohibited items are not allowed. Please refer to our Terms and Conditions for the complete list.
+            </Text>
+          </View>
+
+          <View style={styles.faqItem}>
+            <Text style={styles.faqQuestion}>How do I stay safe when buying/selling?</Text>
+            <Text style={styles.faqAnswer}>
+              Always meet in a public place, inspect items before purchasing, use cash for transactions, and trust your instincts. Never share personal financial information or send money before seeing the item. For more safety tips, check our Safety Guidelines.
             </Text>
           </View>
         </View>
@@ -145,10 +170,8 @@ export default function Help() {
               color={appBranding.primaryColor}
               style={styles.contactIcon}
             />
-            <Text style={styles.contactText}>Email: quads.info@gmail.com</Text>
+            <Text style={styles.contactText}>Email: {contactInfo?.email || 'bnsn.info@gmail.com'}</Text>
           </TouchableOpacity>
-
-          
 
           <View style={styles.contactItem}>
             <FeatherIcon 

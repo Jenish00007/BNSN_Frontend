@@ -22,7 +22,7 @@ export default function About() {
   const themeContext = useContext(ThemeContext);
   const config = useContext(ConfigurationContext);
   const currentTheme = theme[themeContext.ThemeValue];
-  const appBranding = useAppBranding();
+  const { contactInfo, ...appBranding } = useAppBranding();
 
   
   const styles = StyleSheet.create({
@@ -129,32 +129,42 @@ export default function About() {
           
           <Text style={styles.title}>{appBranding.appName}</Text>
           <Text style={styles.subtitle}>
-            Your trusted partner in grocery delivery
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Story</Text>
-          <Text style={styles.sectionText}>
-            Founded in 2024, we've been committed to revolutionizing the grocery delivery experience. Our platform connects customers with their favorite restaurants, making it easier than ever to enjoy delicious meals from the comfort of your home.
+            Your trusted marketplace for buying and selling locally
           </Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Our Mission</Text>
           <Text style={styles.sectionText}>
-            To provide a seamless, reliable, and enjoyable grocery delivery experience while supporting 
-            local restaurants and creating opportunities for delivery partners.
+            At {appBranding.appName || 'BNSN'}, we believe that everyone should have access to a simple, safe, and free platform to buy and sell items in their local community. Our mission is to connect neighbors and build local communities through trusted trading.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Values</Text>
+          <Text style={styles.sectionTitle}>What We Do</Text>
           <Text style={styles.sectionText}>
-            • Quality: We ensure the highest standards in grocery delivery{'\n'}
-            • Reliability: We're committed to timely and accurate deliveries{'\n'}
-            • Innovation: We continuously improve our platform and services{'\n'}
-            • Community: We support local businesses and create jobs
+            {appBranding.appName || 'BNSN'} is a classified ads marketplace where you can post free ads for anything you want to sell - from cars and electronics to furniture and clothing. Buyers can browse thousands of listings, contact sellers directly, and complete transactions locally.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Why Choose Us?</Text>
+          <Text style={styles.sectionText}>
+            • 100% Free: Post unlimited ads at no cost. No hidden fees, ever.{'\n'}
+            • Local Focus: Connect with buyers and sellers in your neighborhood.{'\n'}
+            • Safe & Secure: We provide safety guidelines and tips for secure transactions.{'\n'}
+            • Easy to Use: Simple interface that works on any device.{'\n'}
+            • Trusted Platform: Join thousands of users buying and selling safely every day.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Our Story</Text>
+          <Text style={styles.sectionText}>
+            {appBranding.appName || 'BNSN'} was founded with a simple vision: to make buying and selling as easy as possible for everyone. We recognized that people needed a trusted, local platform where they could safely trade items with neighbors.
+          </Text>
+          <Text style={styles.sectionText}>
+            Today, we're proud to serve thousands of users daily, helping them find great deals and sell items they no longer need. We're committed to building a vibrant local marketplace that benefits everyone in the community.
           </Text>
         </View>
 
@@ -162,9 +172,7 @@ export default function About() {
           <Text style={styles.missionTitle}>Contact Us</Text>
           <Text style={styles.missionText}>
             Have questions or feedback? We'd love to hear from you!{'\n\n'}
-            Email: bnsn.info@gmail.com{'\n'}
-            Phone: +91 9591727966{'\n'}
-            Address: Tirupattur, Tamil Nadu, India
+            Email: {contactInfo?.email || 'bnsn.info@gmail.com'}
           </Text>
         </View>
       </ScrollView>

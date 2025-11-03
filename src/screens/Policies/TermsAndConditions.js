@@ -82,53 +82,91 @@ export default function TermsAndConditions() {
           
         
 
+          <Text style={styles.title}>Terms and Conditions</Text>
+          <Text style={styles.lastUpdated}>Last updated: December 2024</Text>
+
           <Text style={styles.sectionTitle}>
             1. Acceptance of Terms
           </Text>
           <Text style={styles.paragraph}>
-            Welcome to {appName || 'Our Service'}! By accessing or using our mobile application, you agree to be bound by these Terms and Conditions. If you disagree with any part of these terms, you may not access our service.
+            By accessing and using {appName || 'BNSN'}, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
           </Text>
 
           <Text style={styles.sectionTitle}>
-            2. Use of Service
+            2. Use License
           </Text>
           <Text style={styles.paragraph}>
-            {appName || 'Our Service'} provides a multivendor marketplace platform connecting customers with various vendors. Users must be at least 18 years old to create an account and use our services.
+            Permission is granted to temporarily download one copy of {appName || 'BNSN'} for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:{'\n'}
+            • Modify or copy the materials{'\n'}
+            • Use the materials for any commercial purpose or for any public display{'\n'}
+            • Attempt to reverse engineer any software contained on the platform{'\n'}
+            • Remove any copyright or other proprietary notations from the materials
           </Text>
 
           <Text style={styles.sectionTitle}>
-            3. User Accounts
+            3. User Responsibilities
           </Text>
           <Text style={styles.paragraph}>
-            You are responsible for maintaining the confidentiality of your account credentials and for all activities under your account. Notify us immediately of any unauthorized use of your account.
+            As a user of {appName || 'BNSN'}, you agree to:{'\n'}
+            • Provide accurate and truthful information{'\n'}
+            • Not post illegal, harmful, or inappropriate content{'\n'}
+            • Respect other users and their property{'\n'}
+            • Comply with all applicable laws and regulations{'\n'}
+            • Not engage in fraudulent or deceptive practices
           </Text>
 
           <Text style={styles.sectionTitle}>
-            4. Orders and Payments
+            4. Prohibited Activities
           </Text>
           <Text style={styles.paragraph}>
-            By placing an order through {appName || 'our service'}, you agree to pay all charges at the prices listed. All payments must be made through our approved payment methods. Prices and availability are subject to change.
+            You may not use our service to:{'\n'}
+            • Post false, misleading, or deceptive listings{'\n'}
+            • Spam or send unsolicited communications{'\n'}
+            • Violate any laws or regulations{'\n'}
+            • Infringe on intellectual property rights{'\n'}
+            • Harass, abuse, or harm other users{'\n'}
+            • Attempt to gain unauthorized access to our systems
           </Text>
 
           <Text style={styles.sectionTitle}>
-            5. Delivery
+            5. Transaction Safety
           </Text>
           <Text style={styles.paragraph}>
-            Delivery times are estimates and may vary based on location and other factors. {appName || 'We'} are not responsible for delays caused by circumstances beyond our control.
+            {appName || 'BNSN'} provides a platform for users to connect, but we do not:{'\n'}
+            • Guarantee the quality or authenticity of items{'\n'}
+            • Handle payments or transactions directly{'\n'}
+            • Provide insurance for transactions{'\n'}
+            • Mediate disputes between users{'\n\n'}
+            Users are responsible for their own safety and should meet in public places for transactions.
           </Text>
 
           <Text style={styles.sectionTitle}>
-            6. Modifications
+            6. Limitation of Liability
           </Text>
           <Text style={styles.paragraph}>
-            We reserve the right to modify these terms at any time. Changes will be effective immediately upon posting to the app. Your continued use of {config?.appName || 'our service'} constitutes acceptance of any modifications.
+            In no event shall {appName || 'BNSN'} or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on {appName || 'BNSN'}, even if {appName || 'BNSN'} or an authorized representative has been notified orally or in writing of the possibility of such damage.
           </Text>
 
           <Text style={styles.sectionTitle}>
-            7. Contact Us
+            7. Termination
           </Text>
           <Text style={styles.paragraph}>
-            If you have any questions about these Terms and Conditions, please contact us at {contactInfo?.email || 'bnsn.info@gmail.com'}
+            We may terminate or suspend your account and access to the service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
+          </Text>
+
+          <Text style={styles.sectionTitle}>
+            8. Changes to Terms
+          </Text>
+          <Text style={styles.paragraph}>
+            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will try to provide at least 30 days notice prior to any new terms taking effect.
+          </Text>
+
+          <Text style={styles.sectionTitle}>
+            9. Contact Information
+          </Text>
+          <Text style={styles.paragraph}>
+            If you have any questions about these Terms and Conditions, please contact us:{'\n'}
+            Email: {contactInfo?.email || 'bnsn.info@gmail.com'}
           </Text>
         </View>
       </ScrollView>
