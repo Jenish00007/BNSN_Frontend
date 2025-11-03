@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from 'react'
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+  useCallback
+} from 'react'
 import {
   View,
   Text,
@@ -65,10 +71,10 @@ const Chat = ({ navigation }) => {
   useEffect(() => {
     // Only initialize once
     if (!socketInitializedRef.current) {
-    initializeChat()
+      initializeChat()
       socketInitializedRef.current = true
     }
-    
+
     return () => {
       if (socket) {
         if (profile?._id && (conversationId || route.params?.conversationId)) {
@@ -88,11 +94,14 @@ const Chat = ({ navigation }) => {
     if (socket && isConnected) {
       // Check if we have route params that should trigger a switch
       if (initialConversationId && initialConversationId !== conversationId) {
-        console.log('Conversation ID changed, switching room:', initialConversationId)
+        console.log(
+          'Conversation ID changed, switching room:',
+          initialConversationId
+        )
         // Clear existing messages to avoid showing wrong messages
         setMessages([])
         setLoading(true)
-        
+
         // Leave old room if conversationId exists
         if (conversationId) {
           socket.emit('leave-chat-room', {
@@ -100,16 +109,16 @@ const Chat = ({ navigation }) => {
             conversationId: conversationId
           })
         }
-        
+
         // Join new room
         socket.emit('join-chat-room', {
           userId: profile._id,
           conversationId: initialConversationId
         })
-        
+
         // Fetch messages for new conversation
         fetchMessages(initialConversationId)
-        
+
         // Update conversationId state
         setConversationId(initialConversationId)
       }
@@ -121,10 +130,12 @@ const Chat = ({ navigation }) => {
     const handleShopId = async () => {
       // Only run once per shopId to prevent multiple API calls
       if (handlingShopIdRef.current) return
-      
+
       if (socket && isConnected && shopId && !conversationId) {
         handlingShopIdRef.current = true
-        console.log('shopId provided without conversationId, creating conversation')
+        console.log(
+          'shopId provided without conversationId, creating conversation'
+        )
         try {
           const response = await fetch(
             `${API_URL}/conversation/create-new-conversation`,
@@ -147,23 +158,23 @@ const Chat = ({ navigation }) => {
           if (data.success && data.conversation) {
             const newConversationId = data.conversation._id
             console.log('New conversation created:', newConversationId)
-            
+
             // Clear existing messages
             setMessages([])
             setLoading(true)
-            
+
             // Join new room
             socket.emit('join-chat-room', {
               userId: profile._id,
               conversationId: newConversationId
             })
-            
+
             // Fetch messages for new conversation
             fetchMessages(newConversationId)
-            
+
             // Update conversationId state
             setConversationId(newConversationId)
-            
+
             // Update navigation params
             navigation.setParams({
               conversationId: newConversationId,
@@ -177,7 +188,7 @@ const Chat = ({ navigation }) => {
         }
       }
     }
-    
+
     handleShopId()
   }, [shopId, socket, isConnected, conversationId])
 
@@ -247,10 +258,12 @@ const Chat = ({ navigation }) => {
     // 1. We have a socket connection
     // 2. Conv ID is provided
     // 3. Either different conv or same conv but > 1 second since last mark
-    if (socket && convId && (
-      lastMarkedReadRef.current.conversationId !== convId ||
-      now - lastMarkedReadRef.current.timestamp > 1000
-    )) {
+    if (
+      socket &&
+      convId &&
+      (lastMarkedReadRef.current.conversationId !== convId ||
+        now - lastMarkedReadRef.current.timestamp > 1000)
+    ) {
       lastMarkedReadRef.current = { conversationId: convId, timestamp: now }
       socket.emit('mark-as-read', {
         userId: profile._id,
@@ -272,6 +285,9 @@ const Chat = ({ navigation }) => {
         auth: {
           token: token
         },
+        path: '/api/socket.io/', // ✅ MUST MATCH SERVER + NGINX
+        transports: ['websocket'],
+        auth: { token },
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
@@ -287,15 +303,15 @@ const Chat = ({ navigation }) => {
 
         // If we already have a conversationId, join the room
         if (conversationId) {
-        socketInstance.emit('join-chat-room', {
-          userId: profile._id,
-          conversationId: conversationId
-        })
+          socketInstance.emit('join-chat-room', {
+            userId: profile._id,
+            conversationId: conversationId
+          })
 
           // Fetch chat history with the correct conversation ID
           fetchMessages(conversationId)
 
-        // Mark messages as read
+          // Mark messages as read
           markMessagesAsRead(conversationId)
         }
       })
@@ -319,10 +335,10 @@ const Chat = ({ navigation }) => {
         console.log('Reconnected after', attemptNumber, 'attempts')
         setIsConnected(true)
         if (conversationId) {
-        socketInstance.emit('join-chat-room', {
-          userId: profile._id,
-          conversationId: conversationId
-        })
+          socketInstance.emit('join-chat-room', {
+            userId: profile._id,
+            conversationId: conversationId
+          })
           fetchMessages(conversationId)
         }
       })
@@ -331,7 +347,9 @@ const Chat = ({ navigation }) => {
         if (message && message.text && message._id) {
           setMessages((prevMessages) => {
             // Check if message already exists to prevent duplicates
-            const messageExists = prevMessages.some(msg => msg._id === message._id)
+            const messageExists = prevMessages.some(
+              (msg) => msg._id === message._id
+            )
             if (messageExists) {
               console.log('Duplicate message detected, skipping:', message._id)
               return prevMessages
