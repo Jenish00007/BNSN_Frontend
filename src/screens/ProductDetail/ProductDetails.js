@@ -1,4 +1,11 @@
-import React, { useContext, useState, useRef, useEffect } from 'react'
+import React, {
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback
+} from 'react'
 import {
   View,
   Text,
@@ -74,6 +81,10 @@ const ProductDetail = () => {
   const [orderIdForReview, setOrderIdForReview] = useState(null)
   const [shopImageError, setShopImageError] = useState(false)
   const [shopImageLoading, setShopImageLoading] = useState(true)
+  const [userDetails, setUserDetails] = useState(product?.user || null)
+  const [userDetailsLoading, setUserDetailsLoading] = useState(false)
+  const [userDetailsError, setUserDetailsError] = useState(null)
+  const isMountedRef = useRef(true)
 
   // Get the current color scheme (system preference)
   const colorScheme = useColorScheme()
@@ -114,6 +125,12 @@ const ProductDetail = () => {
   // If no valid images, use fallback
   const finalImages = validImages.length > 0 ? validImages : [IMAGE_LINK]
   console.log('finalImages', finalImages)
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   // Function to get shop image source with fallback
   const getShopImageSource = () => {
@@ -257,31 +274,55 @@ const ProductDetail = () => {
       return
     }
     console.log('check', product)
-    
-    // Determine seller ID and name based on product type
+
     let sellerId = null
-    let sellerName = 'Seller'
-    
-    // Check for populated shop object first (will exist for both shop and user products)
+    let sellerDisplayName = 'Seller'
+    let otherParticipant = null
+
     if (product?.shop?._id) {
       sellerId = product.shop._id
-      sellerName = product.shop.name || 'Seller'
+      sellerDisplayName =
+        product.shop.name || product.shop.shopName || product.shop.title || 'Seller'
+      otherParticipant = {
+        ...product.shop,
+        _id: product.shop._id,
+        displayName: sellerDisplayName,
+        role: 'seller'
+      }
     } else if (product?.userId) {
-      // Product uploaded by a regular user (customer ad) - use userId as sellerId
       sellerId = product.userId
-      sellerName = 'Seller'
+      const sourceUser = product?.user || userDetails
+      sellerDisplayName =
+        sourceUser?.displayName ||
+        sourceUser?.name ||
+        sourceUser?.fullName ||
+        sourceUser?.username ||
+        'Seller'
+      if (sourceUser) {
+        otherParticipant = {
+          ...sourceUser,
+          _id: sourceUser._id || sellerId,
+          displayName: sellerDisplayName
+        }
+      } else if (sellerId) {
+        otherParticipant = {
+          _id: sellerId,
+          displayName: sellerDisplayName
+        }
+      }
     } else if (product?.shopId) {
-      // Fallback: if shopId exists directly
       sellerId = product.shopId
-      sellerName = 'Seller'
+      sellerDisplayName = product.shopName || 'Seller'
     }
-    
-    // Navigate to chat with seller
+
     if (sellerId) {
       navigation.navigate('Chat', {
+        conversationId: product?.conversationId || null,
         shopId: sellerId,
-        shopName: sellerName,
-        productId: product._id  // Pass productId to create product-specific conversation
+        shopName: sellerDisplayName,
+        productId: product._id,
+        displayName: sellerDisplayName,
+        otherUser: otherParticipant
       })
     } else {
       Alert.alert('Error', 'Unable to contact seller at this time.')
@@ -293,22 +334,29 @@ const ProductDetail = () => {
       navigation.navigate('Login')
       return
     }
-    // Handle phone call to seller
-    const phoneNumber = product?.shop?.phoneNumber || product?.shop?.phone
+
+    const phoneNumber =
+      product?.shop?.phoneNumber ||
+      product?.shop?.phone ||
+      userDetails?.phoneNumber ||
+      userDetails?.phone
+
     if (phoneNumber) {
-      Alert.alert('Call Seller', `Do you want to call ${phoneNumber}?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Call',
-          onPress: () => {
-            // On React Native, you can use Linking
-            const { Linking } = require('react-native')
-            Linking.openURL(`tel:${phoneNumber}`)
-          }
-        }
-      ])
+      try {
+        const { Linking } = require('react-native')
+        Linking.openURL(`tel:${phoneNumber}`)
+      } catch (error) {
+        console.error('Failed to open dialer:', error)
+        Alert.alert(
+          'Error',
+          'Unable to launch the phone dialer. Please try again later.'
+        )
+      }
     } else {
-      Alert.alert('Error', 'Seller phone number not available.')
+      Alert.alert(
+        'Phone Number Unavailable',
+        'Seller phone number is not available right now.'
+      )
     }
   }
 
@@ -323,6 +371,24 @@ const ProductDetail = () => {
       fetchUserOrders()
     }
   }, [token, user, product?._id])
+
+  useEffect(() => {
+    if (product?.user) {
+      setUserDetails((previous) => {
+        if (
+          previous &&
+          product.user &&
+          previous._id &&
+          product.user._id &&
+          previous._id === product.user._id
+        ) {
+          return previous
+        }
+        return product.user
+      })
+      setUserDetailsError(null)
+    }
+  }, [product?.user])
 
   // Fetch complete shop data if shop image is missing
   useEffect(() => {
@@ -362,9 +428,145 @@ const ProductDetail = () => {
     }
   }
 
+  const fetchUserDetails = useCallback(async () => {
+    if (product?.shop || !product?.userId) return
+
+    try {
+      setUserDetailsLoading(true)
+      setUserDetailsError(null)
+
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+
+      const response = await fetch(
+        `${API_URL}/user/user-info/${product.userId}`,
+        {
+          method: 'GET',
+          headers
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success || !data.user) {
+        throw new Error(data.message || 'Unable to load user information')
+      }
+
+      if (isMountedRef.current) {
+        setUserDetails(data.user)
+      }
+    } catch (error) {
+      if (isMountedRef.current) {
+        setUserDetailsError(error.message || 'Unable to load user information')
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setUserDetailsLoading(false)
+      }
+    }
+  }, [product?.shop, product?.userId, token])
+
+  useEffect(() => {
+    if (!product?.shop && product?.userId) {
+      const userMismatch =
+        userDetails &&
+        userDetails._id &&
+        userDetails._id !== product.userId
+
+      if (userMismatch) {
+        setUserDetails(null)
+        return
+      }
+
+      if (!userDetails || (userDetails && !userDetails._id)) {
+        fetchUserDetails()
+      }
+    }
+  }, [
+    product?.shop,
+    product?.userId,
+    userDetails,
+    fetchUserDetails
+  ])
+
+  const userAddress = useMemo(() => {
+    if (!userDetails) return null
+
+    if (typeof userDetails.address === 'string' && userDetails.address.trim()) {
+      return userDetails.address.trim()
+    }
+
+    if (Array.isArray(userDetails.addresses) && userDetails.addresses.length > 0) {
+      const primaryAddress =
+        userDetails.addresses.find((addr) =>
+          ['address1', 'address2', 'city', 'state', 'country', 'zipCode'].some(
+            (key) => typeof addr?.[key] === 'string' && addr[key].trim()
+          )
+        ) || userDetails.addresses[0]
+
+      if (primaryAddress) {
+        const parts = [
+          primaryAddress.address1,
+          primaryAddress.address2,
+          primaryAddress.city,
+          primaryAddress.state,
+          primaryAddress.country,
+          primaryAddress.zipCode
+        ]
+
+        const filtered = parts
+          .map((part) => {
+            if (typeof part === 'string') return part.trim()
+            if (typeof part === 'number') return part.toString()
+            return ''
+          })
+          .filter((part) => part && part.length > 0)
+
+        if (filtered.length > 0) {
+          return filtered.join(', ')
+        }
+      }
+    }
+
+    return null
+  }, [userDetails])
+
   // Helper: fetch latest reviews (simulate by updating from product)
   const refreshReviews = () => {
     setReviews(product?.reviews || [])
+  }
+
+  const renderContactRow = (icon, label, value) => {
+    if (!value) return null
+
+    return (
+      <View style={styles.contactInfoRow}>
+        <MaterialIcons
+          name={icon}
+          size={18}
+          color={branding.primaryColor}
+          style={styles.contactInfoIcon}
+        />
+        <View style={styles.contactInfoTextWrapper}>
+          <Text style={[styles.contactInfoLabel, { color: branding.textColor }]}>
+            {label}
+          </Text>
+          <Text
+            style={[
+              styles.contactInfoValue,
+              { color: branding.textColor, opacity: 0.85 }
+            ]}
+          >
+            {value}
+          </Text>
+        </View>
+      </View>
+    )
   }
 
   // Submit review
@@ -570,35 +772,42 @@ const ProductDetail = () => {
           {product?.shop ? (
             <View style={styles.shopContainer}>
               <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-                User Information
+                Seller Information
               </Text>
               <View style={styles.shopInfo}>
-                <Image 
+                <Image
                   source={getShopImageSource()}
                   style={styles.shopAvatar}
                   defaultSource={require('../../assets/images/placeholder.png')}
                   onLoadStart={() => setShopImageLoading(true)}
                   onLoadEnd={() => setShopImageLoading(false)}
                   onError={(error) => {
-                    console.log('Shop avatar load error:', error.nativeEvent);
-                    setShopImageError(true);
-                    setShopImageLoading(false);
+                    console.log('Shop avatar load error:', error.nativeEvent)
+                    setShopImageError(true)
+                    setShopImageLoading(false)
                   }}
                 />
                 {shopImageLoading && (
                   <View style={[styles.shopAvatar, styles.shopAvatarLoading]}>
-                    <ActivityIndicator size="small" color={branding.primaryColor} />
+                    <ActivityIndicator
+                      size='small'
+                      color={branding.primaryColor}
+                    />
                   </View>
                 )}
                 {shopImageError && !shopImageLoading && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.shopAvatar, styles.shopAvatarError]}
                     onPress={() => {
-                      setShopImageError(false);
-                      fetchShopData();
+                      setShopImageError(false)
+                      fetchShopData()
                     }}
                   >
-                    <MaterialIcons name="refresh" size={20} color={branding.primaryColor} />
+                    <MaterialIcons
+                      name='refresh'
+                      size={20}
+                      color={branding.primaryColor}
+                    />
                   </TouchableOpacity>
                 )}
                 <View style={styles.shopDetails}>
@@ -610,25 +819,108 @@ const ProductDetail = () => {
                   </Text>
                 </View>
               </View>
+              {(product?.shop?.email ||
+                product?.shop?.phoneNumber ||
+                product?.shop?.phone) && (
+                <View style={styles.contactInfoContainer}>
+                  {renderContactRow('email', 'Email', product?.shop?.email)}
+                  {renderContactRow(
+                    'phone',
+                    'Phone',
+                    product?.shop?.phoneNumber || product?.shop?.phone
+                  )}
+                </View>
+              )}
             </View>
           ) : (
             <View style={styles.shopContainer}>
               <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-                Seller Information
+                User Information
               </Text>
-              <View style={styles.shopInfo}>
-                <View style={[styles.shopAvatar, styles.shopAvatarError]}>
-                  <MaterialIcons name="person" size={24} color={branding.primaryColor} />
-                </View>
-                <View style={styles.shopDetails}>
-                  <Text style={[styles.shopName, { color: branding.textColor }]}>
-                    Seller Information Not Available
+              {userDetailsLoading ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator
+                    size='small'
+                    color={branding.primaryColor}
+                  />
+                  <Text
+                    style={[styles.loadingText, { color: branding.textColor }]}
+                  >
+                    Loading user details...
                   </Text>
-                  <Text style={[styles.shopAddress, { color: branding.textColor }]}>
-                    Contact support for seller details
-                  </Text>
                 </View>
-              </View>
+              ) : userDetails ? (
+                <>
+                  <View style={styles.shopInfo}>
+                    {userDetails?.avatar ? (
+                      <Image
+                        source={{ uri: userDetails.avatar }}
+                        style={styles.shopAvatar}
+                        defaultSource={require('../../assets/images/placeholder.png')}
+                      />
+                    ) : (
+                      <View style={[styles.shopAvatar, styles.shopAvatarError]}>
+                        <MaterialIcons
+                          name='person'
+                          size={24}
+                          color={branding.primaryColor}
+                        />
+                      </View>
+                    )}
+                    <View style={styles.shopDetails}>
+                      <Text style={[styles.shopName, { color: branding.textColor }]}>
+                        {userDetails?.name || 'Name Not Available'}
+                      </Text>
+                      <Text style={[styles.shopAddress, { color: branding.textColor }]}>
+                        {userAddress || 'Address Not Available'}
+                      </Text>
+                    </View>
+                  </View>
+                  {(userDetails?.email || userDetails?.phoneNumber) && (
+                    <View style={styles.contactInfoContainer}>
+                      {renderContactRow('email', 'Email', userDetails?.email)}
+                      {renderContactRow('phone', 'Phone', userDetails?.phoneNumber)}
+                    </View>
+                  )}
+                </>
+              ) : userDetailsError ? (
+                <TouchableOpacity
+                  style={styles.loadingRow}
+                  onPress={fetchUserDetails}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name='refresh'
+                    size={18}
+                    color={branding.primaryColor}
+                  />
+                  <Text
+                    style={[styles.errorText, { color: branding.primaryColor }]}
+                  >
+                    {userDetailsError}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.shopInfo}>
+                  <View style={[styles.shopAvatar, styles.shopAvatarError]}>
+                    <MaterialIcons
+                      name='person'
+                      size={24}
+                      color={branding.primaryColor}
+                    />
+                  </View>
+                  <View style={styles.shopDetails}>
+                    <Text style={[styles.shopName, { color: branding.textColor }]}>
+                      Seller Information Not Available
+                    </Text>
+                    <Text
+                      style={[styles.shopAddress, { color: branding.textColor }]}
+                    >
+                      Contact support for seller details
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           )}
 

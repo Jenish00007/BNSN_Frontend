@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_URL } from '../../config/api'
+import { LocationContext } from '../../context/Location'
 
 export const useLogin = () => {
   const navigation = useNavigation()
@@ -25,6 +26,7 @@ export const useLogin = () => {
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
   const { setTokenAsync } = useContext(AuthContext)
+  const { location: currentLocation } = useContext(LocationContext)
   const { t } = useTranslation()
 
   const isEmail = (value) => {
@@ -138,20 +140,36 @@ export const useLogin = () => {
       // Get push notification token
       const fcmToken = await getFCMPushToken()
 
+      const locationPayload =
+        currentLocation?.latitude !== undefined && currentLocation?.longitude !== undefined
+          ? {
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+              address:
+                currentLocation.deliveryAddress ||
+                currentLocation.label ||
+                undefined
+            }
+          : null
+
+      const requestBody = isEmail(input)
+        ? {
+            email: input.toLowerCase().trim(),
+            password,
+            pushToken: fcmToken
+          }
+        : { phoneNumber: input, password, pushToken: fcmToken }
+
+      if (locationPayload) {
+        requestBody.location = locationPayload
+      }
+
       const response = await fetch(`${API_URL}/user/login-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(
-          isEmail(input)
-            ? {
-                email: input.toLowerCase().trim(),
-                password,
-                pushToken: fcmToken
-              }
-            : { phoneNumber: input, password, pushToken: fcmToken }
-        )
+        body: JSON.stringify(requestBody)
       })
 
       console.log('Login response status:', response.status)

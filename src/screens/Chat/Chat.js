@@ -3,7 +3,8 @@ import React, {
   useEffect,
   useContext,
   useRef,
-  useCallback
+  useCallback,
+  useMemo
 } from 'react'
 import {
   View,
@@ -35,6 +36,93 @@ import styles from './styles' // Comment this out if using inline styles below
 
 // Or add this at the end of the file for inline styles:
 
+const normalizeRoleValue = (value) => {
+  if (!value) return null
+  const normalized = value.toString().trim().toLowerCase()
+
+  if (
+    ['seller', 'vendor', 'shop', 'store', 'merchant'].some((keyword) =>
+      normalized.includes(keyword)
+    )
+  ) {
+    return 'seller'
+  }
+
+  if (
+    ['buyer', 'user', 'customer', 'client'].some((keyword) =>
+      normalized.includes(keyword)
+    )
+  ) {
+    return 'buyer'
+  }
+
+  return null
+}
+
+const deriveUserRole = (entity) => {
+  if (!entity) return null
+
+  if (typeof entity.isSeller === 'boolean') {
+    return entity.isSeller ? 'seller' : 'buyer'
+  }
+
+  if (typeof entity.isBuyer === 'boolean') {
+    return entity.isBuyer ? 'buyer' : 'seller'
+  }
+
+  if (
+    entity.shopId ||
+    entity.shop_id ||
+    entity.storeId ||
+    entity.store_id ||
+    entity.sellerId ||
+    entity.seller_id
+  ) {
+    return 'seller'
+  }
+
+  if (entity.customerId || entity.customer_id) {
+    return 'buyer'
+  }
+
+  const candidateFields = [
+    entity.role,
+    entity.userType,
+    entity.accountType,
+    entity.type,
+    entity.accountRole,
+    entity.profileType
+  ]
+
+  for (const field of candidateFields) {
+    const normalized = normalizeRoleValue(field)
+    if (normalized) {
+      return normalized
+    }
+  }
+
+  if (entity.address && !Array.isArray(entity.addresses)) {
+    return 'seller'
+  }
+
+  if (Array.isArray(entity.addresses)) {
+    return 'buyer'
+  }
+
+  return null
+}
+
+const toTitleCase = (value) => {
+  if (!value) return ''
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+const getOppositeRole = (role) => {
+  if (role === 'seller') return 'buyer'
+  if (role === 'buyer') return 'seller'
+  return null
+}
+
 const Chat = ({ navigation }) => {
   const route = useRoute()
   const {
@@ -43,7 +131,8 @@ const Chat = ({ navigation }) => {
     otherUser,
     shopId,
     shopName,
-    productId
+    productId,
+    displayName: initialDisplayName
   } = route.params || {}
 
   const [messages, setMessages] = useState([])
@@ -65,6 +154,59 @@ const Chat = ({ navigation }) => {
   const { token } = useContext(AuthContext)
   const { formetedProfileData: profile } = useContext(UserContext)
   const branding = useAppBranding()
+  const displayName =
+    initialDisplayName ||
+    otherUser?.displayName ||
+    otherUser?.name ||
+    groupTitle ||
+    shopName ||
+    'Chat'
+  const detectedSelfRole = useMemo(() => {
+    const directRole = deriveUserRole(profile)
+    if (directRole) return directRole
+
+    if (shopId && profile?._id !== shopId) {
+      return 'buyer'
+    }
+
+    return null
+  }, [profile, shopId])
+
+  const detectedOtherRole = useMemo(() => {
+    const directRole = deriveUserRole(otherUser)
+    if (directRole) return directRole
+
+    if (shopId) return 'seller'
+
+    if (detectedSelfRole) {
+      const opposite = getOppositeRole(detectedSelfRole)
+      if (opposite) return opposite
+    }
+
+    return null
+  }, [otherUser, shopId, detectedSelfRole])
+
+  const resolvedSelfRole = useMemo(() => {
+    if (detectedSelfRole) return detectedSelfRole
+
+    if (detectedOtherRole) {
+      const opposite = getOppositeRole(detectedOtherRole)
+      if (opposite) return opposite
+    }
+
+    return 'buyer'
+  }, [detectedSelfRole, detectedOtherRole])
+
+  const resolvedOtherRole = useMemo(() => {
+    if (detectedOtherRole) return detectedOtherRole
+
+    if (detectedSelfRole) {
+      const opposite = getOppositeRole(detectedSelfRole)
+      if (opposite) return opposite
+    }
+
+    return shopId ? 'seller' : null
+  }, [detectedOtherRole, detectedSelfRole, shopId])
   // Socket URL - Update this with your actual socket server URL
   const SOCKET_URL = 'https://bnsn.in'
 
@@ -178,7 +320,8 @@ const Chat = ({ navigation }) => {
             // Update navigation params
             navigation.setParams({
               conversationId: newConversationId,
-              groupTitle: shopName || 'Chat'
+              groupTitle: shopName || 'Chat',
+              displayName: shopName || 'Chat'
             })
           }
         } catch (error) {
@@ -216,7 +359,7 @@ const Chat = ({ navigation }) => {
   // Enhanced header
   useEffect(() => {
     navigation.setOptions({
-      title: groupTitle || 'Chat',
+      title: displayName || 'Chat',
       headerStyle: {
         backgroundColor: branding.primaryColor || '#007AFF',
         shadowColor: branding.primaryColor || '#007AFF',
@@ -231,7 +374,7 @@ const Chat = ({ navigation }) => {
         fontSize: 18
       }
     })
-  }, [navigation, groupTitle, branding])
+  }, [navigation, displayName, branding])
 
   // Animation for send button
   const animateSendButton = () => {
@@ -610,6 +753,62 @@ const Chat = ({ navigation }) => {
       index === messages.length - 1 ||
       messages[index + 1].sender !== item.sender
 
+    const fallbackCounterpartRole =
+      getOppositeRole(resolvedSelfRole) || 'seller'
+    const messageRole = isMyMessage
+      ? resolvedSelfRole
+      : resolvedOtherRole || fallbackCounterpartRole
+    const formattedRoleLabel = messageRole ? toTitleCase(messageRole) : null
+    const otherParticipantLabel =
+      resolvedOtherRole && displayName
+        ? `${displayName} (${toTitleCase(resolvedOtherRole)})`
+        : displayName
+    const sellerColor = branding.primaryColor || '#007AFF'
+    const buyerColor = branding.accentColor || '#E2E8F0'
+    const bubbleBackgroundColor =
+      messageRole === 'seller' ? sellerColor : buyerColor
+    const messageTextColor =
+      messageRole === 'seller' ? '#fff' : branding.textColor || '#1e293b'
+    const metaTextColor =
+      messageRole === 'seller' ? '#fff' : branding.textColor || '#1e293b'
+    const metaTextOpacity = messageRole === 'seller' ? 0.8 : 0.6
+    const roleLabel = messageRole ? toTitleCase(messageRole) : null
+    const badgeText = isMyMessage
+      ? roleLabel
+        ? `You (${roleLabel})`
+        : 'You'
+      : otherParticipantLabel || (roleLabel ? `${roleLabel}` : 'User')
+    const badgeStyles =
+      messageRole === 'seller'
+        ? {
+            backgroundColor: sellerColor,
+            borderColor: sellerColor,
+            borderWidth: 0
+          }
+        : {
+            backgroundColor: '#ffffff',
+            borderColor: buyerColor,
+            borderWidth: 1
+          }
+    const badgeAlignmentStyles = isMyMessage
+      ? { justifyContent: 'flex-end' }
+      : { justifyContent: 'flex-start' }
+    const bubbleShapeStyles = isMyMessage
+      ? {
+          backgroundColor: bubbleBackgroundColor,
+          borderBottomRightRadius: isLastInGroup ? 20 : 4,
+          borderBottomLeftRadius: 20
+        }
+      : {
+          backgroundColor: bubbleBackgroundColor,
+          borderBottomLeftRadius: isLastInGroup ? 20 : 4,
+          borderBottomRightRadius: 20
+        }
+    const readIconColor =
+      messageRole === 'seller'
+        ? 'rgba(255, 255, 255, 0.9)'
+        : branding.primaryColor || branding.textColor || '#1e293b'
+
     return (
       <>
         {renderDateHeader({ item, index })}
@@ -623,13 +822,13 @@ const Chat = ({ navigation }) => {
             isLastInGroup && styles.lastInGroup
           ]}
         >
-          {!isMyMessage && isFirstInGroup && otherUser && (
+          {!isMyMessage && isFirstInGroup && (
             <View style={styles.messageHeader}>
               <View style={styles.avatarContainer}>
-                {otherUser.avatar || otherUser.profilePicture ? (
+                {otherUser?.avatar || otherUser?.profilePicture ? (
                   <Image
                     source={{
-                      uri: otherUser.avatar || otherUser.profilePicture
+                      uri: otherUser?.avatar || otherUser?.profilePicture
                     }}
                     style={styles.userAvatar}
                   />
@@ -638,49 +837,61 @@ const Chat = ({ navigation }) => {
                     style={[
                       styles.userAvatar,
                       styles.avatarPlaceholder,
-                      { backgroundColor: getAvatarColor(otherUser.name) }
+                      {
+                        backgroundColor: getAvatarColor(
+                          displayName || otherUser?.name
+                        )
+                      }
                     ]}
                   >
                     <Text style={styles.avatarText}>
-                      {otherUser.name
-                        ? otherUser.name.charAt(0).toUpperCase()
-                        : 'U'}
+                      {displayName
+                        ? displayName.charAt(0).toUpperCase()
+                        : otherUser?.name
+                          ? otherUser.name.charAt(0).toUpperCase()
+                          : 'U'}
                     </Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.userName}>{otherUser.name}</Text>
+              <Text style={styles.userName}>
+                {otherParticipantLabel || otherUser?.name || 'User'}
+              </Text>
             </View>
           )}
 
-          <View
-            style={[
-              styles.messageBubble,
-              isMyMessage
-                ? {
-                    backgroundColor: branding.primaryColor,
-                    borderBottomRightRadius: isLastInGroup ? 20 : 4
-                  }
-                : {
-                    backgroundColor: '#f0f0f0',
-                    borderBottomLeftRadius: isLastInGroup ? 20 : 4
-                  }
-            ]}
-          >
+          <View style={[styles.messageBubble, bubbleShapeStyles]}>
+            <View style={[styles.roleBadgeWrapper, badgeAlignmentStyles]}>
+              <View style={[styles.roleBadge, badgeStyles]}>
+                <TextDefault
+                  style={[
+                    styles.roleBadgeText,
+                    messageRole === 'seller'
+                      ? { color: '#fff' }
+                      : { color: branding.textColor || '#1e293b' }
+                  ]}
+                >
+                  {badgeText}
+                </TextDefault>
+              </View>
+            </View>
+
             <TextDefault
-              style={[
-                styles.messageText,
-                isMyMessage ? { color: '#fff' } : { color: '#000' }
-              ]}
+              style={[styles.messageText, { color: messageTextColor }]}
             >
               {item.text}
             </TextDefault>
 
-            <View style={styles.messageFooter}>
+            <View
+              style={[
+                styles.messageFooter,
+                isMyMessage ? {} : { justifyContent: 'flex-start' }
+              ]}
+            >
               <TextDefault
                 style={[
                   styles.messageTime,
-                  isMyMessage ? { color: '#ffffff90' } : { color: '#666' }
+                  { color: metaTextColor, opacity: metaTextOpacity }
                 ]}
               >
                 {formatMessageTime(item.createdAt)}
@@ -689,11 +900,7 @@ const Chat = ({ navigation }) => {
                 <MaterialIcons
                   name={item.read ? 'done-all' : 'done'}
                   size={14}
-                  color={
-                    item.read
-                      ? 'rgba(255, 255, 255, 0.9)'
-                      : 'rgba(255, 255, 255, 0.7)'
-                  }
+                  color={readIconColor}
                   style={styles.readIndicator}
                 />
               )}

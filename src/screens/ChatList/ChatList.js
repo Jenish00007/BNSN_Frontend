@@ -22,7 +22,7 @@ const ChatList = () => {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  
+
   const navigation = useNavigation()
   const { token } = useContext(AuthContext)
   const { formetedProfileData: profile, isLoggedIn } = useContext(UserContext)
@@ -72,7 +72,13 @@ const ChatList = () => {
     navigation.navigate('Chat', {
       conversationId: conversation._id,
       groupTitle: conversation.groupTitle,
-      otherUser: conversation.otherUser || null
+      otherUser: conversation.otherUser || null,
+      displayName:
+        (conversation.otherUser &&
+          (conversation.otherUser.displayName ||
+            conversation.otherUser.name)) ||
+        conversation.groupTitle ||
+        'Conversation'
     })
   }
 
@@ -93,19 +99,19 @@ const ChatList = () => {
           {avatar ? (
             <Image source={{ uri: avatar }} style={styles.avatarImage} />
           ) : (
-          <View 
-            style={[
-              styles.avatar,
-              { backgroundColor: branding.primaryColor }
-            ]}
-          >
+            <View
+              style={[
+                styles.avatar,
+                { backgroundColor: branding.primaryColor }
+              ]}
+            >
               <TextDefault H4 bold style={{ color: '#fff' }}>
                 {displayName?.charAt(0).toUpperCase() || 'C'}
-            </TextDefault>
-          </View>
+              </TextDefault>
+            </View>
           )}
         </View>
-        
+
         <View style={styles.chatContent}>
           <TextDefault H5 bold numberOfLines={1}>
             {displayName}
@@ -114,10 +120,10 @@ const ChatList = () => {
             {item.lastMessage || 'No messages yet'}
           </TextDefault>
         </View>
-        <MaterialIcons 
+        <MaterialIcons
           name='chevron-right'
-          size={24} 
-          color={branding.iconColor || '#999'} 
+          size={24}
+          color={branding.iconColor || '#999'}
         />
       </TouchableOpacity>
     )
@@ -126,15 +132,15 @@ const ChatList = () => {
   if (!isLoggedIn || !token) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar 
+        <StatusBar
           barStyle='light-content'
-          backgroundColor={branding.headerColor} 
+          backgroundColor={branding.headerColor}
         />
         <View style={styles.emptyContainer}>
-          <MaterialIcons 
+          <MaterialIcons
             name='chat'
-            size={80} 
-            color={branding.iconColor || '#ccc'} 
+            size={80}
+            color={branding.iconColor || '#ccc'}
           />
           <TextDefault H4 bold style={styles.emptyText}>
             Please login to view chats
@@ -158,9 +164,9 @@ const ChatList = () => {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar 
+        <StatusBar
           barStyle='light-content'
-          backgroundColor={branding.headerColor} 
+          backgroundColor={branding.headerColor}
         />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size='large' color={branding.primaryColor} />
@@ -171,17 +177,16 @@ const ChatList = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <StatusBar 
+      <StatusBar
         barStyle='light-content'
-        backgroundColor={branding.headerColor} 
+        backgroundColor={branding.headerColor}
       />
-      
       {conversations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons 
+          <MaterialIcons
             name='chat-bubble-outline'
-            size={80} 
-            color={branding.iconColor || '#ccc'} 
+            size={80}
+            color={branding.iconColor || '#ccc'}
           />
           <TextDefault H4 bold style={styles.emptyText}>
             No conversations yet

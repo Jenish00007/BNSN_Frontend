@@ -102,6 +102,21 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginLeft: 4
   },
+  roleBadgeWrapper: {
+    flexDirection: 'row',
+    marginBottom: 6
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4
+  },
   messageBubble: {
     maxWidth: '75%',
     paddingHorizontal: 16,

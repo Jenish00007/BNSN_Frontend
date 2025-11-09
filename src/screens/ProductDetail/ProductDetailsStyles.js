@@ -220,6 +220,44 @@ const styles = StyleSheet.create({
     shopAddress: {
         fontSize: scale(14)
     },
+    contactInfoContainer: {
+        marginTop: scale(12)
+    },
+    contactInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: scale(8)
+    },
+    contactInfoIcon: {
+        marginTop: scale(2),
+        marginRight: scale(8)
+    },
+    contactInfoTextWrapper: {
+        flex: 1
+    },
+    contactInfoLabel: {
+        fontSize: scale(14),
+        fontWeight: '600',
+        marginBottom: scale(2)
+    },
+    contactInfoValue: {
+        fontSize: scale(14),
+        lineHeight: scale(20)
+    },
+    loadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: scale(10)
+    },
+    loadingText: {
+        fontSize: scale(14),
+        marginLeft: scale(10)
+    },
+    errorText: {
+        fontSize: scale(14),
+        fontWeight: '500',
+        marginLeft: scale(10)
+    },
     descriptionContainer: {
         marginBottom: scale(15)
     },

@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef, useMemo } from 'react'
 import {
   View,
   Text,
@@ -9,157 +9,248 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import AddToFavourites from '../Favourites/AddtoFavourites';
-import { LocationContext } from '../../context/Location';
-import AuthContext from '../../context/Auth';
-import UserContext from '../../context/User';
-import { useAppBranding } from '../../utils/translationHelper';
+} from 'react-native'
+import { useNavigation } from '@react-navigation/native'
+import Icon from 'react-native-vector-icons/MaterialIcons'
+import AddToFavourites from '../Favourites/AddtoFavourites'
+import { LocationContext } from '../../context/Location'
+import AuthContext from '../../context/Auth'
+import UserContext from '../../context/User'
+import { useAppBranding } from '../../utils/translationHelper'
+import {
+  calculateDistanceKm,
+  formatDistanceKm,
+  getSellerAddress,
+  getSellerCoordinates
+} from '../../utils/geolocation'
+import { API_URL } from '../../config/api'
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 45) / 2; // Responsive card width
+const { width } = Dimensions.get('window')
+const CARD_WIDTH = (width - 45) / 2 // Responsive card width
+
+const sellerCache = new Map()
 
 const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
-  const navigation = useNavigation();
-  const { 
-    addToCart, 
-    isLoggedIn, 
-    getProductCartInfo: contextGetProductCartInfo, 
-    updateCartQuantity, 
-    removeFromCart 
-  } = useContext(UserContext);
-  
+  const navigation = useNavigation()
+  const {
+    addToCart,
+    isLoggedIn,
+    getProductCartInfo: contextGetProductCartInfo,
+    updateCartQuantity,
+    removeFromCart
+  } = useContext(UserContext)
+
   // Use prop if provided, otherwise fall back to context
-  const getProductCartInfo = propGetProductCartInfo || contextGetProductCartInfo;
-  const { location } = useContext(LocationContext);
-  const { token } = useContext(AuthContext);
-  const [isLoading, setIsLoading] = useState(false);
-  const [cartInfo, setCartInfo] = useState({ isInCart: false, quantity: 0, cartItemId: null });
-  const [countValue, setCountValue] = useState(1); // Local count for increment/decrement
-  const commitTimeoutRef = useRef(null);
-  const pendingQuantityRef = useRef(0);
-  const branding = useAppBranding();
+  const getProductCartInfo = propGetProductCartInfo || contextGetProductCartInfo
+  const { location } = useContext(LocationContext)
+  const { token } = useContext(AuthContext)
+  const [isLoading, setIsLoading] = useState(false)
+  const [cartInfo, setCartInfo] = useState({
+    isInCart: false,
+    quantity: 0,
+    cartItemId: null
+  })
+  const [countValue, setCountValue] = useState(1) // Local count for increment/decrement
+  const commitTimeoutRef = useRef(null)
+  const pendingQuantityRef = useRef(0)
+  const branding = useAppBranding()
+  const [sellerUser, setSellerUser] = useState(item?.user || null)
+  const [isFetchingSeller, setIsFetchingSeller] = useState(false)
 
   // Update cart info when item or cart changes
   useEffect(() => {
     if (item?._id && getProductCartInfo) {
-      const info = getProductCartInfo(item._id);
-      setCartInfo(info);
+      const info = getProductCartInfo(item._id)
+      setCartInfo(info)
     }
-  }, [item?._id, getProductCartInfo]);
+  }, [item?._id, getProductCartInfo])
 
   useEffect(() => {
-    pendingQuantityRef.current = cartInfo.quantity;
-  }, [cartInfo.quantity]);
+    pendingQuantityRef.current = cartInfo.quantity
+  }, [cartInfo.quantity])
 
-  useEffect(() => () => {
-    if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current)
+    },
+    []
+  )
+
+  useEffect(() => {
+    let isMounted = true
+    if (!item || item?.shop || !item?.userId) return () => {}
+
+    const cached = sellerCache.get(item.userId)
+    if (cached) {
+      if (isMounted) setSellerUser(cached)
+      return () => {
+        isMounted = false
+      }
+    }
+
+    const fetchSeller = async () => {
+      try {
+        setIsFetchingSeller(true)
+        const response = await fetch(`${API_URL}/user/user-info/${item.userId}`)
+        if (!response.ok) return
+        const data = await response.json()
+        if (data?.success && data?.user) {
+          sellerCache.set(item.userId, data.user)
+          if (isMounted) setSellerUser(data.user)
+        }
+      } catch (error) {
+        console.error('Failed to fetch seller info for product card:', error)
+      } finally {
+        if (isMounted) setIsFetchingSeller(false)
+      }
+    }
+
+    fetchSeller()
+
+    return () => {
+      isMounted = false
+    }
+  }, [item?.shop, item?.userId])
+
+  const buyerCoordinates = useMemo(() => {
+    if (location?.latitude !== undefined && location?.longitude !== undefined) {
+      return {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude)
+      }
+    }
+    return null
+  }, [location?.latitude, location?.longitude])
+
+  const sellerCoordinates = useMemo(
+    () => getSellerCoordinates(item, sellerUser),
+    [item, sellerUser]
+  )
+
+  const distanceLabel = useMemo(() => {
+    if (!buyerCoordinates || !sellerCoordinates) return 'N/A'
+    const distance = calculateDistanceKm(
+      buyerCoordinates.latitude,
+      buyerCoordinates.longitude,
+      sellerCoordinates.latitude,
+      sellerCoordinates.longitude
+    )
+    const formatted = formatDistanceKm(distance)
+    return formatted ? `${formatted} away` : 'N/A'
+  }, [buyerCoordinates, sellerCoordinates])
+
+  const sellerAddressLabel = useMemo(() => {
+    if (item?.shop?.address) return item.shop.address
+    return (
+      getSellerAddress(item, sellerUser) ||
+      item?.address ||
+      item?.location ||
+      null
+    )
+  }, [item, sellerUser])
 
   const scheduleQuantityCommit = (cartItemId, desiredQuantity) => {
-    pendingQuantityRef.current = desiredQuantity;
-    if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+    pendingQuantityRef.current = desiredQuantity
+    if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current)
     commitTimeoutRef.current = setTimeout(async () => {
       try {
         if (desiredQuantity <= 0) {
-          const res = await removeFromCart(cartItemId);
+          const res = await removeFromCart(cartItemId)
           if (!res.success) {
             // Revert to previous state on error
-            const currentInfo = getProductCartInfo(item._id);
-            setCartInfo(currentInfo);
-            Alert.alert('Error', res.message || 'Failed to remove from cart');
+            const currentInfo = getProductCartInfo(item._id)
+            setCartInfo(currentInfo)
+            Alert.alert('Error', res.message || 'Failed to remove from cart')
           }
         } else {
-          const res = await updateCartQuantity(cartItemId, desiredQuantity);
+          const res = await updateCartQuantity(cartItemId, desiredQuantity)
           if (!res.success) {
             // Revert to previous state on error
-            const currentInfo = getProductCartInfo(item._id);
-            setCartInfo(currentInfo);
-            Alert.alert('Error', res.message || 'Failed to update cart');
+            const currentInfo = getProductCartInfo(item._id)
+            setCartInfo(currentInfo)
+            Alert.alert('Error', res.message || 'Failed to update cart')
           }
         }
       } catch (e) {
-        console.error('Commit quantity error:', e);
+        console.error('Commit quantity error:', e)
         // Revert to previous state on error
-        const currentInfo = getProductCartInfo(item._id);
-        setCartInfo(currentInfo);
-        Alert.alert('Error', 'An error occurred while updating quantity.');
+        const currentInfo = getProductCartInfo(item._id)
+        setCartInfo(currentInfo)
+        Alert.alert('Error', 'An error occurred while updating quantity.')
       }
-    }, 500); // Increased debounce time for better stability
-  };
+    }, 500) // Increased debounce time for better stability
+  }
   // Animation refs removed to prevent callback leaks
   // const scaleAnim = useRef(new Animated.Value(1)).current;
   // const pressAnimation = useRef(null);
   // const addToCartAnimation = useRef(null);
- 
+
   // Function to limit the product name to allow 2 lines
   const getShortenedName = (name) => {
-    if (!name) return '';
+    if (!name) return ''
     if (name.length > 35) {
-      return name.slice(0, 35) + '...';
+      return name.slice(0, 35) + '...'
     }
-    return name;
-  };
+    return name
+  }
 
   // Function to format unit information
   const getUnitDisplay = () => {
-    const { weight, unit, quantity, unitCount } = item || {};
-    
+    const { weight, unit, quantity, unitCount } = item || {}
+
     // If unitCount is provided, use it with unit
     if (unitCount && unit) {
-      return `${unitCount} ${unit}`;
+      return `${unitCount} ${unit}`
     }
-    
+
     // If quantity is provided, use it with "Pcs"
     if (quantity) {
-      return `${quantity} Pcs`;
+      return `${quantity} Pcs`
     }
-    
+
     // If weight is provided, use it
     if (weight) {
-      return weight;
+      return weight
     }
-    
+
     // If only unit is provided, use it
     if (unit) {
-      return unit;
+      return unit
     }
     // For events, provide a default unit if none specified
     if (item?.name && !weight && !unit && !quantity && !unitCount) {
-      return "1 Pcs";
+      return '1 Pcs'
     }
-    
-    return null;
-  };
+
+    return null
+  }
 
   // Function to get unit count specifically for debugging
   const getUnitCountDisplay = () => {
-    const { unitCount, unit } = item || {};
+    const { unitCount, unit } = item || {}
     if (unitCount && unit) {
-      return `${unitCount} ${unit}`;
+      return `${unitCount} ${unit}`
     }
     // For events, provide a default unit if none specified
     if (item?.name && !unitCount && !unit) {
-      return "1 Pcs";
+      return '1 Pcs'
     }
-    return null;
-  };
+    return null
+  }
 
   // Press handlers without animations to prevent callback leaks
   const handlePressIn = () => {
     // Animation removed to prevent callback leaks
-  };
+  }
 
   const handlePressOut = () => {
     // Animation removed to prevent callback leaks
-  };
+  }
 
   const handleAddToCart = async () => {
     if (!isLoggedIn) {
-      navigation.navigate('Login');
-      return;
+      navigation.navigate('Login')
+      return
     }
 
     // Check if product is in stock directly
@@ -169,128 +260,133 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
         'This item is currently not available.',
         [{ text: 'OK', style: 'cancel' }],
         { cancelable: true }
-      );
-      return;
+      )
+      return
     }
 
     // Optimistic UI update - show as in cart immediately
-    setCartInfo({ isInCart: true, quantity: countValue, cartItemId: 'temp_' + Date.now() });
-    setIsLoading(true);
-    
+    setCartInfo({
+      isInCart: true,
+      quantity: countValue,
+      cartItemId: 'temp_' + Date.now()
+    })
+    setIsLoading(true)
+
     try {
-      const result = await addToCart(item, countValue);
+      const result = await addToCart(item, countValue)
       if (result.success) {
         // Update with real cart info after successful API call
-        const updatedInfo = getProductCartInfo(item._id);
-        setCartInfo(updatedInfo);
-        setCountValue(1); // Reset count after successful add
+        const updatedInfo = getProductCartInfo(item._id)
+        setCartInfo(updatedInfo)
+        setCountValue(1) // Reset count after successful add
       } else {
         // Revert optimistic update on error
-        setCartInfo({ isInCart: false, quantity: 0, cartItemId: null });
-        Alert.alert("Error", result.message);
+        setCartInfo({ isInCart: false, quantity: 0, cartItemId: null })
+        Alert.alert('Error', result.message)
       }
     } catch (error) {
-      console.error("Error adding to cart:", error);
+      console.error('Error adding to cart:', error)
       // Revert optimistic update on error
-      setCartInfo({ isInCart: false, quantity: 0, cartItemId: null });
-      Alert.alert("Error", "An error occurred while adding to cart.");
+      setCartInfo({ isInCart: false, quantity: 0, cartItemId: null })
+      Alert.alert('Error', 'An error occurred while adding to cart.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleQuantityChange = async (change) => {
-    if (!cartInfo.cartItemId) return;
-    const currentId = cartInfo.cartItemId;
-    const newQuantity = cartInfo.quantity + change;
+    if (!cartInfo.cartItemId) return
+    const currentId = cartInfo.cartItemId
+    const newQuantity = cartInfo.quantity + change
 
     // Check if product is in stock - more robust validation
-    const isInStock = item?.stock > 0 && item?.stock !== null && item?.stock !== undefined;
-    const maxQuantity = item?.stock || 0;
+    const isInStock =
+      item?.stock > 0 && item?.stock !== null && item?.stock !== undefined
+    const maxQuantity = item?.stock || 0
 
     // Update local state immediately for instant visual feedback
     if (newQuantity <= 0) {
-      setCartInfo({ isInCart: false, quantity: 0, cartItemId: null });
-      scheduleQuantityCommit(currentId, 0);
-      return;
+      setCartInfo({ isInCart: false, quantity: 0, cartItemId: null })
+      scheduleQuantityCommit(currentId, 0)
+      return
     }
 
     // Check stock limits
     if (!isInStock) {
-      Alert.alert('Out of Stock', 'This item is currently not available.');
-      return;
+      Alert.alert('Out of Stock', 'This item is currently not available.')
+      return
     }
 
     if (newQuantity > maxQuantity) {
-      Alert.alert('Limit Reached', `Maximum quantity allowed is ${maxQuantity}`);
-      return;
+      Alert.alert('Limit Reached', `Maximum quantity allowed is ${maxQuantity}`)
+      return
     }
 
     // Update local state immediately
-    setCartInfo(prev => ({ ...prev, quantity: newQuantity }));
-    
+    setCartInfo((prev) => ({ ...prev, quantity: newQuantity }))
+
     // Schedule API call with debounce
-    scheduleQuantityCommit(currentId, newQuantity);
-  };
+    scheduleQuantityCommit(currentId, newQuantity)
+  }
 
   // Handle increment/decrement for count value (before adding to cart)
   const handleCountChange = (change) => {
-    const newCount = countValue + change;
-    
+    const newCount = countValue + change
+
     // Check if product is in stock
-    const isInStock = item?.stock > 0 && item?.stock !== null && item?.stock !== undefined;
-    const maxQuantity = item?.stock || 0;
+    const isInStock =
+      item?.stock > 0 && item?.stock !== null && item?.stock !== undefined
+    const maxQuantity = item?.stock || 0
 
     // Don't allow count below 1
     if (newCount < 1) {
-      return;
+      return
     }
 
     // Check stock limits
     if (!isInStock) {
-      Alert.alert('Out of Stock', 'This item is currently not available.');
-      return;
+      Alert.alert('Out of Stock', 'This item is currently not available.')
+      return
     }
 
     if (newCount > maxQuantity) {
-      Alert.alert('Limit Reached', `Maximum quantity allowed is ${maxQuantity}`);
-      return;
+      Alert.alert('Limit Reached', `Maximum quantity allowed is ${maxQuantity}`)
+      return
     }
 
-    setCountValue(newCount);
-  };
+    setCountValue(newCount)
+  }
 
   // Cleanup effect removed since animations are disabled
 
   // Calculate discount percentage
   const getDiscountPercentage = () => {
-    const original = parseFloat(item?.originalPrice ?? 0) || 0;
-    const current = parseFloat(item?.discountPrice ?? item?.price ?? 0) || 0;
+    const original = parseFloat(item?.originalPrice ?? 0) || 0
+    const current = parseFloat(item?.discountPrice ?? item?.price ?? 0) || 0
     if (original && original > current) {
-      return Math.round(((original - current) / original) * 100);
+      return Math.round(((original - current) / original) * 100)
     }
-    return 0;
-  };
+    return 0
+  }
 
   // Price helpers (normalize strings/numbers and avoid falsy issues)
   const getCurrentPrice = () => {
-    const val = item?.discountPrice ?? item?.price ?? 0;
-    const num = parseFloat(val);
-    return Number.isFinite(num) ? num : 0;
-  };
+    const val = item?.discountPrice ?? item?.price ?? 0
+    const num = parseFloat(val)
+    return Number.isFinite(num) ? num : 0
+  }
 
   const getOriginalPrice = () => {
-    const val = item?.originalPrice ?? 0;
-    const num = parseFloat(val);
-    return Number.isFinite(num) ? num : 0;
-  };
-
+    const val = item?.originalPrice ?? 0
+    const num = parseFloat(val)
+    return Number.isFinite(num) ? num : 0
+  }
 
   // If item is undefined or null, return null
   if (!item) {
-    return null;
+    return null
   }
-     
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -300,29 +396,35 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
         activeOpacity={0.9}
         style={styles.touchableContainer}
       >
-        <View style={[
-          styles.itemContainer,
-          { backgroundColor: branding.backgroundColor },
-          (item.stock === 0 || item.stock === null || item.stock === undefined) && styles.outOfStockContainer
-        ]}>
-         
+        <View
+          style={[
+            styles.itemContainer,
+            { backgroundColor: branding.backgroundColor },
+            (item.stock === 0 ||
+              item.stock === null ||
+              item.stock === undefined) &&
+              styles.outOfStockContainer
+          ]}
+        >
           {/* Product Image Container */}
           <View style={styles.imageContainer}>
             <ImageBackground
-              source={{ 
-                uri: item?.image || 
-                (item?.images?.[0]?.url || item?.images?.[0]) || 
-                'https://via.placeholder.com/300x200?text=No+Image'
+              source={{
+                uri:
+                  item?.image ||
+                  item?.images?.[0]?.url ||
+                  item?.images?.[0] ||
+                  'https://via.placeholder.com/300x200?text=No+Image'
               }}
               style={styles.cardImageBG}
-              resizeMode="cover"
+              resizeMode='cover'
             >
               {/* Gradient overlay for better text visibility */}
               <View style={styles.imageOverlay} />
-             
+
               {/* Favorite Button */}
               <View style={styles.favoritePosition}>
-                <AddToFavourites product={item}/>
+                <AddToFavourites product={item} />
               </View>
 
               {/* Discount Badge */}
@@ -343,9 +445,11 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
 
           {/* Product Details Container */}
           <View style={styles.detailsContainer}>
-           
             {/* Product Name */}
-            <Text style={[styles.cardTitle, { color: branding.textColor }]} numberOfLines={2}>
+            <Text
+              style={[styles.cardTitle, { color: branding.textColor }]}
+              numberOfLines={2}
+            >
               {getShortenedName(item?.name)}
             </Text>
 
@@ -353,43 +457,95 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
             {item.shop && (
               <View style={styles.sellerContainer}>
                 <Image
-                  source={{ 
-                    uri: item.shop.avatar || item.shop.logo || item.shop.image || ''
+                  source={{
+                    uri:
+                      item.shop.avatar ||
+                      item.shop.logo ||
+                      item.shop.image ||
+                      ''
                   }}
                   style={styles.sellerAvatar}
                   defaultSource={require('../../assets/images/placeholder.png')}
                 />
                 <View style={styles.sellerInfo}>
-                  <Text style={[styles.sellerName, { color: branding.textColor }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.sellerName, { color: branding.textColor }]}
+                    numberOfLines={1}
+                  >
                     {item.shop.name}
                   </Text>
                 </View>
               </View>
             )}
 
-          
-              <View style={styles.priceRowOnly}>
-                <View style={styles.currentPriceRow}>
-                  <Text style={[styles.currencySymbol, { color: branding.primaryColor }]}>₹</Text>
-                  <Text style={[styles.currentPrice, { color: branding.textColor }]}>
-                    {getCurrentPrice()}
+            <View style={styles.priceRowOnly}>
+              <View style={styles.currentPriceRow}>
+                <Text
+                  style={[
+                    styles.currencySymbol,
+                    { color: branding.primaryColor }
+                  ]}
+                >
+                  ₹
+                </Text>
+                <Text
+                  style={[styles.currentPrice, { color: branding.textColor }]}
+                >
+                  {getCurrentPrice()}
+                </Text>
+                {getOriginalPrice() > getCurrentPrice() && (
+                  <Text style={[styles.originalPrice, { marginLeft: 6 }]}>
+                    ₹{getOriginalPrice()}
                   </Text>
-                  {getOriginalPrice() > getCurrentPrice() && (
-                    <Text style={[styles.originalPrice, { marginLeft: 6 }]}>₹{getOriginalPrice()}</Text>
+                )}
+              </View>
+            </View>
+
+            {/* Location with Address - Replace lines 389-440 */}
+            <View style={styles.bottomControls}>
+              <View style={styles.locationAddressContainer}>
+                <View style={styles.locationRow}>
+                  <Icon
+                    name='location-on'
+                    size={16}
+                    color={branding.primaryColor}
+                  />
+                  <Text
+                    style={[styles.addressText, { color: branding.textColor }]}
+                    numberOfLines={2}
+                  >
+                    {sellerAddressLabel ||
+                      (isFetchingSeller
+                        ? 'Fetching seller location...'
+                        : 'Location not available')}
+                  </Text>
+                  {isFetchingSeller && !sellerAddressLabel && (
+                    <ActivityIndicator
+                      size='small'
+                      color={branding.primaryColor}
+                      style={styles.locationLoader}
+                    />
                   )}
                 </View>
+                <View
+                  style={[
+                    styles.distanceBadge,
+                    { borderColor: branding.primaryColor }
+                  ]}
+                >
+                  <Icon
+                    name='swap-calls'
+                    size={12}
+                    color={branding.primaryColor}
+                  />
+                  <Text
+                    style={[styles.distanceText, { color: branding.textColor }]}
+                  >
+                    {distanceLabel}
+                  </Text>
+                </View>
               </View>
-          
-
-          {/* Location with Address - Replace lines 389-440 */}
-<View style={styles.bottomControls}>
-  <View style={styles.locationAddressContainer}>
-    <Icon name="location-on" size={16} color={branding.primaryColor} />
-    <Text style={styles.addressText} numberOfLines={1}>
-      {item?.shop?.address || item?.address || item?.location || 'Location not available'}
-    </Text>
-  </View>
-</View>
+            </View>
             {/* Price + quantity row 
             <View style={styles.priceQtyRow}>
               <View style={styles.priceContainer}>
@@ -464,19 +620,19 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
         </View>
       </TouchableOpacity>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     width: CARD_WIDTH,
     marginBottom: 16,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 4
   },
- 
+
   touchableContainer: {
-    flex: 1,
+    flex: 1
   },
 
   itemContainer: {
@@ -485,42 +641,42 @@ const styles = StyleSheet.create({
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 4
     },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
     borderWidth: 0.5,
     borderColor: '#E5E5E5',
-    height: 280, // Fixed height for consistent card size
+    height: 280 // Fixed height for consistent card size
   },
 
   outOfStockContainer: {
-    opacity: 0.7,
+    opacity: 0.7
   },
 
   imageContainer: {
     position: 'relative',
     height: 140,
-    width: '100%',
+    width: '100%'
   },
 
   cardImageBG: {
     width: '100%',
     height: '100%',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)'
   },
 
   favoritePosition: {
     position: 'absolute',
     top: 8,
     right: 8,
-    zIndex: 2,
+    zIndex: 2
   },
 
   discountBadge: {
@@ -534,14 +690,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 4
   },
 
   discountText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
 
   outOfStockOverlay: {
@@ -549,21 +705,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 1
   },
 
   outOfStockText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 1
   },
 
   detailsContainer: {
     padding: 12,
     flex: 1,
     justifyContent: 'space-between', // Distribute content evenly
-    paddingBottom: 64, // reserve space for absolutely-positioned controls
+    paddingBottom: 64 // reserve space for absolutely-positioned controls
   },
 
   cardTitle: {
@@ -571,7 +727,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 18,
     marginBottom: 6,
-    height: 36, // Fixed height for consistent title space
+    height: 36 // Fixed height for consistent title space
   },
 
   unitContainer: {
@@ -582,31 +738,31 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
     alignSelf: 'flex-start',
-    height: 20, // Fixed height for consistent unit container
+    height: 20 // Fixed height for consistent unit container
   },
 
   unitText: {
     color: '#666666',
     fontSize: 11,
     fontWeight: '500',
-    marginLeft: 4,
+    marginLeft: 4
   },
   unitPill: {
     backgroundColor: '#F0F0F0',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 6
   },
   unitRowCompact: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 6
   },
   priceRowOnly: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 6
   },
 
   unitCountContainer: {
@@ -621,14 +777,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    elevation: 3,
+    elevation: 3
   },
 
   unitCountText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: 4
   },
 
   footerRow: {
@@ -636,24 +792,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 'auto',
-    minHeight: 28,
+    minHeight: 28
   },
 
   priceContainer: {
     flex: 1,
     paddingRight: 8,
-    flexShrink: 1,
+    flexShrink: 1
   },
   priceQtyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 3,
+    marginTop: 3
   },
   qtyLabel: {
     fontSize: 13,
     fontWeight: '600',
-    paddingHorizontal: 6,
+    paddingHorizontal: 6
   },
   bottomControls: {
     position: 'absolute',
@@ -661,26 +817,25 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 5,
     marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    gap: 10,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 6
   },
 
   currentPriceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   currencySymbol: {
     fontSize: 14,
     fontWeight: '700',
-    marginRight: 2,
+    marginRight: 2
   },
 
   currentPrice: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   originalPrice: {
@@ -688,7 +843,7 @@ const styles = StyleSheet.create({
     color: '#999999',
     fontSize: 12,
     fontWeight: '500',
-    marginTop: 2,
+    marginTop: 2
   },
 
   addButton: {
@@ -700,20 +855,20 @@ const styles = StyleSheet.create({
     shadowColor: '#F16122',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 2
     },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 6,
+    elevation: 6
   },
 
   addButtonDisabled: {
     backgroundColor: '#CCCCCC',
-    shadowColor: '#CCCCCC',
+    shadowColor: '#CCCCCC'
   },
 
   addButtonLoading: {
-    backgroundColor: '#D4951A',
+    backgroundColor: '#D4951A'
   },
   quantityContainer: {
     flexDirection: 'row',
@@ -721,7 +876,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 18,
     paddingHorizontal: 4,
-    paddingVertical: 2,
+    paddingVertical: 2
   },
   quantityButton: {
     width: 24,
@@ -730,13 +885,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 1
     },
     shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    shadowRadius: 2.22
   },
   quantityText: {
     fontSize: 13,
@@ -744,26 +899,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
     minWidth: 18,
     textAlign: 'center',
-    color: '#000000',
+    color: '#000000'
   },
 
   quantityButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.5
   },
 
   quantityButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#000000'
   },
 
   quantityButtonTextDisabled: {
-    color: '#999999',
+    color: '#999999'
   },
 
   quantityTextDisabled: {
     color: '#999999',
-    fontStyle: 'italic',
+    fontStyle: 'italic'
   },
 
   quantityControls: {
@@ -775,7 +930,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 18,
     paddingHorizontal: 4,
-    paddingVertical: 2,
+    paddingVertical: 2
   },
 
   countControls: {
@@ -785,40 +940,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    flexShrink: 0,
+    flexShrink: 0
   },
   sellerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginTop: 4,
-    marginBottom: 6,
+    marginBottom: 6
   },
   sellerAvatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 16
   },
   sellerInfo: {
-    flex: 1,
+    flex: 1
   },
   sellerName: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500'
   },
   locationAddressContainer: {
+    alignSelf: 'stretch',
+    gap: 6,
+    paddingHorizontal: 4
+  },
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flex: 1,
-    paddingHorizontal: 4,
+    gap: 6
+  },
+  locationLoader: {
+    marginLeft: 6
   },
   addressText: {
     fontSize: 11,
-    color: '#666666',
     fontWeight: '500',
-    flex: 1,
+    flex: 1
   },
-});
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    gap: 4
+  },
+  distanceText: {
+    fontSize: 11,
+    fontWeight: '600'
+  }
+})
 
-export default Products;
+export default Products

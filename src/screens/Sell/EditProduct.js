@@ -59,9 +59,7 @@ const EditProduct = () => {
   // Modal states
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
   const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false)
-  const [showUnitPicker, setShowUnitPicker] = useState(false)
 
-  const [availableUnits, setAvailableUnits] = useState([])
   const [saving, setSaving] = useState(false)
 
   // Initialize form with product data
@@ -80,7 +78,7 @@ const EditProduct = () => {
           category: product.category?._id || product.category || '',
           subcategory: product.subcategory?._id || product.subcategory || '',
           tags: product.tags || '',
-          unit: product.unit || '',
+          unit: product.unit || 'pcs',
           unitCount: product.unitCount?.toString() || '1',
           maxPurchaseQuantity: product.maxPurchaseQuantity?.toString() || '10'
         })
@@ -101,7 +99,6 @@ const EditProduct = () => {
       }
 
       await fetchCategories()
-      await fetchUnits()
 
       // Fetch subcategories if category exists
       if (product?.category) {
@@ -138,25 +135,6 @@ const EditProduct = () => {
       }
     } catch (error) {
       console.error('Error fetching categories:', error)
-    }
-  }
-
-  const fetchUnits = async () => {
-    try {
-      const response = await fetch(`${API_URL}/product/units`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Units fetched:', data.data)
-        setAvailableUnits(data.data || [])
-      }
-    } catch (error) {
-      console.error('Error fetching units:', error)
     }
   }
 
@@ -298,21 +276,6 @@ const EditProduct = () => {
       Alert.alert('Error', 'Subcategory is required')
       return false
     }
-    if (!formData.unit) {
-      Alert.alert('Error', 'Unit is required')
-      return false
-    }
-    if (!formData.unitCount || parseInt(formData.unitCount) <= 0) {
-      Alert.alert('Error', 'Valid unit count is required')
-      return false
-    }
-    if (
-      !formData.maxPurchaseQuantity ||
-      parseInt(formData.maxPurchaseQuantity) <= 0
-    ) {
-      Alert.alert('Error', 'Valid max purchase quantity is required')
-      return false
-    }
     if (selectedImages.length === 0) {
       Alert.alert('Error', 'At least one product image is required')
       return false
@@ -354,9 +317,14 @@ const EditProduct = () => {
         }
       })
 
+      const isUserProduct = !product?.shopId && !product?.shop
+      const updateEndpoint = isUserProduct
+        ? `${API_URL}/product/update-user-product/${product._id}`
+        : `${API_URL}/product/update-product/${product._id}`
+
       console.log('Updating product with ID:', product._id)
 
-      const response = await fetch(`${API_URL}/product/update-product/${product._id}`, {
+      const response = await fetch(updateEndpoint, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`
@@ -805,85 +773,6 @@ const EditProduct = () => {
                 keyboardType='numeric'
               />
             </View>
-
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Unit *
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.selectionButton,
-                  {
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                onPress={() => setShowUnitPicker(true)}
-              >
-                <Text
-                  style={[
-                    styles.selectionButtonText,
-                    { color: formData.unit ? branding.textColor : '#999' }
-                  ]}
-                >
-                  {availableUnits.find(
-                    (u) => u._id === formData.unit || u.id === formData.unit
-                  )?.name || 'Select'}
-                </Text>
-                <Icon name='arrow-drop-down' size={24} color='#999' />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Unit Count *
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                value={formData.unitCount}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({ ...prev, unitCount: text }))
-                }
-                placeholder='1'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
-            </View>
-
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Max Purchase *
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                value={formData.maxPurchaseQuantity}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    maxPurchaseQuantity: text
-                  }))
-                }
-                placeholder='10'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
-            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -953,21 +842,6 @@ const EditProduct = () => {
           setFormData((prev) => ({ ...prev, subcategory: subcategoryId }))
         }}
         emptyMessage='No subcategories available'
-      />
-
-      {/* Unit Selection Modal */}
-      <SelectionModal
-        visible={showUnitPicker}
-        onClose={() => setShowUnitPicker(false)}
-        title='Select Unit'
-        data={availableUnits}
-        selectedValue={formData.unit}
-        onSelect={(unitId) => {
-          console.log('Unit selected:', unitId)
-          setFormData((prev) => ({ ...prev, unit: unitId }))
-        }}
-        emptyMessage='No units available'
-        showDescription={true}
       />
     </KeyboardAvoidingView>
   )

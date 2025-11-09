@@ -45,7 +45,7 @@ const CreateAd = () => {
     category: '',
     subcategory: '',
     tags: '',
-    unit: '',
+    unit: 'pcs',
     unitCount: '1',
     maxPurchaseQuantity: '10'
   })
@@ -59,9 +59,6 @@ const CreateAd = () => {
   // Modal states
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
   const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false)
-  const [showUnitPicker, setShowUnitPicker] = useState(false)
-
-  const [availableUnits, setAvailableUnits] = useState([])
 
   // FIX: Use formetedProfileData (same as ProfilePage) or fallback to dataProfile
   useEffect(() => {
@@ -84,7 +81,6 @@ const CreateAd = () => {
       }
 
       await fetchCategories()
-      await fetchUnits()
       setLoading(false)
     }
 
@@ -207,27 +203,6 @@ const CreateAd = () => {
       }
     } catch (error) {
       console.error('Error fetching categories:', error)
-    }
-  }
-
-  const fetchUnits = async () => {
-    try {
-      const response = await fetch(`${API_URL}/product/units`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Units fetched:', data.data)
-        setAvailableUnits(data.data || [])
-      } else {
-        console.error('Error response:', response.status, response.statusText)
-      }
-    } catch (error) {
-      console.error('Error fetching units:', error)
     }
   }
 
@@ -367,21 +342,6 @@ const CreateAd = () => {
     }
     if (!formData.subcategory) {
       Alert.alert('Error', 'Subcategory is required')
-      return false
-    }
-    if (!formData.unit) {
-      Alert.alert('Error', 'Unit is required')
-      return false
-    }
-    if (!formData.unitCount || parseInt(formData.unitCount) <= 0) {
-      Alert.alert('Error', 'Valid unit count is required')
-      return false
-    }
-    if (
-      !formData.maxPurchaseQuantity ||
-      parseInt(formData.maxPurchaseQuantity) <= 0
-    ) {
-      Alert.alert('Error', 'Valid max purchase quantity is required')
       return false
     }
     if (selectedImages.length === 0) {
@@ -904,85 +864,6 @@ const CreateAd = () => {
                 keyboardType='numeric'
               />
             </View>
-
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Unit *
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.selectionButton,
-                  {
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                onPress={() => setShowUnitPicker(true)}
-              >
-                <Text
-                  style={[
-                    styles.selectionButtonText,
-                    { color: formData.unit ? branding.textColor : '#999' }
-                  ]}
-                >
-                  {availableUnits.find(
-                    (u) => u._id === formData.unit || u.id === formData.unit
-                  )?.name || 'Select'}
-                </Text>
-                <Icon name='arrow-drop-down' size={24} color='#999' />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Unit Count *
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                value={formData.unitCount}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({ ...prev, unitCount: text }))
-                }
-                placeholder='1'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
-            </View>
-
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Max Purchase *
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                value={formData.maxPurchaseQuantity}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    maxPurchaseQuantity: text
-                  }))
-                }
-                placeholder='10'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
-            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -1052,21 +933,6 @@ const CreateAd = () => {
           setFormData((prev) => ({ ...prev, subcategory: subcategoryId }))
         }}
         emptyMessage='No subcategories available'
-      />
-
-      {/* Unit Selection Modal */}
-      <SelectionModal
-        visible={showUnitPicker}
-        onClose={() => setShowUnitPicker(false)}
-        title='Select Unit'
-        data={availableUnits}
-        selectedValue={formData.unit}
-        onSelect={(unitId) => {
-          console.log('Unit selected:', unitId)
-          setFormData((prev) => ({ ...prev, unit: unitId }))
-        }}
-        emptyMessage='No units available'
-        showDescription={true}
       />
     </KeyboardAvoidingView>
   )
