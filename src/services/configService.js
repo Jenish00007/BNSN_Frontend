@@ -105,8 +105,46 @@ export const getUpdatedAt = (config) => {
 
 export const getAppId = (config) => {
   return config?.appId || '';
-}; 
+};
 
 export const getAppType = (config) => {
   return 'singlevendor';
+};
+
+export const getForceUpdateConfig = (config) => {
+  const forceUpdate = config?.forceUpdate || {};
+
+  const normalizePlatformConfig = (platformKey) => {
+    const platformConfig = forceUpdate?.[platformKey] || {};
+    const baseMessage =
+      platformConfig.message ||
+      forceUpdate.message ||
+      'A new version of the app is available. Please update to continue using all features.';
+    const baseTitle =
+      platformConfig.title ||
+      forceUpdate.title ||
+      'Update Required';
+    const baseCta =
+      platformConfig.ctaLabel ||
+      forceUpdate.ctaLabel ||
+      'Update Now';
+
+    return {
+      enabled: Boolean(platformConfig.enabled ?? forceUpdate.enabled ?? false),
+      force: Boolean(platformConfig.force ?? forceUpdate.force ?? false),
+      minSupportedVersion:
+        platformConfig.minSupportedVersion || forceUpdate.minSupportedVersion || null,
+      latestVersion:
+        platformConfig.latestVersion || forceUpdate.latestVersion || null,
+      title: baseTitle,
+      message: baseMessage,
+      ctaLabel: baseCta,
+      updateUrl: platformConfig.updateUrl || forceUpdate.updateUrl || null
+    };
+  };
+
+  return {
+    android: normalizePlatformConfig('android'),
+    ios: normalizePlatformConfig('ios')
+  };
 };

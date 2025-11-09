@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useQuery } from '@apollo/client'
 import gql from 'graphql-tag'
 import { getConfiguration } from '../apollo/queries'
-import { 
-  fetchAppConfig, 
+import {
+  fetchAppConfig,
   getAllAppConfig,
   getAppColors,
   getAppLogo,
@@ -23,7 +23,8 @@ import {
   getCreatedAt,
   getUpdatedAt,
   getAppId,
-  getAppType
+  getAppType,
+  getForceUpdateConfig
 } from '../services/configService'
 
 const GETCONFIGURATION = gql`
@@ -68,10 +69,10 @@ export const ConfigurationProvider = (props) => {
             '967541328677-nf8h4ou7rhmq9fahs87p057rggo95eah.apps.googleusercontent.com'
         }
       : data.configuration),
-    
+
     // App configuration from API
     ...(appConfig ? getAllAppConfig(appConfig) : {}),
-    
+
     // Individual getter functions for easy access
     getAppColors: () => getAppColors(appConfig),
     getAppLogo: () => getAppLogo(appConfig),
@@ -92,10 +93,14 @@ export const ConfigurationProvider = (props) => {
     getUpdatedAt: () => getUpdatedAt(appConfig),
     getAppId: () => getAppId(appConfig),
     getAppType: () => getAppType(appConfig),
+    getForceUpdateConfig: () => getForceUpdateConfig(appConfig),
+    forceUpdateSettings: getForceUpdateConfig(appConfig),
   }
 
   return (
-    <ConfigurationContext.Provider value={{ ...configuration, configLoading }}>
+    <ConfigurationContext.Provider
+      value={{ ...configuration, configLoading }}
+    >
       {props.children}
     </ConfigurationContext.Provider>
   )

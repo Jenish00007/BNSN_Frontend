@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useCallback } from 'react'
+import React, {
+  useContext,
+  useEffect,
+  useCallback,
+  useMemo,
+  useState
+} from 'react'
 import { theme } from '../utils/themeColors'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { NavigationContainer } from '@react-navigation/native'
@@ -7,6 +13,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import navigationService from './navigationService'
 import * as Notifications from 'expo-notifications'
+import { Platform, Linking } from 'react-native'
 // import Login from '../screens/Login/Login'
 import Login from '../screens/Login/Login'
 import Register from '../screens/Register/Register'
@@ -89,6 +96,10 @@ import MyAds from '../screens/MyAds/MyAds'
 import Sell from '../screens/Sell/Sell'
 import CreateAd from '../screens/Sell/CreateAd'
 import EditProduct from '../screens/Sell/EditProduct'
+import Constants from 'expo-constants'
+import * as Application from 'expo-application'
+import ForceUpdateModal from '../components/ForceUpdateModal/ForceUpdateModal'
+import { isVersionLower } from '../utils/version'
 
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
@@ -306,6 +317,76 @@ function AppContainer() {
   const { SENTRY_DSN } = useEnvVars()
   const lastNotificationResponse = Notifications.useLastNotificationResponse()
   const { token, isLoading, profile } = useContext(AuthContext)
+  const configuration = useContext(ConfigurationContext)
+  const { configLoading, forceUpdateSettings, getAppPackageId } =
+    configuration || {}
+  const [forceUpdateInfo, setForceUpdateInfo] = useState(null)
+
+  const currentVersion = useMemo(() => {
+    return (
+      Application.nativeApplicationVersion ||
+      Constants.expoConfig?.version ||
+      Constants.manifest?.version ||
+      '0.0.0'
+    )
+  }, [])
+
+  const packageId = useMemo(() => {
+    return (
+      (typeof getAppPackageId === 'function' && getAppPackageId()) ||
+      Application.applicationId ||
+      Constants.expoConfig?.android?.package ||
+      'com.bnsn.bnsn'
+    )
+  }, [getAppPackageId])
+
+  useEffect(() => {
+    if (configLoading) {
+      return
+    }
+
+    const platformKey = Platform.OS === 'ios' ? 'ios' : 'android'
+    const platformConfig = forceUpdateSettings?.[platformKey]
+
+    if (!platformConfig) {
+      setForceUpdateInfo(null)
+      return
+    }
+
+    const { minSupportedVersion, title, message, ctaLabel, updateUrl } =
+      platformConfig
+
+    if (
+      minSupportedVersion &&
+      isVersionLower(currentVersion, minSupportedVersion)
+    ) {
+      setForceUpdateInfo({
+        title,
+        message,
+        ctaLabel,
+        updateUrl
+      })
+    } else {
+      setForceUpdateInfo(null)
+    }
+  }, [configLoading, forceUpdateSettings, currentVersion])
+
+  const handleForceUpdate = useCallback(() => {
+    const defaultUrl =
+      Platform.OS === 'ios'
+        ? 'https://apps.apple.com/'
+        : `https://play.google.com/store/apps/details?id=${packageId}`
+
+    const targetUrl = forceUpdateInfo?.updateUrl || defaultUrl
+
+    if (!targetUrl) {
+      return
+    }
+
+    Linking.openURL(targetUrl).catch((error) => {
+      console.error('Unable to open update link:', error)
+    })
+  }, [forceUpdateInfo, packageId])
 
   const handleNotification = useCallback(
     async (response) => {
@@ -389,6 +470,13 @@ function AppContainer() {
 
   return (
     <SafeAreaProvider>
+      <ForceUpdateModal
+        visible={Boolean(forceUpdateInfo)}
+        title={forceUpdateInfo?.title}
+        message={forceUpdateInfo?.message}
+        ctaLabel={forceUpdateInfo?.ctaLabel}
+        onUpdatePress={handleForceUpdate}
+      />
       <NavigationContainer
         ref={(ref) => {
           navigationService.setGlobalRef(ref)
