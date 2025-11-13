@@ -20,7 +20,8 @@ import {
   Animated,
   Easing,
   Image,
-  Modal
+  Modal,
+  Keyboard
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -143,6 +144,7 @@ const Chat = ({ navigation }) => {
   const [isConnected, setIsConnected] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [conversationId, setConversationId] = useState(initialConversationId)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   const flatListRef = useRef(null)
   const sendButtonScale = useRef(new Animated.Value(1)).current
@@ -355,6 +357,32 @@ const Chat = ({ navigation }) => {
       }, 100)
     }
   }, [messages, loading])
+
+  // Handle keyboard show/hide for Android
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const keyboardWillShowListener = Keyboard.addListener(
+        'keyboardDidShow',
+        (e) => {
+          setKeyboardHeight(e.endCoordinates.height)
+          setTimeout(() => {
+            scrollToBottom()
+          }, 100)
+        }
+      )
+      const keyboardWillHideListener = Keyboard.addListener(
+        'keyboardDidHide',
+        () => {
+          setKeyboardHeight(0)
+        }
+      )
+
+      return () => {
+        keyboardWillShowListener.remove()
+        keyboardWillHideListener.remove()
+      }
+    }
+  }, [])
 
   // Enhanced header
   useEffect(() => {
@@ -758,11 +786,7 @@ const Chat = ({ navigation }) => {
     const messageRole = isMyMessage
       ? resolvedSelfRole
       : resolvedOtherRole || fallbackCounterpartRole
-    const formattedRoleLabel = messageRole ? toTitleCase(messageRole) : null
-    const otherParticipantLabel =
-      resolvedOtherRole && displayName
-        ? `${displayName} (${toTitleCase(resolvedOtherRole)})`
-        : displayName
+    const otherParticipantLabel = displayName || otherUser?.name || 'User'
     const sellerColor = branding.primaryColor || '#007AFF'
     const buyerColor = branding.accentColor || '#E2E8F0'
     const bubbleBackgroundColor =
@@ -772,27 +796,6 @@ const Chat = ({ navigation }) => {
     const metaTextColor =
       messageRole === 'seller' ? '#fff' : branding.textColor || '#1e293b'
     const metaTextOpacity = messageRole === 'seller' ? 0.8 : 0.6
-    const roleLabel = messageRole ? toTitleCase(messageRole) : null
-    const badgeText = isMyMessage
-      ? roleLabel
-        ? `You (${roleLabel})`
-        : 'You'
-      : otherParticipantLabel || (roleLabel ? `${roleLabel}` : 'User')
-    const badgeStyles =
-      messageRole === 'seller'
-        ? {
-            backgroundColor: sellerColor,
-            borderColor: sellerColor,
-            borderWidth: 0
-          }
-        : {
-            backgroundColor: '#ffffff',
-            borderColor: buyerColor,
-            borderWidth: 1
-          }
-    const badgeAlignmentStyles = isMyMessage
-      ? { justifyContent: 'flex-end' }
-      : { justifyContent: 'flex-start' }
     const bubbleShapeStyles = isMyMessage
       ? {
           backgroundColor: bubbleBackgroundColor,
@@ -861,21 +864,6 @@ const Chat = ({ navigation }) => {
           )}
 
           <View style={[styles.messageBubble, bubbleShapeStyles]}>
-            <View style={[styles.roleBadgeWrapper, badgeAlignmentStyles]}>
-              <View style={[styles.roleBadge, badgeStyles]}>
-                <TextDefault
-                  style={[
-                    styles.roleBadgeText,
-                    messageRole === 'seller'
-                      ? { color: '#fff' }
-                      : { color: branding.textColor || '#1e293b' }
-                  ]}
-                >
-                  {badgeText}
-                </TextDefault>
-              </View>
-            </View>
-
             <TextDefault
               style={[styles.messageText, { color: messageTextColor }]}
             >
@@ -923,7 +911,7 @@ const Chat = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar
         barStyle='light-content'
         backgroundColor={branding.primaryColor}
@@ -938,109 +926,119 @@ const Chat = ({ navigation }) => {
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item, index) => item._id || index.toString()}
-          contentContainerStyle={[
-            styles.messagesList,
-            {
-              flexGrow: 1,
-              justifyContent: messages.length === 0 ? 'center' : 'flex-end'
-            }
-          ]}
-          onContentSizeChange={() => {
-            if (messages.length > 0) {
-              scrollToBottom()
-            }
-          }}
-          onLayout={() => {
-            if (messages.length > 0) {
-              scrollToBottom()
-            }
-          }}
-          showsVerticalScrollIndicator={false}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-            autoscrollToTopThreshold: 10
-          }}
-          removeClippedSubviews={false}
-          keyboardShouldPersistTaps='handled'
-          keyboardDismissMode='interactive'
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <MaterialIcons
-                name='chat-bubble-outline'
-                size={64}
-                color='#cbd5e0'
-              />
-              <TextDefault style={styles.emptyText}>
-                No messages yet
-              </TextDefault>
-              <TextDefault style={styles.emptySubText}>
-                Start the conversation!
-              </TextDefault>
-            </View>
-          )}
-        />
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item, index) => item._id || index.toString()}
+            contentContainerStyle={[
+              styles.messagesList,
+              {
+                flexGrow: 1,
+                justifyContent: messages.length === 0 ? 'center' : 'flex-end',
+                paddingBottom:
+                  Platform.OS === 'android' && keyboardHeight > 0 ? 80 : 16
+              }
+            ]}
+            onContentSizeChange={() => {
+              if (messages.length > 0) {
+                scrollToBottom()
+              }
+            }}
+            onLayout={() => {
+              if (messages.length > 0) {
+                scrollToBottom()
+              }
+            }}
+            showsVerticalScrollIndicator={false}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              autoscrollToTopThreshold: 10
+            }}
+            removeClippedSubviews={false}
+            keyboardShouldPersistTaps='handled'
+            keyboardDismissMode='interactive'
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <MaterialIcons
+                  name='chat-bubble-outline'
+                  size={64}
+                  color='#cbd5e0'
+                />
+                <TextDefault style={styles.emptyText}>
+                  No messages yet
+                </TextDefault>
+                <TextDefault style={styles.emptySubText}>
+                  Start the conversation!
+                </TextDefault>
+              </View>
+            )}
+          />
 
-        {/* Typing Indicator */}
-        {isTyping && (
-          <Animated.View
-            style={[styles.typingIndicator, { opacity: typingOpacity }]}
-          >
-            <TextDefault style={styles.typingText}>
-              {otherUser?.name || 'User'} is typing...
-            </TextDefault>
-          </Animated.View>
-        )}
-
-        {/* Message Input */}
-        <View
-          style={[
-            styles.inputContainer,
-            { borderTopColor: branding.borderColor || '#f0f0f0' }
-          ]}
-        >
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder='Type a message...'
-              placeholderTextColor='#999'
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-              editable={!sending && isConnected}
-              textAlignVertical='top'
-              onFocus={() => {
-                setTimeout(() => {
-                  scrollToBottom()
-                }, 300)
-              }}
-            />
-            <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  { backgroundColor: branding.primaryColor },
-                  (!inputText.trim() || sending || !isConnected) &&
-                    styles.sendButtonDisabled
-                ]}
-                onPress={sendMessage}
-                disabled={!inputText.trim() || sending || !isConnected}
-              >
-                {sending ? (
-                  <ActivityIndicator size='small' color='#fff' />
-                ) : (
-                  <MaterialIcons name='send' size={20} color='#fff' />
-                )}
-              </TouchableOpacity>
+          {/* Typing Indicator */}
+          {isTyping && (
+            <Animated.View
+              style={[styles.typingIndicator, { opacity: typingOpacity }]}
+            >
+              <TextDefault style={styles.typingText}>
+                {otherUser?.name || 'User'} is typing...
+              </TextDefault>
             </Animated.View>
+          )}
+
+          {/* Message Input */}
+          <View
+            style={[
+              styles.inputContainer,
+              {
+                borderTopColor: branding.borderColor || '#f0f0f0',
+                marginBottom:
+                  Platform.OS === 'android' && keyboardHeight > 0 ? 0 : 0
+              }
+            ]}
+          >
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder='Type a message...'
+                placeholderTextColor='#999'
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
+                editable={!sending && isConnected}
+                textAlignVertical='top'
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollToBottom()
+                  }, 300)
+                }}
+              />
+              <Animated.View
+                style={{ transform: [{ scale: sendButtonScale }] }}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    { backgroundColor: branding.primaryColor },
+                    (!inputText.trim() || sending || !isConnected) &&
+                      styles.sendButtonDisabled
+                  ]}
+                  onPress={sendMessage}
+                  disabled={!inputText.trim() || sending || !isConnected}
+                >
+                  {sending ? (
+                    <ActivityIndicator size='small' color='#fff' />
+                  ) : (
+                    <MaterialIcons name='send' size={20} color='#fff' />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>

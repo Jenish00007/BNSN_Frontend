@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useMemo } from 'react'
 import {
   View,
   FlatList,
@@ -22,6 +22,7 @@ const ChatList = () => {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [activeRoleFilter, setActiveRoleFilter] = useState('seller')
 
   const navigation = useNavigation()
   const { token } = useContext(AuthContext)
@@ -53,7 +54,19 @@ const ChatList = () => {
       const data = await response.json()
       console.log('Conversations fetched:', data)
       if (data.success) {
-        setConversations(data.conversations)
+        const normalized = (data.conversations || []).map((conv) => {
+          const otherUser = conv.otherUser || {}
+          const looksLikeShop =
+            otherUser.address !== undefined && otherUser.address !== null
+          const conversationRole = looksLikeShop ? 'seller' : 'buyer'
+
+          return {
+            ...conv,
+            conversationRole
+          }
+        })
+
+        setConversations(normalized)
       }
     } catch (error) {
       console.error('Error fetching conversations:', error)
@@ -86,6 +99,12 @@ const ChatList = () => {
     const otherUser = item.otherUser
     const displayName = otherUser?.name || item.groupTitle || 'Conversation'
     const avatar = otherUser?.avatar
+    const roleLabel =
+      item.conversationRole === 'seller'
+        ? 'Seller'
+        : item.conversationRole === 'buyer'
+          ? 'Buyer'
+          : null
 
     return (
       <TouchableOpacity
@@ -119,6 +138,39 @@ const ChatList = () => {
           <TextDefault numberOfLines={1} style={styles.lastMessage}>
             {item.lastMessage || 'No messages yet'}
           </TextDefault>
+          {roleLabel && (
+            <View
+              style={[
+                styles.roleBadge,
+                {
+                  backgroundColor:
+                    item.conversationRole === 'seller'
+                      ? (branding.primaryColor || '#007AFF') + '20'
+                      : (branding.accentColor || '#38A169') + '20',
+                  borderColor:
+                    item.conversationRole === 'seller'
+                      ? branding.primaryColor || '#007AFF'
+                      : branding.accentColor || '#38A169'
+                }
+              ]}
+            >
+              <TextDefault
+                small
+                bold
+                style={[
+                  styles.roleBadgeText,
+                  {
+                    color:
+                      item.conversationRole === 'seller'
+                        ? branding.primaryColor || '#007AFF'
+                        : branding.accentColor || '#38A169'
+                  }
+                ]}
+              >
+                {roleLabel}
+              </TextDefault>
+            </View>
+          )}
         </View>
         <MaterialIcons
           name='chevron-right'
@@ -126,6 +178,57 @@ const ChatList = () => {
           color={branding.iconColor || '#999'}
         />
       </TouchableOpacity>
+    )
+  }
+
+  const filteredConversations = useMemo(() => {
+    if (!activeRoleFilter) return conversations
+    return conversations.filter(
+      (conversation) => conversation.conversationRole === activeRoleFilter
+    )
+  }, [conversations, activeRoleFilter])
+
+  const renderRoleFilters = () => {
+    const filters = [
+      { key: 'seller', label: 'Seller' },
+      { key: 'buyer', label: 'Buyer' }
+    ]
+
+    return (
+      <View style={styles.roleFilterContainer}>
+        {filters.map((filter) => {
+          const isActive = activeRoleFilter === filter.key
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              style={[
+                styles.roleFilterButton,
+                {
+                  backgroundColor: isActive
+                    ? branding.primaryColor || '#007AFF'
+                    : 'transparent',
+                  borderColor: branding.primaryColor || '#007AFF'
+                }
+              ]}
+              onPress={() => setActiveRoleFilter(filter.key)}
+            >
+              <TextDefault
+                bold
+                style={[
+                  styles.roleFilterText,
+                  {
+                    color: isActive
+                      ? '#fff'
+                      : branding.primaryColor || '#007AFF'
+                  }
+                ]}
+              >
+                {filter.label}
+              </TextDefault>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
     )
   }
 
@@ -181,7 +284,8 @@ const ChatList = () => {
         barStyle='light-content'
         backgroundColor={branding.headerColor}
       />
-      {conversations.length === 0 ? (
+      {renderRoleFilters()}
+      {filteredConversations.length === 0 ? (
         <View style={styles.emptyContainer}>
           <MaterialIcons
             name='chat-bubble-outline'
@@ -189,15 +293,21 @@ const ChatList = () => {
             color={branding.iconColor || '#ccc'}
           />
           <TextDefault H4 bold style={styles.emptyText}>
-            No conversations yet
+            {conversations.length === 0
+              ? 'No conversations yet'
+              : activeRoleFilter === 'seller'
+                ? "You're not buying from anyone yet"
+                : 'No buyers have contacted you yet'}
           </TextDefault>
-          <TextDefault style={styles.emptySubtext}>
-            Start chatting with sellers
-          </TextDefault>
+          {conversations.length === 0 ? (
+            <TextDefault style={styles.emptySubtext}>
+              Start chatting with sellers
+            </TextDefault>
+          ) : null}
         </View>
       ) : (
         <FlatList
-          data={conversations}
+          data={filteredConversations}
           renderItem={renderChatItem}
           keyExtractor={(item) => item._id}
           refreshControl={

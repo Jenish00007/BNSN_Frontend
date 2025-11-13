@@ -70,10 +70,11 @@ const styles = (props = null, newheaderColor = theme.headerMenuBackground) =>
       justifyContent: 'center'
     },
     filterContainer: {
-      width: scale(30),
+      minWidth: scale(30),
       height: '100%',
       justifyContent: 'center',
-      alignItems: 'center'
+      alignItems: 'center',
+      flexDirection: 'row'
     }
   })
 

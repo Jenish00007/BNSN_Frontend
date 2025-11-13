@@ -282,7 +282,10 @@ const ProductDetail = () => {
     if (product?.shop?._id) {
       sellerId = product.shop._id
       sellerDisplayName =
-        product.shop.name || product.shop.shopName || product.shop.title || 'Seller'
+        product.shop.name ||
+        product.shop.shopName ||
+        product.shop.title ||
+        'Seller'
       otherParticipant = {
         ...product.shop,
         _id: product.shop._id,
@@ -474,9 +477,7 @@ const ProductDetail = () => {
   useEffect(() => {
     if (!product?.shop && product?.userId) {
       const userMismatch =
-        userDetails &&
-        userDetails._id &&
-        userDetails._id !== product.userId
+        userDetails && userDetails._id && userDetails._id !== product.userId
 
       if (userMismatch) {
         setUserDetails(null)
@@ -487,12 +488,7 @@ const ProductDetail = () => {
         fetchUserDetails()
       }
     }
-  }, [
-    product?.shop,
-    product?.userId,
-    userDetails,
-    fetchUserDetails
-  ])
+  }, [product?.shop, product?.userId, userDetails, fetchUserDetails])
 
   const userAddress = useMemo(() => {
     if (!userDetails) return null
@@ -501,7 +497,10 @@ const ProductDetail = () => {
       return userDetails.address.trim()
     }
 
-    if (Array.isArray(userDetails.addresses) && userDetails.addresses.length > 0) {
+    if (
+      Array.isArray(userDetails.addresses) &&
+      userDetails.addresses.length > 0
+    ) {
       const primaryAddress =
         userDetails.addresses.find((addr) =>
           ['address1', 'address2', 'city', 'state', 'country', 'zipCode'].some(
@@ -553,7 +552,9 @@ const ProductDetail = () => {
           style={styles.contactInfoIcon}
         />
         <View style={styles.contactInfoTextWrapper}>
-          <Text style={[styles.contactInfoLabel, { color: branding.textColor }]}>
+          <Text
+            style={[styles.contactInfoLabel, { color: branding.textColor }]}
+          >
             {label}
           </Text>
           <Text
@@ -771,7 +772,9 @@ const ProductDetail = () => {
           {/* Shop/User Information */}
           {product?.shop ? (
             <View style={styles.shopContainer}>
-              <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+              <Text
+                style={[styles.sectionTitle, { color: branding.textColor }]}
+              >
                 Seller Information
               </Text>
               <View style={styles.shopInfo}>
@@ -811,10 +814,14 @@ const ProductDetail = () => {
                   </TouchableOpacity>
                 )}
                 <View style={styles.shopDetails}>
-                  <Text style={[styles.shopName, { color: branding.textColor }]}>
+                  <Text
+                    style={[styles.shopName, { color: branding.textColor }]}
+                  >
                     {product?.shop?.name || 'Name Not Available'}
                   </Text>
-                  <Text style={[styles.shopAddress, { color: branding.textColor }]}>
+                  <Text
+                    style={[styles.shopAddress, { color: branding.textColor }]}
+                  >
                     {product?.shop?.address || 'Address Not Available'}
                   </Text>
                 </View>
@@ -834,7 +841,9 @@ const ProductDetail = () => {
             </View>
           ) : (
             <View style={styles.shopContainer}>
-              <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+              <Text
+                style={[styles.sectionTitle, { color: branding.textColor }]}
+              >
                 User Information
               </Text>
               {userDetailsLoading ? (
@@ -868,10 +877,17 @@ const ProductDetail = () => {
                       </View>
                     )}
                     <View style={styles.shopDetails}>
-                      <Text style={[styles.shopName, { color: branding.textColor }]}>
+                      <Text
+                        style={[styles.shopName, { color: branding.textColor }]}
+                      >
                         {userDetails?.name || 'Name Not Available'}
                       </Text>
-                      <Text style={[styles.shopAddress, { color: branding.textColor }]}>
+                      <Text
+                        style={[
+                          styles.shopAddress,
+                          { color: branding.textColor }
+                        ]}
+                      >
                         {userAddress || 'Address Not Available'}
                       </Text>
                     </View>
@@ -879,7 +895,11 @@ const ProductDetail = () => {
                   {(userDetails?.email || userDetails?.phoneNumber) && (
                     <View style={styles.contactInfoContainer}>
                       {renderContactRow('email', 'Email', userDetails?.email)}
-                      {renderContactRow('phone', 'Phone', userDetails?.phoneNumber)}
+                      {renderContactRow(
+                        'phone',
+                        'Phone',
+                        userDetails?.phoneNumber
+                      )}
                     </View>
                   )}
                 </>
@@ -910,11 +930,16 @@ const ProductDetail = () => {
                     />
                   </View>
                   <View style={styles.shopDetails}>
-                    <Text style={[styles.shopName, { color: branding.textColor }]}>
+                    <Text
+                      style={[styles.shopName, { color: branding.textColor }]}
+                    >
                       Seller Information Not Available
                     </Text>
                     <Text
-                      style={[styles.shopAddress, { color: branding.textColor }]}
+                      style={[
+                        styles.shopAddress,
+                        { color: branding.textColor }
+                      ]}
                     >
                       Contact support for seller details
                     </Text>
@@ -924,7 +949,9 @@ const ProductDetail = () => {
             </View>
           )}
 
-          <View style={[styles.divider, { backgroundColor: branding.textColor }]} />
+          <View
+            style={[styles.divider, { backgroundColor: branding.textColor }]}
+          />
 
           {/* Product Description */}
           <View style={styles.descriptionContainer}>

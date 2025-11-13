@@ -4,7 +4,8 @@ import React, {
   useContext,
   useLayoutEffect,
   useState,
-  useEffect
+  useEffect,
+  useMemo
 } from 'react'
 import {
   View,
@@ -18,11 +19,7 @@ import {
   FlatList,
   RefreshControl
 } from 'react-native'
-import {
-  MaterialIcons,
-  AntDesign,
-  SimpleLineIcons
-} from '@expo/vector-icons'
+import { MaterialIcons, AntDesign, SimpleLineIcons } from '@expo/vector-icons'
 import { useMutation, useQuery, gql } from '@apollo/client'
 import { useCollapsibleSubHeader } from 'react-navigation-collapsible'
 import { Placeholder, PlaceholderLine, Fade } from 'rn-placeholder'
@@ -65,6 +62,11 @@ import NewFiggoStore from '../../components/NewFiggoStore/NewFiggoStore'
 import { useAppBranding } from '../../utils/translationHelper'
 import { API_URL } from '../../config/api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  calculateDistanceKm,
+  formatDistanceKm,
+  extractCoordinatesFromEntity
+} from '../../utils/geolocation'
 
 const RESTAURANTS = gql`
   ${restaurantListPreview}
@@ -90,14 +92,26 @@ function Main(props) {
   const [hasActiveOrders, setHasActiveOrders] = useState(false)
 
   //Added
-  const [stores, setStores] = useState([]);
-  const [loadingdata, setLoading] = useState(true);
-  const [banners, setBanners] = useState([]);
-  const [bannersLoading, setBannersLoading] = useState(true);
-  const [storeSearch, setStoreSearch] = useState([]);
+  const [stores, setStores] = useState([])
+  const [loadingdata, setLoading] = useState(true)
+  const [banners, setBanners] = useState([])
+  const [bannersLoading, setBannersLoading] = useState(true)
+  const [storeSearch, setStoreSearch] = useState([])
+  const [searchDistanceFilterKm, setSearchDistanceFilterKm] = useState(0)
+
+  // Reset distance filter if search cleared
+  useEffect(() => {
+    if (!search) {
+      setSearchDistanceFilterKm(null)
+    }
+  }, [search])
 
   // Add loading placeholder component
-  const ListLoadingComponent = ({ horizontal = true, count = 3, type = 'store' }) => {
+  const ListLoadingComponent = ({
+    horizontal = true,
+    count = 3,
+    type = 'store'
+  }) => {
     // Define sizes based on type
     const sizes = {
       banner: { width: '100%', height: scale(150) },
@@ -108,15 +122,17 @@ function Main(props) {
       product: { width: scale(130), height: scale(160) },
       allStore: { width: '100%', height: scale(120) },
       featuredStore: { width: scale(200), height: scale(220) }
-    };
+    }
 
-    const currentSize = sizes[type];
+    const currentSize = sizes[type]
 
     return (
-      <View style={{ 
-        flexDirection: horizontal ? 'row' : 'column',
-        paddingHorizontal: scale(12)
-      }}>
+      <View
+        style={{
+          flexDirection: horizontal ? 'row' : 'column',
+          paddingHorizontal: scale(12)
+        }}
+      >
         {[...Array(count)].map((_, index) => (
           <View
             key={index}
@@ -128,87 +144,79 @@ function Main(props) {
               width: currentSize.width,
               height: currentSize.height,
               overflow: 'hidden'
-            }}>
+            }}
+          >
             <Placeholder
-              Animation={props => (
+              Animation={(props) => (
                 <Fade
                   {...props}
                   style={{ backgroundColor: currentTheme.placeHolderColor }}
                   duration={500}
                   iterationCount={1}
                 />
-              )}>
-              <PlaceholderLine 
-                style={{ 
-                  height: '60%', 
+              )}
+            >
+              <PlaceholderLine
+                style={{
+                  height: '60%',
                   marginBottom: 0,
                   opacity: 0.7
-                }} 
+                }}
               />
               <View style={{ padding: 8 }}>
-                <PlaceholderLine 
-                  width={80} 
-                  style={{ opacity: 0.5 }}
-                />
-                <PlaceholderLine 
-                  width={50} 
-                  style={{ opacity: 0.3 }}
-                />
+                <PlaceholderLine width={80} style={{ opacity: 0.5 }} />
+                <PlaceholderLine width={50} style={{ opacity: 0.3 }} />
               </View>
             </Placeholder>
           </View>
         ))}
       </View>
-    );
-  };
+    )
+  }
 
   useEffect(() => {
     // Function to fetch data from API
     const fetchStores = async () => {
       try {
         // Get authentication token from AsyncStorage
-        const token = await AsyncStorage.getItem('token');
-        
-        const response = await fetch(
-          `${API_URL}/shops/latest`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token ? `Bearer ${token}` : '',
-            },
-          }
-        );
+        const token = await AsyncStorage.getItem('token')
 
-        const json = await response.json();
-        console.log('Featured stores API response:', json);
-        
+        const response = await fetch(`${API_URL}/shops/latest`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: token ? `Bearer ${token}` : ''
+          }
+        })
+
+        const json = await response.json()
+        console.log('Featured stores API response:', json)
+
         if (json.success && json.shops) {
           // Use data as-is from backend without remapping
-          setStores(json.shops);
+          setStores(json.shops)
         } else {
-          console.error('Error: No shops found or invalid response format');
-          setStores([]);
+          console.error('Error: No shops found or invalid response format')
+          setStores([])
         }
       } catch (error) {
-        console.error('Error fetching featured stores:', error);
-        setStores([]);
+        console.error('Error fetching featured stores:', error)
+        setStores([])
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchStores();
-  }, []);
-
+    fetchStores()
+  }, [])
 
   useEffect(() => {
     // Function to fetch all stores for search
     const SearchStores = async () => {
       try {
         // Get authentication token from AsyncStorage
-        const token = await AsyncStorage.getItem('token');
-        
+        const token = await AsyncStorage.getItem('token')
+
         // Using the same endpoint but could be a different one for all shops
         const response = await fetch(
           `${API_URL}/shops/latest`, // You might want to create a separate endpoint for all shops
@@ -216,76 +224,70 @@ function Main(props) {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': token ? `Bearer ${token}` : '',
-            },
+              Authorization: token ? `Bearer ${token}` : ''
+            }
           }
-        );
+        )
 
-        const json = await response.json();
-        console.log('Search stores API response:', json);
-        
+        const json = await response.json()
+        console.log('Search stores API response:', json)
+
         if (json.success && json.shops) {
           // Use data as-is from backend without remapping
-          setStoreSearch(json.shops);
+          setStoreSearch(json.shops)
         } else {
-          console.error('Error: No shops found for search or invalid response format');
-          setStoreSearch([]);
+          console.error(
+            'Error: No shops found for search or invalid response format'
+          )
+          setStoreSearch([])
         }
       } catch (error) {
-        console.error('Error fetching search stores:', error);
-        setStoreSearch([]);
+        console.error('Error fetching search stores:', error)
+        setStoreSearch([])
       }
-    };
+    }
 
-    SearchStores();
-  }, []);
-
-
+    SearchStores()
+  }, [])
 
   useEffect(() => {
     const fetchBanners = async () => {
-      setBannersLoading(true);
+      setBannersLoading(true)
       try {
         const response = await fetch(`${API_URL}/admin-banner/all`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'zoneId': '[1]',
-            'moduleId': '1'
+            zoneId: '[1]',
+            moduleId: '1'
           }
-        });
-        const json = await response.json();
+        })
+        const json = await response.json()
         if (json?.banners && json.banners.length > 0) {
-          setBanners(json.banners);
+          setBanners(json.banners)
         }
       } catch (error) {
-        console.error('Error fetching banners:', error);
+        console.error('Error fetching banners:', error)
       } finally {
-        setBannersLoading(false);
+        setBannersLoading(false)
       }
-    };
-    fetchBanners();
-  }, []);
-
-
-  const {  refetch, networkStatus, loading, error } = useQuery(
-    RESTAURANTS,
-    {
-      variables: {
-        longitude: location.longitude || null,
-        latitude: location.latitude || null,
-        shopType: null,
-        ip: null
-      },
-      fetchPolicy: 'network-only'
     }
-  )
+    fetchBanners()
+  }, [])
+
+  const { refetch, networkStatus, loading, error } = useQuery(RESTAURANTS, {
+    variables: {
+      longitude: location.longitude || null,
+      latitude: location.latitude || null,
+      shopType: null,
+      ip: null
+    },
+    fetchPolicy: 'network-only'
+  })
 
   const [mutate, { loading: mutationLoading }] = useMutation(SELECT_ADDRESS, {
     onError
   })
-  
- 
 
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
@@ -305,9 +307,9 @@ function Main(props) {
         headerMenuBackground: branding.headerColor,
         fontMainColor: branding.textColor,
         iconColorPink: branding.textColor,
-        iconColor: "#FFFFFF",
-        locationColor: "#FFFFFF",
-        locationLabelColor: "#FFFFFF",
+        iconColor: '#FFFFFF',
+        locationColor: '#FFFFFF',
+        locationLabelColor: '#FFFFFF',
         open: onOpen,
         navigation
       })
@@ -392,23 +394,35 @@ function Main(props) {
 
   const modalHeader = () => (
     <View style={[styles().addNewAddressbtn]}>
-      <View style={styles({...currentTheme, primaryColor: branding.primaryColor}).addressContainer}>
+      <View
+        style={
+          styles({ ...currentTheme, primaryColor: branding.primaryColor })
+            .addressContainer
+        }
+      >
         <TouchableOpacity
-          style={[styles({...currentTheme, primaryColor: branding.primaryColor}).addButton]}
+          style={[
+            styles({ ...currentTheme, primaryColor: branding.primaryColor })
+              .addButton
+          ]}
           activeOpacity={0.7}
           onPress={setCurrentLocation}
           disabled={busy}
         >
           <View style={styles().addressSubContainer}>
-            {
-              busy ? <Spinner size='small' /> : (
-                <>
-                  <SimpleLineIcons name="target" size={scale(18)} color={branding.textColor} />
-                  <View style={styles().mL5p} />
-                  <TextDefault bold>{t('currentLocation')}</TextDefault>
-                </>
-              )
-            }
+            {busy ? (
+              <Spinner size='small' />
+            ) : (
+              <>
+                <SimpleLineIcons
+                  name='target'
+                  size={scale(18)}
+                  color={branding.textColor}
+                />
+                <View style={styles().mL5p} />
+                <TextDefault bold>{t('currentLocation')}</TextDefault>
+              </>
+            )}
           </View>
         </TouchableOpacity>
       </View>
@@ -419,8 +433,18 @@ function Main(props) {
     if (loading || mutationLoading || loadingOrders) return <MainLoadingUI />
     else {
       return (
-        <View style={styles({...currentTheme, primaryColor: branding.primaryColor}).emptyViewContainer}>
-          <View style={styles({...currentTheme, primaryColor: branding.primaryColor}).emptyViewBox}>
+        <View
+          style={
+            styles({ ...currentTheme, primaryColor: branding.primaryColor })
+              .emptyViewContainer
+          }
+        >
+          <View
+            style={
+              styles({ ...currentTheme, primaryColor: branding.primaryColor })
+                .emptyViewBox
+            }
+          >
             <TextDefault bold H4 center textColor={currentTheme.fontMainColor}>
               {t('notAvailableinYourArea')}
             </TextDefault>
@@ -435,10 +459,18 @@ function Main(props) {
 
   const modalFooter = () => (
     <View style={styles().addNewAddressbtn}>
-      <View style={styles({...currentTheme, primaryColor: branding.primaryColor}).addressContainer}>
+      <View
+        style={
+          styles({ ...currentTheme, primaryColor: branding.primaryColor })
+            .addressContainer
+        }
+      >
         <TouchableOpacity
           activeOpacity={0.5}
-          style={styles({...currentTheme, primaryColor: branding.primaryColor}).addButton}
+          style={
+            styles({ ...currentTheme, primaryColor: branding.primaryColor })
+              .addButton
+          }
           onPress={() => {
             if (isLoggedIn) {
               navigation.navigate('AddNewAddress', {
@@ -468,41 +500,114 @@ function Main(props) {
     </View>
   )
 
- 
+  const buyerCoordinates = useMemo(() => {
+    if (
+      location?.latitude !== undefined &&
+      location?.longitude !== undefined &&
+      location?.latitude !== null &&
+      location?.longitude !== null
+    ) {
+      return {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude)
+      }
+    }
+    return null
+  }, [location?.latitude, location?.longitude])
 
- 
+  const computeStoreDistance = (store) => {
+    if (!buyerCoordinates) {
+      return { distanceKm: null, distanceLabel: 'N/A' }
+    }
+
+    const storeCoordinates = extractCoordinatesFromEntity(store)
+    if (!storeCoordinates) {
+      return { distanceKm: null, distanceLabel: 'N/A' }
+    }
+
+    const distance = calculateDistanceKm(
+      buyerCoordinates.latitude,
+      buyerCoordinates.longitude,
+      storeCoordinates.latitude,
+      storeCoordinates.longitude
+    )
+
+    if (distance === null) {
+      return { distanceKm: null, distanceLabel: 'N/A' }
+    }
+
+    const formatted = formatDistanceKm(distance)
+    return {
+      distanceKm: distance,
+      distanceLabel: formatted ? `${formatted} away` : 'N/A'
+    }
+  }
+
   const searchAllShops = (searchText) => {
-    const data = [];
-    const escapedSearchText = escapeRegExp(searchText);
-    const regex = new RegExp(escapedSearchText, 'i');
+    const trimmed = searchText?.trim()
+    if (!trimmed) return []
+
+    const data = []
+    const escapedSearchText = escapeRegExp(trimmed)
+    const regex = new RegExp(escapedSearchText, 'i')
 
     // Use storeSearch array for searching
     storeSearch?.forEach((store) => {
       // Check if store.name exists and matches the regex
       if (store.name && regex.test(store.name)) {
-        data.push(store); // Add the store to the data array if it matches
+        const { distanceKm, distanceLabel } = computeStoreDistance(store)
+        data.push({
+          ...store,
+          distanceKm,
+          distanceLabel
+        })
       }
-    });
+    })
 
-    return data; // Return the filtered stores
-  };
+    if (
+      searchDistanceFilterKm !== null &&
+      searchDistanceFilterKm !== undefined
+    ) {
+      const maxDistance = Number(searchDistanceFilterKm)
+      return data.filter(
+        (store) => store.distanceKm !== null && store.distanceKm <= maxDistance
+      )
+    }
 
+    return data // Return the filtered stores
+  }
 
   // if (error) return <ErrorView />
 
   return (
     <>
       <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles().flex]}>
-        <View style={[styles().flex, styles({...currentTheme, primaryColor: branding.primaryColor}).screenBackground]}>
+        <View
+          style={[
+            styles().flex,
+            styles({ ...currentTheme, primaryColor: branding.primaryColor })
+              .screenBackground
+          ]}
+        >
           <View style={styles().flex}>
             <View style={styles().mainContentContainer}>
               <View style={[styles().flex, styles().subContainer]}>
-                <View style={styles({...currentTheme, primaryColor: branding.primaryColor}).searchbar}>
+                <View
+                  style={
+                    styles({
+                      ...currentTheme,
+                      primaryColor: branding.primaryColor
+                    }).searchbar
+                  }
+                >
                   <Search
                     setSearch={setSearch}
                     search={search}
                     newheaderColor={branding.headerColor}
                     placeHolder={t('Search Products')}
+                    distanceFilter={searchDistanceFilterKm}
+                    onDistanceFilterChange={setSearchDistanceFilterKm}
+                    isFilteringByDistance={false}
                   />
                 </View>
                 {search ? (
@@ -538,10 +643,7 @@ function Main(props) {
                         />
                       }
                       data={searchAllShops(search)}
-
-                      renderItem={({ item }) => (
-                        <NewFiggoStore item={item} />
-                      )}
+                      renderItem={({ item }) => <NewFiggoStore item={item} />}
                     />
                   </View>
                 ) : (
@@ -549,10 +651,13 @@ function Main(props) {
                     showsVerticalScrollIndicator={false}
                     showsHorizontalScrollIndicator={false}
                   >
-
                     <View style={{ padding: 10 }}>
                       {bannersLoading ? (
-                        <ListLoadingComponent horizontal={false} count={1} type="banner" />
+                        <ListLoadingComponent
+                          horizontal={false}
+                          count={1}
+                          type='banner'
+                        />
                       ) : banners.length > 0 ? (
                         <CarouselSlider banners={banners} />
                       ) : null}
@@ -563,18 +668,16 @@ function Main(props) {
                         style={styles().mainItem}
                         onPress={() =>
                           navigation.navigate('Menu', {
-                            selectedType: 'restaurant', moduleId: '4'
+                            selectedType: 'restaurant',
+                            moduleId: '4'
                           })
                         }
                       >
-                        <View>
-
-
-                        </View>
+                        <View></View>
                         <Image
                           source={require('../../assets/images/ItemsList/4.png')}
                           style={styles().popularMenuImg}
-                        // resizeMode='contain'
+                          // resizeMode='contain'
                         />
                         <TextDefault
                           H4
@@ -589,18 +692,16 @@ function Main(props) {
                         style={styles().mainItem}
                         onPress={() =>
                           navigation.navigate('Menu', {
-                            selectedType: 'grocery', moduleId: '1'
+                            selectedType: 'grocery',
+                            moduleId: '1'
                           })
                         }
                       >
-                        <View>
-
-
-                        </View>
+                        <View></View>
                         <Image
                           source={require('../../assets/images/ItemsList/2.png')}
                           style={styles().popularMenuImg}
-                        // resizeMode='contain'
+                          // resizeMode='contain'
                         />
                         <TextDefault
                           H4
@@ -611,7 +712,6 @@ function Main(props) {
                           {t('grocery')}
                         </TextDefault>
                       </TouchableOpacity>
-
                     </View>
 
                     <View>
@@ -621,7 +721,10 @@ function Main(props) {
                             <TextDefault H4 bold style={styles().sectionTitle}>
                               Featured Stores
                             </TextDefault>
-                            <ListLoadingComponent count={3} type="featuredStore" />
+                            <ListLoadingComponent
+                              count={3}
+                              type='featuredStore'
+                            />
                           </View>
                         ) : (
                           <MainRestaurantCard
@@ -631,13 +734,12 @@ function Main(props) {
                         )}
                       </View>
                     </View>
-                   
                   </ScrollView>
                 )}
               </View>
             </View>
           </View>
-        
+
           <MainModalize
             modalRef={modalRef}
             currentTheme={currentTheme}
@@ -649,9 +751,8 @@ function Main(props) {
             profile={profile}
             location={location}
           />
-
         </View>
-        <BottomTab screen="HOME" />
+        <BottomTab screen='HOME' />
       </SafeAreaView>
     </>
   )

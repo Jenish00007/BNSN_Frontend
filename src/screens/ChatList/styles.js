@@ -62,6 +62,36 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
   },
+  roleFilterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  roleFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  roleFilterText: {
+    fontSize: 14,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  roleBadgeText: {
+    fontSize: 11,
+  },
 });
 
 export default styles;
