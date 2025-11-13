@@ -48,7 +48,7 @@
       "androidCollapsedTitle": "Qauds"
     },
     "android": {
-      "versionCode": 5,
+      "versionCode": 9,
       "package": "com.bnsn.bnsn",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
