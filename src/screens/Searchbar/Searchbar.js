@@ -270,7 +270,9 @@ function SearchPage() {
           data={activeResults}
           horizontal={true}
           showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => <Products item={item} />}
+          renderItem={({ item }) => (
+            <Products item={item} maxDistanceKm={distanceFilterKm} />
+          )}
           keyExtractor={(item) =>
             (item._id || item.id || Math.random()).toString()
           }

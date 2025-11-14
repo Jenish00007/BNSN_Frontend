@@ -100,6 +100,7 @@ import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import ForceUpdateModal from '../components/ForceUpdateModal/ForceUpdateModal'
 import { isVersionLower } from '../utils/version'
+import ProfilePage from '../screens/Profile/Profile'
 
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
@@ -228,6 +229,7 @@ function NoDrawer() {
       <NavigationStack.Screen name='Notification' component={Notification} />
       <NavigationStack.Screen name='ProductDetail' component={ProductDetails} />
       <NavigationStack.Screen name='Profile' component={Options} />
+      <NavigationStack.Screen name='ProfilePage' component={ProfilePage} />
       <NavigationStack.Screen name='OrderSummary' component={OrderSummary} />
       <NavigationStack.Screen name='OrderDetails' component={OrderDetail} />
       <NavigationStack.Screen

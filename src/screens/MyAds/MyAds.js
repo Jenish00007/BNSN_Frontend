@@ -24,6 +24,7 @@ const MyAds = () => {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [sellerData, setSellerData] = useState(null)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
 
   const navigation = useNavigation()
   const branding = useAppBranding()
@@ -185,6 +186,186 @@ const MyAds = () => {
     })
   }
 
+  const renderStatusActionButton = ({
+    label,
+    onPress,
+    loading = false,
+    variant = 'primary'
+  }) => {
+    const variantStyle =
+      variant === 'primary'
+        ? styles.actionButtonPrimary
+        : variant === 'secondary'
+          ? styles.actionButtonSecondary
+          : styles.actionButtonDestructive
+
+    const textStyle =
+      variant === 'primary'
+        ? styles.actionButtonTextPrimary
+        : variant === 'secondary'
+          ? styles.actionButtonTextSecondary
+          : styles.actionButtonTextDestructive
+
+    const indicatorColor =
+      variant === 'primary'
+        ? '#FFFFFF'
+        : variant === 'secondary'
+          ? '#1D4ED8'
+          : '#B91C1C'
+
+    return (
+      <TouchableOpacity
+        style={[styles.actionButtonLarge, variantStyle]}
+        onPress={onPress}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator size='small' color={indicatorColor} />
+        ) : (
+          <TextDefault bold style={textStyle}>
+            {label}
+          </TextDefault>
+        )}
+      </TouchableOpacity>
+    )
+  }
+
+  const formatDateShort = (value) => {
+    if (!value) return '—'
+    try {
+      return new Date(value).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch (error) {
+      return '—'
+    }
+  }
+
+  const getStatusMeta = (product) => {
+    switch (product?.status) {
+      case 'sold':
+        return {
+          label: 'SOLD',
+          chipStyle: { backgroundColor: '#DCFCE7' },
+          chipTextStyle: { color: '#15803D' },
+          message: 'This ad was sold',
+          messageContainerStyle: { backgroundColor: '#DCFCE7' },
+          messageTextStyle: { color: '#065F46' }
+        }
+      case 'inactive':
+        return {
+          label: 'EXPIRED',
+          chipStyle: { backgroundColor: '#FEE2E2' },
+          chipTextStyle: { color: '#B91C1C' },
+          message:
+            'This ad is inactive. Mark it as sold or republish to go live again.',
+          messageContainerStyle: { backgroundColor: '#FEE2E2' },
+          messageTextStyle: { color: '#7F1D1D' }
+        }
+      default:
+        return {
+          label: 'ACTIVE',
+          chipStyle: { backgroundColor: '#DBEAFE' },
+          chipTextStyle: { color: '#1D4ED8' },
+          message: null
+        }
+    }
+  }
+
+  const performProductStatusUpdate = async ({
+    productId,
+    endpoint,
+    successMessage,
+    body
+  }) => {
+    if (!token) {
+      Alert.alert('Error', 'Please login again to manage your ads.')
+      return
+    }
+
+    const loadingKey = `${productId}:${endpoint}`
+    setActionLoadingId(loadingKey)
+
+    try {
+      const response = await fetch(
+        `${API_URL}/product/${endpoint}/${productId}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: body ? JSON.stringify(body) : undefined
+        }
+      )
+
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        throw new Error(data?.message || 'Failed to update ad.')
+      }
+
+      Alert.alert('Success', successMessage)
+      fetchProducts()
+    } catch (error) {
+      console.error(`Error updating product (${endpoint}):`, error)
+      Alert.alert('Error', error?.message || 'Failed to update ad.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleMarkAsSold = (product) => {
+    Alert.alert(
+      'Mark as sold',
+      'Are you sure this item has been sold? Buyers will no longer be able to contact you.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark as sold',
+          style: 'destructive',
+          onPress: () =>
+            performProductStatusUpdate({
+              productId: product._id,
+              endpoint: 'mark-product-sold',
+              successMessage: 'Ad marked as sold',
+              body: { reason: 'Marked as sold from My Ads' }
+            })
+        }
+      ]
+    )
+  }
+
+  const handleDeactivateAd = (product) => {
+    Alert.alert(
+      'Move to inactive',
+      'This ad will be hidden from buyers. You can republish it anytime.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Move to inactive',
+          style: 'destructive',
+          onPress: () =>
+            performProductStatusUpdate({
+              productId: product._id,
+              endpoint: 'mark-product-inactive',
+              successMessage: 'Ad moved to inactive',
+              body: { reason: 'Manually removed from My Ads' }
+            })
+        }
+      ]
+    )
+  }
+
+  const handleRepublishAd = (product) => {
+    performProductStatusUpdate({
+      productId: product._id,
+      endpoint: 'republish-product',
+      successMessage: 'Ad republished for another 30 days'
+    })
+  }
+
   // Show login prompt if not logged in
   if (!isLoggedIn || !token) {
     return (
@@ -218,66 +399,156 @@ const MyAds = () => {
     )
   }
 
-  const renderProductCard = ({ item }) => (
-    <View style={styles.productCard}>
-      <TouchableOpacity onPress={() => handleAdPress(item)}>
-        <Image
-          source={{
-            uri:
-              item.images?.[0]?.url ||
-              item.images?.[0] ||
-              'https://via.placeholder.com/100'
-          }}
-          style={styles.productImage}
-        />
-        {item.stock <= 0 && (
-          <View style={styles.badge}>
-            <TextDefault style={styles.badgeText}>Out of Stock</TextDefault>
-          </View>
-        )}
-      </TouchableOpacity>
+  const renderProductCard = ({ item }) => {
+    const statusMeta = getStatusMeta(item)
+    const createdLabel = formatDateShort(item.createdAt)
+    const expiresLabel = formatDateShort(item.expiresAt)
 
-      <View style={styles.productInfo}>
+    const markSoldLoading = actionLoadingId === `${item._id}:mark-product-sold`
+    const deactivateLoading =
+      actionLoadingId === `${item._id}:mark-product-inactive`
+    const republishLoading = actionLoadingId === `${item._id}:republish-product`
+
+    return (
+      <View style={styles.productCard}>
         <TouchableOpacity onPress={() => handleAdPress(item)}>
-          <TextDefault bold numberOfLines={2} style={styles.productName}>
-            {item.name}
-          </TextDefault>
+          <View style={styles.productImageWrapper}>
+            <Image
+              source={{
+                uri:
+                  item.images?.[0]?.url ||
+                  item.images?.[0] ||
+                  'https://via.placeholder.com/100'
+              }}
+              style={styles.productImage}
+            />
+            {item.stock <= 0 && (
+              <View style={styles.badge}>
+                <TextDefault style={styles.badgeText}>Out of Stock</TextDefault>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.productInfo}>
+          <TouchableOpacity onPress={() => handleAdPress(item)}>
+            <TextDefault bold numberOfLines={2} style={styles.productName}>
+              {item.name}
+            </TextDefault>
+          </TouchableOpacity>
           <TextDefault
             style={[styles.productPrice, { color: branding.primaryColor }]}
           >
-            ₹{item.discountPrice || item.originalPrice}
+            ₹{item.discountPrice || item.originalPrice || 0}
           </TextDefault>
           <TextDefault style={styles.productStock}>
-            Stock: {item.stock} {item.unit ? `• ${item.unit}` : ''}
+            Posted on {createdLabel}
           </TextDefault>
-          {item.category?.name && (
-            <TextDefault small style={{ color: '#666666', marginTop: 4 }}>
-              {item.category.name}
+          <TextDefault small style={styles.productMetaText}>
+            Expires on {expiresLabel}
+          </TextDefault>
+        </View>
+
+        <View style={styles.statusHeader}>
+          <View
+            style={[
+              styles.statusChip,
+              statusMeta.chipStyle || styles.statusChipDefault
+            ]}
+          >
+            <TextDefault
+              bold
+              style={statusMeta.chipTextStyle || styles.statusChipText}
+            >
+              {statusMeta.label}
             </TextDefault>
+          </View>
+          <View style={styles.inlineActions}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                { backgroundColor: branding.primaryColor }
+              ]}
+              onPress={() => handleEditProduct(item)}
+            >
+              <MaterialIcons name='edit' size={20} color='white' />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#F44336' }]}
+              onPress={() => handleDeleteProduct(item._id)}
+            >
+              <MaterialIcons name='delete' size={20} color='white' />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {statusMeta.message && (
+          <View
+            style={[
+              styles.statusMessageContainer,
+              statusMeta.messageContainerStyle || null
+            ]}
+          >
+            <TextDefault
+              style={[
+                styles.statusMessageText,
+                statusMeta.messageTextStyle || null
+              ]}
+            >
+              {statusMeta.message}
+            </TextDefault>
+          </View>
+        )}
+
+        <View style={styles.actionsRow}>
+          {item.status === 'active' && (
+            <>
+              {renderStatusActionButton({
+                label: 'Mark as sold',
+                onPress: () => handleMarkAsSold(item),
+                loading: markSoldLoading,
+                variant: 'primary'
+              })}
+              {renderStatusActionButton({
+                label: 'Remove',
+                onPress: () => handleDeactivateAd(item),
+                loading: deactivateLoading,
+                variant: 'secondary'
+              })}
+            </>
           )}
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.productActions}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            { backgroundColor: branding.primaryColor }
-          ]}
-          onPress={() => handleEditProduct(item)}
-        >
-          <MaterialIcons name='edit' size={20} color='white' />
-        </TouchableOpacity>
+          {item.status === 'inactive' && (
+            <>
+              {renderStatusActionButton({
+                label: 'Mark as sold',
+                onPress: () => handleMarkAsSold(item),
+                loading: markSoldLoading,
+                variant: 'secondary'
+              })}
+              {renderStatusActionButton({
+                label: 'Republish',
+                onPress: () => handleRepublishAd(item),
+                loading: republishLoading,
+                variant: 'primary'
+              })}
+            </>
+          )}
 
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#F44336' }]}
-          onPress={() => handleDeleteProduct(item._id)}
-        >
-          <MaterialIcons name='delete' size={20} color='white' />
-        </TouchableOpacity>
+          {item.status === 'sold' && (
+            <>
+              {renderStatusActionButton({
+                label: 'Remove',
+                onPress: () => handleDeleteProduct(item._id),
+                loading: false,
+                variant: 'destructive'
+              })}
+            </>
+          )}
+        </View>
       </View>
-    </View>
-  )
+    )
+  }
 
   const renderEmptyState = () => (
     <View style={styles.emptyStateContainer}>

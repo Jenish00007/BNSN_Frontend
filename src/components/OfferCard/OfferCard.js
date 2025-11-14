@@ -24,7 +24,7 @@ import { API_URL } from '../../config/api'
 
 const sellerCache = new Map()
 
-const OfferCard = ({ item }) => {
+const OfferCard = ({ item, maxDistanceKm = null }) => {
   const navigation = useNavigation()
   const {
     addToCart,
@@ -116,17 +116,41 @@ const OfferCard = ({ item }) => {
     [item, sellerUser]
   )
 
-  const distanceLabel = useMemo(() => {
-    if (!buyerCoordinates || !sellerCoordinates) return 'N/A'
-    const distance = calculateDistanceKm(
+  const providedDistanceKm =
+    typeof item?.distanceKm === 'number' ? item.distanceKm : null
+
+  const distanceKm = useMemo(() => {
+    if (providedDistanceKm !== null) return providedDistanceKm
+    if (!buyerCoordinates || !sellerCoordinates) return null
+    return calculateDistanceKm(
       buyerCoordinates.latitude,
       buyerCoordinates.longitude,
       sellerCoordinates.latitude,
       sellerCoordinates.longitude
     )
-    const formatted = formatDistanceKm(distance)
+  }, [providedDistanceKm, buyerCoordinates, sellerCoordinates])
+
+  const distanceLabel = useMemo(() => {
+    if (distanceKm === null) return 'N/A'
+    const formatted = formatDistanceKm(distanceKm)
     return formatted ? `${formatted} away` : 'N/A'
-  }, [buyerCoordinates, sellerCoordinates])
+  }, [distanceKm])
+
+  const normalizedMaxDistance = useMemo(() => {
+    if (maxDistanceKm === null || maxDistanceKm === undefined) return null
+    const value = Number(maxDistanceKm)
+    if (!Number.isFinite(value) || value <= 0) return null
+    return value
+  }, [maxDistanceKm])
+
+  const exceedsDistanceFilter =
+    normalizedMaxDistance !== null &&
+    distanceKm !== null &&
+    distanceKm > normalizedMaxDistance
+
+  if (exceedsDistanceFilter) {
+    return null
+  }
 
   const sellerAddress = useMemo(() => {
     if (item?.shop?.address) return item.shop.address

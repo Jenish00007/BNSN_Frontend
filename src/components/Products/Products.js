@@ -30,16 +30,20 @@ const CARD_WIDTH = (width - 45) / 2 // Responsive card width
 
 const sellerCache = new Map()
 
-const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
+const Products = ({
+  item,
+  getProductCartInfo: propGetProductCartInfo,
+  maxDistanceKm = null
+}) => {
   const navigation = useNavigation()
-  const {
-    addToCart,
-    isLoggedIn,
-    getProductCartInfo: contextGetProductCartInfo,
-    updateCartQuantity,
-    removeFromCart
+  const { 
+    addToCart, 
+    isLoggedIn, 
+    getProductCartInfo: contextGetProductCartInfo, 
+    updateCartQuantity, 
+    removeFromCart 
   } = useContext(UserContext)
-
+  
   // Use prop if provided, otherwise fall back to context
   const getProductCartInfo = propGetProductCartInfo || contextGetProductCartInfo
   const { location } = useContext(LocationContext)
@@ -127,17 +131,41 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
     [item, sellerUser]
   )
 
-  const distanceLabel = useMemo(() => {
-    if (!buyerCoordinates || !sellerCoordinates) return 'N/A'
-    const distance = calculateDistanceKm(
+  const providedDistanceKm =
+    typeof item?.distanceKm === 'number' ? item.distanceKm : null
+
+  const distanceKm = useMemo(() => {
+    if (providedDistanceKm !== null) return providedDistanceKm
+    if (!buyerCoordinates || !sellerCoordinates) return null
+    return calculateDistanceKm(
       buyerCoordinates.latitude,
       buyerCoordinates.longitude,
       sellerCoordinates.latitude,
       sellerCoordinates.longitude
     )
-    const formatted = formatDistanceKm(distance)
+  }, [providedDistanceKm, buyerCoordinates, sellerCoordinates])
+
+  const distanceLabel = useMemo(() => {
+    if (distanceKm === null) return 'N/A'
+    const formatted = formatDistanceKm(distanceKm)
     return formatted ? `${formatted} away` : 'N/A'
-  }, [buyerCoordinates, sellerCoordinates])
+  }, [distanceKm])
+
+  const normalizedMaxDistance = useMemo(() => {
+    if (maxDistanceKm === null || maxDistanceKm === undefined) return null
+    const numericValue = Number(maxDistanceKm)
+    if (!Number.isFinite(numericValue) || numericValue <= 0) return null
+    return numericValue
+  }, [maxDistanceKm])
+
+  const exceedsDistanceFilter =
+    normalizedMaxDistance !== null &&
+    distanceKm !== null &&
+    distanceKm > normalizedMaxDistance
+
+  if (exceedsDistanceFilter) {
+    return null
+  }
 
   const sellerAddressLabel = useMemo(() => {
     if (item?.shop?.address) return item.shop.address
@@ -184,7 +212,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
   // const scaleAnim = useRef(new Animated.Value(1)).current;
   // const pressAnimation = useRef(null);
   // const addToCartAnimation = useRef(null);
-
+ 
   // Function to limit the product name to allow 2 lines
   const getShortenedName = (name) => {
     if (!name) return ''
@@ -197,22 +225,22 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
   // Function to format unit information
   const getUnitDisplay = () => {
     const { weight, unit, quantity, unitCount } = item || {}
-
+    
     // If unitCount is provided, use it with unit
     if (unitCount && unit) {
       return `${unitCount} ${unit}`
     }
-
+    
     // If quantity is provided, use it with "Pcs"
     if (quantity) {
       return `${quantity} Pcs`
     }
-
+    
     // If weight is provided, use it
     if (weight) {
       return weight
     }
-
+    
     // If only unit is provided, use it
     if (unit) {
       return unit
@@ -221,7 +249,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
     if (item?.name && !weight && !unit && !quantity && !unitCount) {
       return '1 Pcs'
     }
-
+    
     return null
   }
 
@@ -271,7 +299,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
       cartItemId: 'temp_' + Date.now()
     })
     setIsLoading(true)
-
+    
     try {
       const result = await addToCart(item, countValue)
       if (result.success) {
@@ -324,7 +352,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
 
     // Update local state immediately
     setCartInfo((prev) => ({ ...prev, quantity: newQuantity }))
-
+    
     // Schedule API call with debounce
     scheduleQuantityCommit(currentId, newQuantity)
   }
@@ -332,7 +360,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
   // Handle increment/decrement for count value (before adding to cart)
   const handleCountChange = (change) => {
     const newCount = countValue + change
-
+    
     // Check if product is in stock
     const isInStock =
       item?.stock > 0 && item?.stock !== null && item?.stock !== undefined
@@ -386,7 +414,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
   if (!item) {
     return null
   }
-
+     
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -398,8 +426,8 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
       >
         <View
           style={[
-            styles.itemContainer,
-            { backgroundColor: branding.backgroundColor },
+          styles.itemContainer,
+          { backgroundColor: branding.backgroundColor },
             (item.stock === 0 ||
               item.stock === null ||
               item.stock === undefined) &&
@@ -409,19 +437,19 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
           {/* Product Image Container */}
           <View style={styles.imageContainer}>
             <ImageBackground
-              source={{
+              source={{ 
                 uri:
                   item?.image ||
                   item?.images?.[0]?.url ||
                   item?.images?.[0] ||
-                  'https://via.placeholder.com/300x200?text=No+Image'
+                'https://via.placeholder.com/300x200?text=No+Image'
               }}
               style={styles.cardImageBG}
               resizeMode='cover'
             >
               {/* Gradient overlay for better text visibility */}
               <View style={styles.imageOverlay} />
-
+             
               {/* Favorite Button */}
               <View style={styles.favoritePosition}>
                 <AddToFavourites product={item} />
@@ -457,7 +485,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
             {item.shop && (
               <View style={styles.sellerContainer}>
                 <Image
-                  source={{
+                  source={{ 
                     uri:
                       item.shop.avatar ||
                       item.shop.logo ||
@@ -477,9 +505,9 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
                 </View>
               </View>
             )}
-
-            <View style={styles.priceRowOnly}>
-              <View style={styles.currentPriceRow}>
+          
+              <View style={styles.priceRowOnly}>
+                <View style={styles.currentPriceRow}>
                 <Text
                   style={[
                     styles.currencySymbol,
@@ -491,19 +519,19 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
                 <Text
                   style={[styles.currentPrice, { color: branding.textColor }]}
                 >
-                  {getCurrentPrice()}
-                </Text>
-                {getOriginalPrice() > getCurrentPrice() && (
+                    {getCurrentPrice()}
+                  </Text>
+                  {getOriginalPrice() > getCurrentPrice() && (
                   <Text style={[styles.originalPrice, { marginLeft: 6 }]}>
                     ₹{getOriginalPrice()}
                   </Text>
-                )}
+                  )}
+                </View>
               </View>
-            </View>
 
-            {/* Location with Address - Replace lines 389-440 */}
-            <View style={styles.bottomControls}>
-              <View style={styles.locationAddressContainer}>
+          {/* Location with Address - Replace lines 389-440 */}
+<View style={styles.bottomControls}>
+  <View style={styles.locationAddressContainer}>
                 <View style={styles.locationRow}>
                   <Icon
                     name='location-on'
@@ -518,7 +546,7 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
                       (isFetchingSeller
                         ? 'Fetching seller location...'
                         : 'Location not available')}
-                  </Text>
+    </Text>
                   {isFetchingSeller && !sellerAddressLabel && (
                     <ActivityIndicator
                       size='small'
@@ -544,8 +572,8 @@ const Products = ({ item, getProductCartInfo: propGetProductCartInfo }) => {
                     {distanceLabel}
                   </Text>
                 </View>
-              </View>
-            </View>
+  </View>
+</View>
             {/* Price + quantity row 
             <View style={styles.priceQtyRow}>
               <View style={styles.priceContainer}>
@@ -630,7 +658,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4
   },
-
+ 
   touchableContainer: {
     flex: 1
   },

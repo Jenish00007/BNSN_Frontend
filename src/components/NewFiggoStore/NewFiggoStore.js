@@ -1,46 +1,57 @@
-import React from 'react';
-import { View, Image, ImageBackground, TouchableOpacity, StyleSheet } from 'react-native';
-import { scale } from '../../utils/scaling';
-import TextDefault from '../Text/TextDefault/TextDefault';
-import { useNavigation } from '@react-navigation/native';
-import { theme } from '../../utils/themeColors';
-import ThemeContext from '../../ui/ThemeContext/ThemeContext';
-import { useContext } from 'react';
-import { MaterialIcons } from '@expo/vector-icons';
+import React from 'react'
+import {
+  View,
+  Image,
+  ImageBackground,
+  TouchableOpacity,
+  StyleSheet
+} from 'react-native'
+import { scale } from '../../utils/scaling'
+import TextDefault from '../Text/TextDefault/TextDefault'
+import { useNavigation } from '@react-navigation/native'
+import { theme } from '../../utils/themeColors'
+import ThemeContext from '../../ui/ThemeContext/ThemeContext'
+import { useContext } from 'react'
+import { MaterialIcons } from '@expo/vector-icons'
 import AddToFavourites from '../Favourites/AddtoFavourites'
-import { useAppBranding } from '../../utils/translationHelper';
+import { useAppBranding } from '../../utils/translationHelper'
 
 const NewFiggoStore = ({ item }) => {
-  const navigation = useNavigation();
-  const themeContext = useContext(ThemeContext);
-  const currentTheme = theme[themeContext.ThemeValue];
-  const branding = useAppBranding();
+  const navigation = useNavigation()
+  const themeContext = useContext(ThemeContext)
+  const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
 
   const handleVisit = () => {
-    navigation.navigate('Restaurant', { ...item });
-    
-  };
+    navigation.navigate('Restaurant', { ...item })
+  }
 
   const truncateText = (text, length) => {
-    if (!text) return '';
-    return text.length > length ? `${text.substring(0, length)}...` : text;
-  };
+    if (!text) return ''
+    return text.length > length ? `${text.substring(0, length)}...` : text
+  }
 
   return (
     <TouchableOpacity onPress={handleVisit} activeOpacity={0.8}>
-      <View style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: branding.backgroundColor }
+        ]}
+      >
         <ImageBackground
           source={{ uri: item?.cover_photo_full_url }}
           style={styles.coverImage}
-          imageStyle={styles.coverImageStyle}>
+          imageStyle={styles.coverImageStyle}
+        >
           <View style={styles.favoriteContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.favoriteButton,
                 { backgroundColor: 'rgba(255, 255, 255, 0.8)' }
               ]}
             >
-              <AddToFavourites restaurantId={item?.id}/>
+              <AddToFavourites restaurantId={item?.id} />
             </TouchableOpacity>
           </View>
         </ImageBackground>
@@ -50,46 +61,70 @@ const NewFiggoStore = ({ item }) => {
             <Image
               source={{ uri: item?.logo_full_url }}
               style={styles.logo}
-              resizeMode="cover"
+              resizeMode='cover'
             />
           </View>
 
           <View style={styles.infoContainer}>
             <View style={styles.mainInfo}>
-              <TextDefault style={[styles.title, { color: branding.textColor }]} numberOfLines={1}>
+              <TextDefault
+                style={[styles.title, { color: branding.textColor }]}
+                numberOfLines={1}
+              >
                 {item?.name || 'Store Name'}
               </TextDefault>
 
               <View style={styles.addressContainer}>
-                <MaterialIcons name="location-on" size={14} color={branding.textColor} />
-                <TextDefault style={[styles.address, { color: branding.textColor }]} numberOfLines={1}>
-                  {truncateText(item?.address, 30) || 'House: 00, Road: 00, Street:00'}
+                <MaterialIcons
+                  name='location-on'
+                  size={14}
+                  color={branding.textColor}
+                />
+                <TextDefault
+                  style={[styles.address, { color: branding.textColor }]}
+                  numberOfLines={1}
+                >
+                  {truncateText(item?.address, 30) ||
+                    'House: 00, Road: 00, Street:00'}
                 </TextDefault>
               </View>
 
               <View style={styles.distanceContainer}>
-                <MaterialIcons name="directions-bike" size={14} color={branding.primaryColor} />
-                <TextDefault style={[styles.distance, { color: branding.primaryColor }]}>
+                <MaterialIcons
+                  name='directions-bike'
+                  size={14}
+                  color={branding.primaryColor}
+                />
+                <TextDefault
+                  style={[styles.distance, { color: branding.primaryColor }]}
+                >
                   {Math.round(item?.distance / 1000) || '100+'} km
                 </TextDefault>
               </View>
             </View>
 
             <View style={styles.visitButtonContainer}>
-              <TouchableOpacity 
-                style={[styles.visitButton, { backgroundColor: branding.buttonColor }]} 
+              <TouchableOpacity
+                style={[
+                  styles.visitButton,
+                  { backgroundColor: branding.buttonColor }
+                ]}
                 onPress={handleVisit}
                 activeOpacity={0.7}
               >
-                <TextDefault style={[styles.visitText, { color: branding.textColor }]}>Visit</TextDefault>
+                <TextDefault
+                  style={[styles.visitText, { color: branding.textColor }]}
+                >
+                  Visit
+                </TextDefault>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </View>
     </TouchableOpacity>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -100,41 +135,41 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 2
     },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: 3.84
   },
   coverImage: {
     width: '100%',
     height: scale(140),
     borderTopLeftRadius: scale(12),
     borderTopRightRadius: scale(12),
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   coverImageStyle: {
-    resizeMode: 'cover',
+    resizeMode: 'cover'
   },
   favoriteContainer: {
     position: 'absolute',
     top: scale(8),
-    right: scale(8),
+    right: scale(8)
   },
   favoriteButton: {
     borderRadius: scale(15),
     padding: scale(6),
     elevation: 2,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 2
     },
     shadowOpacity: 0.15,
-    shadowRadius: 3.84,
+    shadowRadius: 3.84
   },
   contentContainer: {
     padding: scale(12),
-    position: 'relative',
+    position: 'relative'
   },
   logoContainer: {
     position: 'absolute',
@@ -147,66 +182,66 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 2
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    zIndex: 1,
+    zIndex: 1
   },
   logo: {
     width: scale(45),
     height: scale(45),
-    borderRadius: scale(6),
+    borderRadius: scale(6)
   },
   infoContainer: {
     marginLeft: scale(55),
     marginLeft: scale(60),
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'flex-start'
   },
   mainInfo: {
     flex: 1,
-    marginRight: scale(12),
+    marginRight: scale(12)
   },
   title: {
     fontSize: scale(15),
     fontWeight: 'bold',
-    marginBottom: scale(4),
+    marginBottom: scale(4)
   },
   addressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: scale(4),
+    marginBottom: scale(4)
   },
   address: {
     fontSize: scale(12),
     marginLeft: scale(4),
-    flex: 1,
+    flex: 1
   },
   distanceContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   distance: {
     fontSize: scale(12),
-    marginLeft: scale(4),
+    marginLeft: scale(4)
   },
   visitButtonContainer: {
     justifyContent: 'center',
-    paddingLeft: scale(8),
+    paddingLeft: scale(8)
   },
   visitButton: {
     paddingHorizontal: scale(16),
     paddingVertical: scale(6),
     borderRadius: scale(15),
-    minWidth: scale(70),
+    minWidth: scale(70)
   },
   visitText: {
     fontSize: scale(12),
     fontWeight: 'bold',
-    textAlign: 'center',
-  },
-});
+    textAlign: 'center'
+  }
+})
 
-export default NewFiggoStore;
+export default NewFiggoStore

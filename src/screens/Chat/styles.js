@@ -29,6 +29,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600'
   },
+  chatDisabledBanner: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  chatDisabledText: {
+    color: '#B91C1C',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600'
+  },
   messagesList: {
     padding: 16,
     flexGrow: 1

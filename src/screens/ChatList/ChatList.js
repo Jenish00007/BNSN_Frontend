@@ -6,7 +6,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
-  Image
+  Image,
+  Alert
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -59,10 +60,28 @@ const ChatList = () => {
           const looksLikeShop =
             otherUser.address !== undefined && otherUser.address !== null
           const conversationRole = looksLikeShop ? 'seller' : 'buyer'
+          const productStatus =
+            conv.productStatus || conv.product?.status || null
+          const isChatDisabled =
+            Boolean(conv.isChatDisabled) ||
+            (productStatus && productStatus !== 'active')
+          let statusLabel = null
+          if (productStatus === 'sold') statusLabel = 'Sold'
+          if (productStatus === 'inactive') statusLabel = 'Inactive'
 
           return {
             ...conv,
-            conversationRole
+            conversationRole,
+            productStatus,
+            statusLabel,
+            isChatDisabled,
+            chatDisabledReason:
+              conv.chatDisabledReason ||
+              (productStatus === 'sold'
+                ? 'This item has been marked as sold'
+                : productStatus === 'inactive'
+                  ? 'This listing is inactive'
+                  : null)
           }
         })
 
@@ -82,6 +101,16 @@ const ChatList = () => {
   }
 
   const handleChatPress = (conversation) => {
+    if (conversation.isChatDisabled) {
+      Alert.alert(
+        'Chat disabled',
+        conversation.chatDisabledReason ||
+          'This conversation is no longer available.',
+        [{ text: 'OK', style: 'default' }]
+      )
+      return
+    }
+
     navigation.navigate('Chat', {
       conversationId: conversation._id,
       groupTitle: conversation.groupTitle,
@@ -91,7 +120,10 @@ const ChatList = () => {
           (conversation.otherUser.displayName ||
             conversation.otherUser.name)) ||
         conversation.groupTitle ||
-        'Conversation'
+        'Conversation',
+      isChatDisabled: conversation.isChatDisabled,
+      chatDisabledReason: conversation.chatDisabledReason,
+      productStatus: conversation.productStatus
     })
   }
 
@@ -106,13 +138,19 @@ const ChatList = () => {
           ? 'Buyer'
           : null
 
+    const statusText = item.statusLabel
+
     return (
       <TouchableOpacity
         style={[
           styles.chatItem,
-          { borderBottomColor: branding.borderColor || '#f0f0f0' }
+          {
+            borderBottomColor: branding.borderColor || '#f0f0f0',
+            opacity: item.isChatDisabled ? 0.6 : 1
+          }
         ]}
         onPress={() => handleChatPress(item)}
+        disabled={item.isChatDisabled}
       >
         <View style={styles.avatarContainer}>
           {avatar ? (
@@ -135,9 +173,41 @@ const ChatList = () => {
           <TextDefault H5 bold numberOfLines={1}>
             {displayName}
           </TextDefault>
+          {statusText && (
+            <View
+              style={[
+                styles.statusBadge,
+                statusText === 'Sold'
+                  ? styles.statusBadgeSold
+                  : styles.statusBadgeInactive
+              ]}
+            >
+              <TextDefault
+                small
+                bold
+                style={[
+                  styles.statusBadgeText,
+                  statusText === 'Sold'
+                    ? styles.statusBadgeSoldText
+                    : styles.statusBadgeInactiveText
+                ]}
+              >
+                {statusText}
+              </TextDefault>
+            </View>
+          )}
           <TextDefault numberOfLines={1} style={styles.lastMessage}>
             {item.lastMessage || 'No messages yet'}
           </TextDefault>
+          {item.isChatDisabled && (
+            <TextDefault
+              numberOfLines={1}
+              small
+              style={styles.chatDisabledMessage}
+            >
+              {item.chatDisabledReason || 'Chat disabled'}
+            </TextDefault>
+          )}
           {roleLabel && (
             <View
               style={[
@@ -300,9 +370,9 @@ const ChatList = () => {
                 : 'No buyers have contacted you yet'}
           </TextDefault>
           {conversations.length === 0 ? (
-            <TextDefault style={styles.emptySubtext}>
-              Start chatting with sellers
-            </TextDefault>
+          <TextDefault style={styles.emptySubtext}>
+            Start chatting with sellers
+          </TextDefault>
           ) : null}
         </View>
       ) : (

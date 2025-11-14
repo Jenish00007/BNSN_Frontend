@@ -92,6 +92,34 @@ const styles = StyleSheet.create({
   roleBadgeText: {
     fontSize: 11,
   },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  statusBadgeSold: {
+    backgroundColor: '#DCFCE7',
+  },
+  statusBadgeInactive: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statusBadgeSoldText: {
+    color: '#15803D',
+  },
+  statusBadgeInactiveText: {
+    color: '#B91C1C',
+  },
+  chatDisabledMessage: {
+    marginTop: 4,
+    color: '#B91C1C',
+    fontSize: 12,
+  },
 });
 
 export default styles;

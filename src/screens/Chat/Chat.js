@@ -133,7 +133,9 @@ const Chat = ({ navigation }) => {
     shopId,
     shopName,
     productId,
-    displayName: initialDisplayName
+    displayName: initialDisplayName,
+    isChatDisabled: initialChatDisabled = false,
+    chatDisabledReason: initialChatDisabledReason = null
   } = route.params || {}
 
   const [messages, setMessages] = useState([])
@@ -145,6 +147,10 @@ const Chat = ({ navigation }) => {
   const [isTyping, setIsTyping] = useState(false)
   const [conversationId, setConversationId] = useState(initialConversationId)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [chatDisabled, setChatDisabled] = useState(Boolean(initialChatDisabled))
+  const [chatDisabledReason, setChatDisabledReason] = useState(
+    initialChatDisabledReason || ''
+  )
 
   const flatListRef = useRef(null)
   const sendButtonScale = useRef(new Animated.Value(1)).current
@@ -299,7 +305,7 @@ const Chat = ({ navigation }) => {
           )
 
           const data = await response.json()
-          if (data.success && data.conversation) {
+          if (response.ok && data.success && data.conversation) {
             const newConversationId = data.conversation._id
             console.log('New conversation created:', newConversationId)
 
@@ -325,9 +331,20 @@ const Chat = ({ navigation }) => {
               groupTitle: shopName || 'Chat',
               displayName: shopName || 'Chat'
             })
+          } else {
+            const errorMessage =
+              data?.message ||
+              'Unable to start a chat for this listing at the moment.'
+            Alert.alert('Chat unavailable', errorMessage)
+            setChatDisabled(true)
+            setChatDisabledReason(errorMessage)
           }
         } catch (error) {
           console.error('Error creating conversation:', error)
+          Alert.alert(
+            'Chat unavailable',
+            'Unable to start a conversation for this listing.'
+          )
         } finally {
           handlingShopIdRef.current = false
         }
@@ -557,6 +574,20 @@ const Chat = ({ navigation }) => {
           hideTypingIndicator()
         }
       })
+
+      socketInstance.on('chat-disabled', (payload) => {
+        if (
+          payload?.conversationId &&
+          conversationId &&
+          payload.conversationId !== conversationId
+        ) {
+          return
+        }
+        setChatDisabled(true)
+        setChatDisabledReason(
+          payload?.reason || 'This conversation is no longer active.'
+        )
+      })
     } catch (error) {
       console.error('Initialization error:', error)
       setLoading(false)
@@ -616,6 +647,14 @@ const Chat = ({ navigation }) => {
   }
 
   const sendMessage = async () => {
+    if (chatDisabled) {
+      Alert.alert(
+        'Chat disabled',
+        chatDisabledReason || 'This conversation is no longer available.'
+      )
+      return
+    }
+
     if (!inputText.trim() || sending || !isConnected) return
 
     const messageText = inputText.trim()
@@ -646,6 +685,11 @@ const Chat = ({ navigation }) => {
         })
 
         const data = await response.json()
+        if (!response.ok) {
+          const errorMessage =
+            data?.message || 'Unable to send message for this conversation.'
+          throw new Error(errorMessage)
+        }
         if (data.success) {
           await updateLastMessage(messageText, data.message._id)
           await fetchMessages()
@@ -656,7 +700,17 @@ const Chat = ({ navigation }) => {
     } catch (error) {
       console.error('Error sending message:', error)
       setSending(false)
-      Alert.alert('Error', 'Failed to send message')
+      const message =
+        error?.message ||
+        'Failed to send message. This chat may no longer be active.'
+      if (
+        message.toLowerCase().includes('no longer active') ||
+        message.toLowerCase().includes('sold')
+      ) {
+        setChatDisabled(true)
+        setChatDisabledReason(message)
+      }
+      Alert.alert('Error', message)
       setInputText(messageText)
     }
   }
@@ -851,8 +905,8 @@ const Chat = ({ navigation }) => {
                       {displayName
                         ? displayName.charAt(0).toUpperCase()
                         : otherUser?.name
-                          ? otherUser.name.charAt(0).toUpperCase()
-                          : 'U'}
+                        ? otherUser.name.charAt(0).toUpperCase()
+                        : 'U'}
                     </Text>
                   </View>
                 )}
@@ -924,120 +978,139 @@ const Chat = ({ navigation }) => {
         </View>
       )}
 
+      {chatDisabled && (
+        <View style={styles.chatDisabledBanner}>
+          <MaterialIcons
+            name='info'
+            size={18}
+            color='#B91C1C'
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.chatDisabledText}>
+            {chatDisabledReason || 'This conversation is no longer active.'}
+          </Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <View style={{ flex: 1 }}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item, index) => item._id || index.toString()}
-            contentContainerStyle={[
-              styles.messagesList,
-              {
-                flexGrow: 1,
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item, index) => item._id || index.toString()}
+          contentContainerStyle={[
+            styles.messagesList,
+            {
+              flexGrow: 1,
                 justifyContent: messages.length === 0 ? 'center' : 'flex-end',
                 paddingBottom:
                   Platform.OS === 'android' && keyboardHeight > 0 ? 80 : 16
-              }
-            ]}
-            onContentSizeChange={() => {
-              if (messages.length > 0) {
-                scrollToBottom()
-              }
-            }}
-            onLayout={() => {
-              if (messages.length > 0) {
-                scrollToBottom()
-              }
-            }}
-            showsVerticalScrollIndicator={false}
-            maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
-              autoscrollToTopThreshold: 10
-            }}
-            removeClippedSubviews={false}
-            keyboardShouldPersistTaps='handled'
-            keyboardDismissMode='interactive'
-            ListEmptyComponent={() => (
-              <View style={styles.emptyContainer}>
-                <MaterialIcons
-                  name='chat-bubble-outline'
-                  size={64}
-                  color='#cbd5e0'
-                />
-                <TextDefault style={styles.emptyText}>
-                  No messages yet
-                </TextDefault>
-                <TextDefault style={styles.emptySubText}>
-                  Start the conversation!
-                </TextDefault>
-              </View>
-            )}
-          />
-
-          {/* Typing Indicator */}
-          {isTyping && (
-            <Animated.View
-              style={[styles.typingIndicator, { opacity: typingOpacity }]}
-            >
-              <TextDefault style={styles.typingText}>
-                {otherUser?.name || 'User'} is typing...
+            }
+          ]}
+          onContentSizeChange={() => {
+            if (messages.length > 0) {
+              scrollToBottom()
+            }
+          }}
+          onLayout={() => {
+            if (messages.length > 0) {
+              scrollToBottom()
+            }
+          }}
+          showsVerticalScrollIndicator={false}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10
+          }}
+          removeClippedSubviews={false}
+          keyboardShouldPersistTaps='handled'
+          keyboardDismissMode='interactive'
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons
+                name='chat-bubble-outline'
+                size={64}
+                color='#cbd5e0'
+              />
+              <TextDefault style={styles.emptyText}>
+                No messages yet
               </TextDefault>
-            </Animated.View>
+              <TextDefault style={styles.emptySubText}>
+                Start the conversation!
+              </TextDefault>
+            </View>
           )}
+        />
 
-          {/* Message Input */}
-          <View
-            style={[
-              styles.inputContainer,
+        {/* Typing Indicator */}
+        {isTyping && (
+          <Animated.View
+            style={[styles.typingIndicator, { opacity: typingOpacity }]}
+          >
+            <TextDefault style={styles.typingText}>
+              {otherUser?.name || 'User'} is typing...
+            </TextDefault>
+          </Animated.View>
+        )}
+
+        {/* Message Input */}
+        <View
+          style={[
+            styles.inputContainer,
               {
                 borderTopColor: branding.borderColor || '#f0f0f0',
                 marginBottom:
                   Platform.OS === 'android' && keyboardHeight > 0 ? 0 : 0
               }
-            ]}
-          >
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder='Type a message...'
-                placeholderTextColor='#999'
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={1000}
-                editable={!sending && isConnected}
-                textAlignVertical='top'
-                onFocus={() => {
-                  setTimeout(() => {
-                    scrollToBottom()
-                  }, 300)
-                }}
-              />
+          ]}
+        >
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder='Type a message...'
+              placeholderTextColor='#999'
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={1000}
+                editable={!sending && isConnected && !chatDisabled}
+              textAlignVertical='top'
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollToBottom()
+                }, 300)
+              }}
+            />
               <Animated.View
                 style={{ transform: [{ scale: sendButtonScale }] }}
               >
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    { backgroundColor: branding.primaryColor },
-                    (!inputText.trim() || sending || !isConnected) &&
-                      styles.sendButtonDisabled
-                  ]}
-                  onPress={sendMessage}
-                  disabled={!inputText.trim() || sending || !isConnected}
-                >
-                  {sending ? (
-                    <ActivityIndicator size='small' color='#fff' />
-                  ) : (
-                    <MaterialIcons name='send' size={20} color='#fff' />
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  { backgroundColor: branding.primaryColor },
+                    (!inputText.trim() ||
+                      sending ||
+                      !isConnected ||
+                      chatDisabled) &&
+                    styles.sendButtonDisabled
+                ]}
+                onPress={sendMessage}
+                  disabled={
+                    !inputText.trim() || sending || !isConnected || chatDisabled
+                  }
+              >
+                {sending ? (
+                  <ActivityIndicator size='small' color='#fff' />
+                ) : (
+                  <MaterialIcons name='send' size={20} color='#fff' />
+                )}
+              </TouchableOpacity>
+            </Animated.View>
             </View>
           </View>
         </View>

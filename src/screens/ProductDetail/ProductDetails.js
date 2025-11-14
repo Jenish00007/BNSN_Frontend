@@ -273,6 +273,16 @@ const ProductDetail = () => {
       navigation.navigate('Login')
       return
     }
+
+    if (product?.status && product.status !== 'active') {
+      Alert.alert(
+        'Listing unavailable',
+        product.status === 'sold'
+          ? 'This item has already been marked as sold.'
+          : 'This listing is no longer active.'
+      )
+      return
+    }
     console.log('check', product)
 
     let sellerId = null
@@ -827,15 +837,16 @@ const ProductDetail = () => {
                 </View>
               </View>
               {(product?.shop?.email ||
-                product?.shop?.phoneNumber ||
-                product?.shop?.phone) && (
+                ((product?.shop?.phoneNumber || product?.shop?.phone) &&
+                  !product?.shop?.hidePhoneNumber)) && (
                 <View style={styles.contactInfoContainer}>
                   {renderContactRow('email', 'Email', product?.shop?.email)}
-                  {renderContactRow(
-                    'phone',
-                    'Phone',
-                    product?.shop?.phoneNumber || product?.shop?.phone
-                  )}
+                  {!product?.shop?.hidePhoneNumber &&
+                    renderContactRow(
+                      'phone',
+                      'Phone',
+                      product?.shop?.phoneNumber || product?.shop?.phone
+                    )}
                 </View>
               )}
             </View>
@@ -892,14 +903,17 @@ const ProductDetail = () => {
                       </Text>
                     </View>
                   </View>
-                  {(userDetails?.email || userDetails?.phoneNumber) && (
+                  {(userDetails?.email ||
+                    (userDetails?.phoneNumber &&
+                      !userDetails?.hidePhoneNumber)) && (
                     <View style={styles.contactInfoContainer}>
                       {renderContactRow('email', 'Email', userDetails?.email)}
-                      {renderContactRow(
-                        'phone',
-                        'Phone',
-                        userDetails?.phoneNumber
-                      )}
+                      {!userDetails?.hidePhoneNumber &&
+                        renderContactRow(
+                          'phone',
+                          'Phone',
+                          userDetails?.phoneNumber
+                        )}
                     </View>
                   )}
                 </>

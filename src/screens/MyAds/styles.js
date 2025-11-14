@@ -179,11 +179,10 @@ const styles = StyleSheet.create({
 
   // Product Card
   productCard: {
-    flexDirection: 'row',
     marginHorizontal: 16,
     marginVertical: 6,
-    padding: 12,
-    borderRadius: 4,
+    padding: 16,
+    borderRadius: 8,
     backgroundColor: '#FFFFFF',
     elevation: 2,
     shadowColor: '#000',
@@ -194,16 +193,17 @@ const styles = StyleSheet.create({
     borderColor: '#E8E8E8'
   },
   productImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 4,
-    backgroundColor: '#F5F5F5'
+    width: '100%',
+    height: 180,
+    borderRadius: 6,
+    backgroundColor: '#F5F5F5',
+    marginBottom: 12
+  },
+  productImageWrapper: {
+    position: 'relative'
   },
   productInfo: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'space-between',
-    paddingVertical: 4
+    marginBottom: 12
   },
   productName: {
     fontSize: 16,
@@ -219,11 +219,11 @@ const styles = StyleSheet.create({
   productStock: {
     fontSize: 13,
     color: '#666666',
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    alignSelf: 'flex-start'
+    marginBottom: 2
+  },
+  productMetaText: {
+    fontSize: 12,
+    color: '#94A3B8'
   },
 
   // Product Actions
@@ -281,6 +281,74 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#002F34'
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  inlineActions: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  statusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12
+  },
+  statusChipDefault: {
+    backgroundColor: '#E2E8F0'
+  },
+  statusChipText: {
+    fontWeight: '700',
+    color: '#0F172A'
+  },
+  statusMessageContainer: {
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12
+  },
+  statusMessageText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937'
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  actionButtonLarge: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4
+  },
+  actionButtonPrimary: {
+    backgroundColor: '#1D4ED8'
+  },
+  actionButtonSecondary: {
+    borderWidth: 1,
+    borderColor: '#1D4ED8',
+    backgroundColor: '#FFFFFF'
+  },
+  actionButtonDestructive: {
+    borderWidth: 1,
+    borderColor: '#B91C1C',
+    backgroundColor: '#FFFFFF'
+  },
+  actionButtonTextPrimary: {
+    color: '#FFFFFF',
+    fontWeight: '700'
+  },
+  actionButtonTextSecondary: {
+    color: '#1D4ED8',
+    fontWeight: '700'
+  },
+  actionButtonTextDestructive: {
+    color: '#B91C1C',
+    fontWeight: '700'
   }
 })
 
