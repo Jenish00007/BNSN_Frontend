@@ -73,7 +73,12 @@ const Sell = () => {
 
       console.log('Seller data response status:', response.status)
 
-      // Check if response is JSON
+      // Check if response is OK and has JSON content type
+      if (!response.ok) {
+        console.log('Seller data response not OK:', response.status)
+        return
+      }
+
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         console.log('Seller data response is not JSON')
@@ -83,7 +88,7 @@ const Sell = () => {
       const data = await response.json()
       console.log('Seller data response:', data)
 
-      if (response.ok && (data.user || data.seller || data.data)) {
+      if (data.user || data.seller || data.data) {
         const seller = data.user || data.seller || data.data
         setSellerData(seller)
         console.log('Seller data set:', seller)
@@ -130,7 +135,12 @@ const Sell = () => {
 
       console.log('Products response status:', response.status)
 
-      // Check if response is JSON
+      // Check if response is OK and has JSON content type
+      if (!response.ok) {
+        console.error('Products request failed:', response.status)
+        throw new Error(`HTTP ${response.status}: Failed to fetch products`)
+      }
+
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
@@ -141,15 +151,10 @@ const Sell = () => {
       const data = await response.json()
       console.log('Products response data:', data)
 
-      if (response.ok) {
-        // Handle different response formats
-        const productsData = data.products || data.data || []
-        console.log(`Found ${productsData.length} products`)
-        setProducts(productsData)
-      } else {
-        console.error('❌ Failed to fetch products:', data)
-        Alert.alert('Error', data.message || 'Failed to fetch products')
-      }
+      // Handle different response formats
+      const productsData = data.products || data.data || []
+      console.log(`Found ${productsData.length} products`,productsData)
+      setProducts(productsData)
     } catch (error) {
       console.error('🚨 Error fetching products:', error)
       Alert.alert('Error', error.message || 'Failed to load products')

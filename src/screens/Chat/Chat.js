@@ -998,119 +998,119 @@ const Chat = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <View style={{ flex: 1 }}>
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item, index) => item._id || index.toString()}
-          contentContainerStyle={[
-            styles.messagesList,
-            {
-              flexGrow: 1,
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item, index) => item._id || index.toString()}
+            contentContainerStyle={[
+              styles.messagesList,
+              {
+                flexGrow: 1,
                 justifyContent: messages.length === 0 ? 'center' : 'flex-end',
                 paddingBottom:
                   Platform.OS === 'android' && keyboardHeight > 0 ? 80 : 16
-            }
-          ]}
-          onContentSizeChange={() => {
-            if (messages.length > 0) {
-              scrollToBottom()
-            }
-          }}
-          onLayout={() => {
-            if (messages.length > 0) {
-              scrollToBottom()
-            }
-          }}
-          showsVerticalScrollIndicator={false}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-            autoscrollToTopThreshold: 10
-          }}
-          removeClippedSubviews={false}
-          keyboardShouldPersistTaps='handled'
-          keyboardDismissMode='interactive'
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <MaterialIcons
-                name='chat-bubble-outline'
-                size={64}
-                color='#cbd5e0'
-              />
-              <TextDefault style={styles.emptyText}>
-                No messages yet
-              </TextDefault>
-              <TextDefault style={styles.emptySubText}>
-                Start the conversation!
-              </TextDefault>
-            </View>
-          )}
-        />
-
-        {/* Typing Indicator */}
-        {isTyping && (
-          <Animated.View
-            style={[styles.typingIndicator, { opacity: typingOpacity }]}
-          >
-            <TextDefault style={styles.typingText}>
-              {otherUser?.name || 'User'} is typing...
-            </TextDefault>
-          </Animated.View>
-        )}
-
-        {/* Message Input */}
-        <View
-          style={[
-            styles.inputContainer,
-              {
-                borderTopColor: branding.borderColor || '#f0f0f0',
-                marginBottom:
-                  Platform.OS === 'android' && keyboardHeight > 0 ? 0 : 0
               }
-          ]}
-        >
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder='Type a message...'
-              placeholderTextColor='#999'
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-                editable={!sending && isConnected && !chatDisabled}
-              textAlignVertical='top'
-              onFocus={() => {
-                setTimeout(() => {
-                  scrollToBottom()
-                }, 300)
-              }}
-            />
+            ]}
+            onContentSizeChange={() => {
+              if (messages.length > 0) {
+                scrollToBottom()
+              }
+            }}
+            onLayout={() => {
+              if (messages.length > 0) {
+                scrollToBottom()
+              }
+            }}
+            showsVerticalScrollIndicator={false}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              autoscrollToTopThreshold: 10
+            }}
+            removeClippedSubviews={false}
+            keyboardShouldPersistTaps='handled'
+            keyboardDismissMode='interactive'
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <MaterialIcons
+                  name='chat-bubble-outline'
+                  size={64}
+                  color='#cbd5e0'
+                />
+                <TextDefault style={styles.emptyText}>
+                  No messages yet
+                </TextDefault>
+                <TextDefault style={styles.emptySubText}>
+                  Start the conversation!
+                </TextDefault>
+              </View>
+            )}
+          />
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <Animated.View
+              style={[styles.typingIndicator, { opacity: typingOpacity }]}
+            >
+              <TextDefault style={styles.typingText}>
+                {otherUser?.name || 'User'} is typing...
+              </TextDefault>
+            </Animated.View>
+          )}
+
+          {/* Message Input */}
+          <View
+            style={[
+              styles.inputContainer,
+                {
+                  borderTopColor: branding.borderColor || '#f0f0f0',
+                  marginBottom:
+                    Platform.OS === 'android' && keyboardHeight > 0 ? 0 : 0
+                }
+            ]}
+          >
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder='Type a message...'
+                placeholderTextColor='#999'
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
+                  editable={!sending && isConnected && !chatDisabled}
+                textAlignVertical='top'
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollToBottom()
+                  }, 300)
+                }}
+              />
               <Animated.View
                 style={{ transform: [{ scale: sendButtonScale }] }}
               >
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  { backgroundColor: branding.primaryColor },
-                    (!inputText.trim() ||
-                      sending ||
-                      !isConnected ||
-                      chatDisabled) &&
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    { backgroundColor: branding.primaryColor },
+                      (!inputText.trim() ||
+                        sending ||
+                        !isConnected ||
+                        chatDisabled) &&
                     styles.sendButtonDisabled
-                ]}
-                onPress={sendMessage}
-                  disabled={
-                    !inputText.trim() || sending || !isConnected || chatDisabled
-                  }
-              >
-                {sending ? (
-                  <ActivityIndicator size='small' color='#fff' />
-                ) : (
-                  <MaterialIcons name='send' size={20} color='#fff' />
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+                  ]}
+                  onPress={sendMessage}
+                    disabled={
+                      !inputText.trim() || sending || !isConnected || chatDisabled
+                    }
+                >
+                  {sending ? (
+                    <ActivityIndicator size='small' color='#fff' />
+                  ) : (
+                    <MaterialIcons name='send' size={20} color='#fff' />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </View>
         </View>

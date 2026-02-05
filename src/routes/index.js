@@ -95,6 +95,7 @@ import Chat from '../screens/Chat/Chat'
 import MyAds from '../screens/MyAds/MyAds'
 import Sell from '../screens/Sell/Sell'
 import CreateAd from '../screens/Sell/CreateAd'
+import PaymentScreen from '../screens/Sell/PaymentScreen'
 import EditProduct from '../screens/Sell/EditProduct'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
@@ -281,6 +282,11 @@ function NoDrawer() {
       <NavigationStack.Screen
         name='CreateAd'
         component={CreateAd}
+        options={{ headerShown: false }}
+      />
+      <NavigationStack.Screen
+        name='PaymentScreen'
+        component={PaymentScreen}
         options={{ headerShown: false }}
       />
       <NavigationStack.Screen

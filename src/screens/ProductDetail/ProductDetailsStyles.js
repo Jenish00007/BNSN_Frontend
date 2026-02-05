@@ -277,6 +277,36 @@ const styles = StyleSheet.create({
         fontSize: scale(14),
         lineHeight: scale(20)
     },
+    categoryDetailsContainer: {
+        marginBottom: scale(15),
+        padding: scale(15),
+        backgroundColor: '#f8f9fa',
+        borderRadius: scale(12)
+    },
+    categoryDetailsGrid: {
+        gap: scale(8)
+    },
+    detailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingVertical: scale(6),
+        borderBottomWidth: 1,
+        borderBottomColor: '#e9ecef'
+    },
+    detailLabel: {
+        fontSize: scale(14),
+        fontWeight: '600',
+        color: '#495057',
+        flex: 1,
+        marginRight: scale(10)
+    },
+    detailValue: {
+        fontSize: scale(14),
+        color: '#212529',
+        flex: 2,
+        textAlign: 'right'
+    },
     bottomActions: {
         flexDirection: 'row',
         padding: scale(15),

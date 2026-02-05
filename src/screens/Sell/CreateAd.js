@@ -5,9 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
-  Image,
   Dimensions,
   ActivityIndicator,
   Modal,
@@ -16,12 +14,13 @@ import {
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import Icon from 'react-native-vector-icons/MaterialIcons'
-import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_URL } from '../../config/api'
 import { useAppBranding } from '../../utils/translationHelper'
 import AuthContext from '../../context/Auth'
 import UserContext from '../../context/User'
+import DynamicCategoryForm from './AdByCAtegory'
+import { CATEGORY_FORMS, getCategoryForm, getLocationFields } from '../../configs/categoryForms'
 
 const { width, height } = Dimensions.get('window')
 
@@ -34,31 +33,21 @@ const CreateAd = () => {
   const { formetedProfileData, dataProfile } = useContext(UserContext)
 
   const [loading, setLoading] = useState(false)
+  const [checkingFreePosts, setCheckingFreePosts] = useState(false)
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    originalPrice: '',
-    discountPrice: '',
-    stock: '',
-    category: '',
-    subcategory: '',
-    tags: '',
-    unit: 'pcs',
-    unitCount: '1',
-    maxPurchaseQuantity: '10'
-  })
+  // Category-specific form state (dynamically initialized)
+  const [categoryFormData, setCategoryFormData] = useState({})
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [selectedCategoryName, setSelectedCategoryName] = useState('')
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState('')
 
   const [selectedImages, setSelectedImages] = useState([])
   const [categories, setCategories] = useState([])
-  const [subcategories, setSubcategories] = useState([])
   const [localSellerData, setLocalSellerData] = useState(null)
   const [saving, setSaving] = useState(false)
 
   // Modal states
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
-  const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false)
 
   // FIX: Use formetedProfileData (same as ProfilePage) or fallback to dataProfile
   useEffect(() => {
@@ -87,14 +76,30 @@ const CreateAd = () => {
     initializeData()
   }, [formetedProfileData, dataProfile])
 
+  // Initialize form data when category changes
   useEffect(() => {
-    if (formData.category) {
-      fetchSubcategories(formData.category)
-    } else {
-      setSubcategories([])
-      setFormData((prev) => ({ ...prev, subcategory: '' }))
+    if (selectedCategoryKey && CATEGORY_FORMS[selectedCategoryKey]) {
+      const categoryConfig = CATEGORY_FORMS[selectedCategoryKey]
+      const initialFormData = {}
+      
+      // Initialize all fields from category form
+      categoryConfig.fields.forEach((field) => {
+        if (field.type === 'checkbox') {
+          initialFormData[field.key] = []
+        } else {
+          initialFormData[field.key] = ''
+        }
+      })
+      
+      // Initialize location fields
+      const locationFields = getLocationFields(selectedCategoryKey)
+      locationFields.forEach((field) => {
+        initialFormData[field.key] = ''
+      })
+      
+      setCategoryFormData(initialFormData)
     }
-  }, [formData.category])
+  }, [selectedCategoryKey])
 
   const fetchSellerDataDirectly = async () => {
     try {
@@ -206,160 +211,130 @@ const CreateAd = () => {
     }
   }
 
-  const fetchSubcategories = async (categoryId) => {
+  // Map backend category name to frontend category key
+  const getCategoryKeyFromName = (categoryName) => {
+    if (!categoryName) return null
+    const categoryKey = Object.keys(CATEGORY_FORMS).find(
+      (key) =>
+        CATEGORY_FORMS[key].name.toLowerCase() === categoryName.toLowerCase()
+    )
+    return categoryKey || null
+  }
+
+  // Check if user can post for free
+  const checkFreePostAvailability = async (categoryName) => {
     try {
-      const response = await fetch(`${API_URL}/subcategories`, {
+      setCheckingFreePosts(true)
+      const response = await fetch(`${API_URL}/user-post/check-post-cost`, {
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ categoryName })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        const filtered = data.data.filter(
-          (sub) => sub.category._id === categoryId
-        )
-        setSubcategories(filtered)
+      // Check if response is OK and has JSON content type
+      if (!response.ok) {
+        console.error('Error checking free post availability: Response not OK', response.status)
+        return {
+          canPostForFree: false,
+          postCost: 0,
+          freePostsUsed: 0,
+          freePostsLimit: 0
+        }
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Error checking free post availability: Response is not JSON')
+        return {
+          canPostForFree: false,
+          postCost: 0,
+          freePostsUsed: 0,
+          freePostsLimit: 0
+        }
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        return {
+          canPostForFree: result.canPostForFree,
+          postCost: result.postCost,
+          freePostsUsed: result.freePostsUsed || 0,
+          freePostsLimit: result.freePostsLimit || 0
+        }
+      }
+      
+      return {
+        canPostForFree: false,
+        postCost: 0,
+        freePostsUsed: 0,
+        freePostsLimit: 0
       }
     } catch (error) {
-      console.error('Error fetching subcategories:', error)
-    }
-  }
-
-  const pickImage = async () => {
-    Alert.alert('Select Image', 'Choose how you want to add an image', [
-      {
-        text: 'Camera',
-        onPress: () => takePhotoFromCamera()
-      },
-      {
-        text: 'Gallery',
-        onPress: () => selectFromGallery()
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel'
+      console.error('Error checking free post availability:', error)
+      return {
+        canPostForFree: false,
+        postCost: 0,
+        freePostsUsed: 0,
+        freePostsLimit: 0
       }
-    ])
-  }
-
-  const takePhotoFromCamera = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync()
-
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission needed',
-        'Please grant camera permissions to take photos.'
-      )
-      return
-    }
-
-    if (selectedImages.length >= 5) {
-      Alert.alert('Limit Reached', 'You can only add up to 5 images.')
-      return
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      aspect: [4, 3],
-      quality: 0.8
-    })
-
-    if (!result.canceled) {
-      const newImage = {
-        uri: result.assets[0].uri,
-        type: 'image/jpeg',
-        name: 'product-image.jpg'
-      }
-      setSelectedImages((prev) => [...prev, newImage])
+    } finally {
+      setCheckingFreePosts(false)
     }
   }
 
-  const selectFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission needed',
-        'Please grant camera roll permissions to select images.'
-      )
-      return
-    }
-
-    if (selectedImages.length >= 5) {
-      Alert.alert('Limit Reached', 'You can only add up to 5 images.')
-      return
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      aspect: [4, 3],
-      quality: 0.8
-    })
-
-    if (!result.canceled) {
-      const newImages = result.assets.map((asset) => ({
-        uri: asset.uri,
-        type: 'image/jpeg',
-        name: 'product-image.jpg'
-      }))
-
-      if (selectedImages.length + newImages.length > 5) {
-        Alert.alert('Limit Reached', 'You can only add up to 5 images total.')
-        return
-      }
-
-      setSelectedImages((prev) => [...prev, ...newImages])
-    }
-  }
-
-  const removeImage = (index) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index))
-  }
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Error', 'Product name is required')
+    if (!selectedCategoryKey || !CATEGORY_FORMS[selectedCategoryKey]) {
+      Alert.alert('Error', 'Please select a category')
       return false
     }
-    if (!formData.description.trim()) {
-      Alert.alert('Error', 'Product description is required')
+
+    const categoryConfig = CATEGORY_FORMS[selectedCategoryKey]
+    const locationFields = getLocationFields(selectedCategoryKey)
+    
+    // Check required fields from category form
+    const requiredFields = [...categoryConfig.fields, ...locationFields].filter(
+      (field) => field.required
+    )
+    
+    const missingFields = requiredFields.filter((field) => {
+      const value = categoryFormData[field.key]
+      if (field.type === 'checkbox') {
+        return !value || value.length === 0
+      }
+      return !value || value.toString().trim() === ''
+    })
+
+    if (missingFields.length > 0) {
+      Alert.alert(
+        'Missing Information',
+        `Please fill in all required fields:\n${missingFields.map((f) => f.label).join('\n')}`
+      )
       return false
     }
-    if (!formData.discountPrice || parseFloat(formData.discountPrice) <= 0) {
-      Alert.alert('Error', 'Valid discount price is required')
-      return false
-    }
-    if (!formData.stock || parseInt(formData.stock) < 0) {
-      Alert.alert('Error', 'Valid stock quantity is required')
-      return false
-    }
-    if (!formData.category) {
-      Alert.alert('Error', 'Category is required')
-      return false
-    }
-    if (!formData.subcategory) {
-      Alert.alert('Error', 'Subcategory is required')
-      return false
-    }
+
     if (selectedImages.length === 0) {
       Alert.alert('Error', 'At least one product image is required')
       return false
     }
+
+    // Validate price field
+    if (!categoryFormData.price || parseFloat(categoryFormData.price) <= 0) {
+      Alert.alert('Error', 'Valid price is required')
+      return false
+    }
+
     return true
   }
 
   const handleSubmit = async () => {
     if (!validateForm()) return
 
-    console.log('Submit clicked - localSellerData:', localSellerData)
-    console.log('Form data:', formData)
-    console.log('Selected images count:', selectedImages.length)
-
     if (!localSellerData?._id) {
-      console.log('User data missing or no _id:', localSellerData)
       Alert.alert('Error', 'User data not found. Please try again.', [
         {
           text: 'Retry',
@@ -375,12 +350,33 @@ const CreateAd = () => {
       return
     }
 
+    // Check free post availability
+    const postInfo = await checkFreePostAvailability(selectedCategoryName)
+    
+    if (!postInfo.canPostForFree && postInfo.postCost > 0) {
+      // Navigate to payment screen
+      navigation.navigate('PaymentScreen', {
+        categoryName: selectedCategoryName,
+        cost: postInfo.postCost,
+        formData: categoryFormData,
+        selectedImages: selectedImages,
+        categoryId: selectedCategoryId
+      })
+      return
+    }
+
+    // Proceed with free post
+    await submitProduct(false)
+  }
+
+  const submitProduct = async (isPaid = false, paymentId = null) => {
     setSaving(true)
     setLoading(true)
 
     try {
       const formDataToSend = new FormData()
 
+      // Add images
       selectedImages.forEach((image, index) => {
         formDataToSend.append('images', {
           uri: image.uri,
@@ -389,45 +385,169 @@ const CreateAd = () => {
         })
       })
 
-      // Append all form fields
-      Object.entries(formData).forEach(([key, value]) => {
+      // Process all form data with proper array to string conversion
+      const processedFormData = {}
+
+      // Helper function to convert any value to string
+      const convertToString = (key, value) => {
+        if (value === null || value === undefined || value === '') {
+          return ''
+        }
+        
+        if (Array.isArray(value)) {
+          // For arrays, take the first element or join with space
+          const result = value[0] || value.join(' ')
+          console.log(`Converting array ${key} to string:`, result)
+          return result.toString()
+        }
+        
+        // For non-arrays, convert to string
+        let result = value.toString()
+        
+        // Normalize unit field to lowercase for enum validation
+        if (key === 'unit') {
+          result = result.toLowerCase()
+          // Map common variations to valid enum values
+          const unitMapping = {
+            'kg': 'kg',
+            'kilogram': 'kg',
+            'kilograms': 'kg',
+            'g': 'g',
+            'gram': 'g',
+            'grams': 'g',
+            'pcs': 'pcs',
+            'pieces': 'pcs',
+            'piece': 'pcs',
+            'ml': 'ml',
+            'milliliter': 'ml',
+            'milliliters': 'ml',
+            'ltr': 'ltr',
+            'liter': 'ltr',
+            'liters': 'ltr',
+            'pack': 'pack',
+            'package': 'pack'
+          }
+          result = unitMapping[result] || result
+        }
+        
+        console.log(`Converting ${key} to string:`, result)
+        return result
+      }
+
+      // Process all category form data
+      Object.entries(categoryFormData).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== '') {
+          processedFormData[key] = convertToString(key, value)
+        }
+      })
+
+      // Add common fields
+      formDataToSend.append('userId', localSellerData._id)
+      formDataToSend.append('category', selectedCategoryId)
+      formDataToSend.append('categoryName', selectedCategoryName)
+      formDataToSend.append('categoryKey', selectedCategoryKey)
+      
+      // Add all processed form data
+      Object.entries(processedFormData).forEach(([key, value]) => {
         if (value) {
-          // Only append non-empty values
           formDataToSend.append(key, value)
         }
       })
 
-      // Add userId for user-posted ads
-      formDataToSend.append('userId', localSellerData._id)
-
-      // IMPORTANT: Don't send shopId for user ads, leave it undefined
-      // The backend will handle user products without shopId
-
-      console.log('Submitting product with userId:', localSellerData._id)
-      console.log('Form data being sent:')
-
-      // FIX: Create a separate object for logging instead of using formDataToSend.entries()
-      const logData = {
-        ...formData,
-        userId: localSellerData._id,
-        imagesCount: selectedImages.length
+      // Map category-specific name field to generic name field
+      const getNameFromCategoryData = () => {
+        const nameFieldMapping = {
+          'animalName': processedFormData.animalName,
+          'birdName': processedFormData.birdName,
+          'treeName': processedFormData.treeName,
+          'paddyRiceName': processedFormData.paddyRiceName,
+          'vegetableName': processedFormData.vegetableName,
+          'seedName': processedFormData.seedName,
+          'fruitName': processedFormData.fruitName,
+          'machineryName': processedFormData.machineryName,
+          'electronicsName': processedFormData.electronicsName,
+          'mobileName': processedFormData.mobileName,
+          'furnitureName': processedFormData.furnitureName,
+          'fashionName': processedFormData.fashionName,
+          'jobTitle': processedFormData.jobTitle,
+          'petName': processedFormData.petName,
+          'instrumentName': processedFormData.instrumentName,
+          'equipmentName': processedFormData.equipmentName,
+          'fishName': processedFormData.fishName,
+          'vehicleName': processedFormData.vehicleName,
+          'serviceName': processedFormData.serviceName,
+          'serviceTitle': processedFormData.serviceTitle,
+          'scrapName': processedFormData.scrapName,
+          'scrapTypeName': processedFormData.scrapTypeName,
+          'sportsItemName': processedFormData.sportsItemName,
+          'bookCategory': processedFormData.bookCategory,
+          'bookTitle': processedFormData.bookTitle
+        }
+        
+        // Find the first available name field from the mapping
+        for (const [field, value] of Object.entries(nameFieldMapping)) {
+          if (value && value.toString().trim() !== '') {
+            return value.toString().trim()
+          }
+        }
+        
+        // Fallback to generic name field or create one from category
+        return processedFormData.name || `${selectedCategoryName} Product`
       }
-      console.log('Form data being sent:', logData)
+
+      // Ensure required fields are present with defaults
+      const requiredFields = {
+        name: getNameFromCategoryData(),
+        description: processedFormData.description || 'No description provided',
+        stock: processedFormData.stock || '1',
+        unitCount: processedFormData.unitCount || '1',
+        maxPurchaseQuantity: processedFormData.maxPurchaseQuantity || '10',
+        unit: processedFormData.unit || 'pcs'
+      }
+
+      // Add required fields if not already present
+      Object.entries(requiredFields).forEach(([key, value]) => {
+        if (!processedFormData[key]) {
+          formDataToSend.append(key, value.toString())
+        }
+      })
+
+      // Add price fields
+      if (processedFormData.price) {
+        formDataToSend.append('discountPrice', processedFormData.price.toString())
+      }
+      if (processedFormData.priceType) {
+        formDataToSend.append('priceType', processedFormData.priceType.toString())
+      }
+
+      // Add subcategory only if it exists and has a value
+      if (categoryFormData.subcategory) {
+        const subcategoryValue = convertToString('subcategory', categoryFormData.subcategory)
+        if (subcategoryValue) {
+          formDataToSend.append('subcategory', subcategoryValue)
+        }
+      }
+
+      // Add payment info if paid
+      if (isPaid && paymentId) {
+        formDataToSend.append('paymentId', paymentId)
+        formDataToSend.append('isPaid', 'true')
+      } else {
+        formDataToSend.append('isPaid', 'false')
+      }
 
       const response = await fetch(`${API_URL}/product/create-product`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
-          // Note: Don't set Content-Type for FormData, let the browser set it with boundary
         },
         body: formDataToSend
       })
 
       const result = await response.json()
-      console.log('Product creation response:', result)
 
       if (response.ok && result.success) {
-        Alert.alert('Success', 'Product created successfully!', [
+        Alert.alert('Success', 'Ad posted successfully!', [
           {
             text: 'OK',
             onPress: () => navigation.goBack()
@@ -435,7 +555,6 @@ const CreateAd = () => {
         ])
       } else {
         const errorMsg = result.message || 'Failed to create product'
-        console.error('Product creation failed:', errorMsg)
         Alert.alert('Error', errorMsg)
       }
     } catch (error) {
@@ -549,20 +668,6 @@ const CreateAd = () => {
     </Modal>
   )
 
-  const renderImageItem = (image, index) => (
-    <View key={index} style={styles.imageItem}>
-      <Image
-        source={{ uri: typeof image === 'string' ? image : image.uri }}
-        style={styles.productImage}
-      />
-      <TouchableOpacity
-        style={styles.removeImageButton}
-        onPress={() => removeImage(index)}
-      >
-        <Icon name='close' size={16} color='white' />
-      </TouchableOpacity>
-    </View>
-  )
 
   if (loading && !localSellerData) {
     return (
@@ -611,67 +716,14 @@ const CreateAd = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Product Details */}
+        {/* Category Selection - Always Show First */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-              Include some details
+              Select Category *
             </Text>
           </View>
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Ad title *
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: branding.textColor,
-                  borderColor: branding.borderColor,
-                  backgroundColor: 'transparent'
-                }
-              ]}
-              value={formData.name}
-              onChangeText={(text) =>
-                setFormData((prev) => ({ ...prev, name: text }))
-              }
-              placeholder='Mention the key features of your item (e.g. brand, model, age, type)'
-              placeholderTextColor='#999'
-            />
-            <Text style={styles.charCount}>{formData.name.length}/70</Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Description *
-            </Text>
-            <TextInput
-              style={[
-                styles.textArea,
-                {
-                  color: branding.textColor,
-                  borderColor: branding.borderColor,
-                  backgroundColor: 'transparent'
-                }
-              ]}
-              value={formData.description}
-              onChangeText={(text) =>
-                setFormData((prev) => ({ ...prev, description: text }))
-              }
-              placeholder='Include condition, features and reason for selling'
-              placeholderTextColor='#999'
-              multiline
-              numberOfLines={6}
-            />
-            <Text style={styles.charCount}>
-              {formData.description.length}/4096
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Category *
-            </Text>
             <TouchableOpacity
               style={[
                 styles.selectionButton,
@@ -685,223 +737,54 @@ const CreateAd = () => {
               <Text
                 style={[
                   styles.selectionButtonText,
-                  { color: formData.category ? branding.textColor : '#999' }
+                  { color: selectedCategoryName ? branding.textColor : '#999' }
                 ]}
               >
-                {categories.find((c) => c._id === formData.category)?.name ||
-                  'Select Category'}
+                {selectedCategoryName || 'Select Category'}
               </Text>
               <Icon name='arrow-forward-ios' size={16} color='#999' />
             </TouchableOpacity>
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Subcategory *
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.selectionButton,
-                {
-                  borderColor: branding.borderColor,
-                  backgroundColor: 'transparent'
-                }
-              ]}
-              onPress={() => {
-                if (!formData.category) {
-                  Alert.alert('Error', 'Please select a category first')
-                  return
-                }
-                setShowSubcategoryPicker(true)
-              }}
-              disabled={!formData.category}
-            >
-              <Text
-                style={[
-                  styles.selectionButtonText,
-                  {
-                    color: formData.subcategory ? branding.textColor : '#999'
-                  }
-                ]}
-              >
-                {subcategories.find((s) => s._id === formData.subcategory)
-                  ?.name || 'Select Subcategory'}
+          
+          {/* Show category pricing info */}
+          {selectedCategoryKey && CATEGORY_FORMS[selectedCategoryKey] && (
+            <View style={styles.categoryInfo}>
+              <Text style={[styles.categoryInfoText, { color: branding.textColor }]}>
+                {CATEGORY_FORMS[selectedCategoryKey].freePosts > 0
+                  ? `${CATEGORY_FORMS[selectedCategoryKey].freePosts} Free Post${CATEGORY_FORMS[selectedCategoryKey].freePosts > 1 ? 's' : ''} Available`
+                  : 'Paid Posting Only'}
               </Text>
-              <Icon name='arrow-forward-ios' size={16} color='#999' />
-            </TouchableOpacity>
-          </View>
+              <Text style={[styles.categoryPriceText, { color: branding.primaryColor }]}>
+                Price: ₹{CATEGORY_FORMS[selectedCategoryKey].price}
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Set a price */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-              Set a price
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Price *
-            </Text>
-            <View style={styles.priceInputContainer}>
-              <Text
-                style={[styles.currencySymbol, { color: branding.textColor }]}
-              >
-                ₹
+        {/* Show Dynamic Category Form */}
+        {selectedCategoryKey && CATEGORY_FORMS[selectedCategoryKey] ? (
+          <DynamicCategoryForm
+            formData={categoryFormData}
+            setFormData={setCategoryFormData}
+            images={selectedImages}
+            setImages={setSelectedImages}
+            onSubmit={handleSubmit}
+            categoryName={selectedCategoryName}
+            branding={branding}
+          />
+        ) : (
+          <View style={styles.section}>
+            <View style={styles.categoryPrompt}>
+              <Icon name='category' size={48} color={branding.primaryColor} />
+              <Text style={[styles.promptText, { color: branding.textColor }]}>
+                Select a category above to continue posting your ad
               </Text>
-              <TextInput
-                style={[
-                  styles.priceInput,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor
-                  }
-                ]}
-                value={formData.discountPrice}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({ ...prev, discountPrice: text }))
-                }
-                placeholder='0'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
+              <Text style={[styles.promptSubtext, { color: '#666' }]}>
+                Different categories have different form fields tailored for that type of item
+              </Text>
             </View>
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Original Price (Optional)
-            </Text>
-            <View style={styles.priceInputContainer}>
-              <Text
-                style={[styles.currencySymbol, { color: branding.textColor }]}
-              >
-                ₹
-              </Text>
-              <TextInput
-                style={[
-                  styles.priceInput,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor
-                  }
-                ]}
-                value={formData.originalPrice}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({ ...prev, originalPrice: text }))
-                }
-                placeholder='0'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Upload photos */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-              Upload up to 5 photos
-            </Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.imagesContainer}
-          >
-            <TouchableOpacity
-              style={[
-                styles.addImageButton,
-                { borderColor: branding.borderColor }
-              ]}
-              onPress={pickImage}
-            >
-              <Icon
-                name='add-a-photo'
-                size={32}
-                color={branding.primaryColor}
-              />
-            </TouchableOpacity>
-            {selectedImages.map((image, index) =>
-              renderImageItem(image, index)
-            )}
-          </ScrollView>
-          <Text style={[styles.helperText, { color: '#666' }]}>
-            A photo of what you're selling is key
-          </Text>
-        </View>
-
-        {/* Additional Details */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-              Additional details
-            </Text>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfInput]}>
-              <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-                Stock Quantity *
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    color: branding.textColor,
-                    borderColor: branding.borderColor,
-                    backgroundColor: 'transparent'
-                  }
-                ]}
-                value={formData.stock}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({ ...prev, stock: text }))
-                }
-                placeholder='0'
-                placeholderTextColor='#999'
-                keyboardType='numeric'
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: branding.textColor }]}>
-              Tags (Optional)
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: branding.textColor,
-                  borderColor: branding.borderColor,
-                  backgroundColor: 'transparent'
-                }
-              ]}
-              value={formData.tags}
-              onChangeText={(text) =>
-                setFormData((prev) => ({ ...prev, tags: text }))
-              }
-              placeholder='Enter tags (comma separated)'
-              placeholderTextColor='#999'
-            />
-          </View>
-        </View>
-
-        {/* Post button at bottom */}
-        <TouchableOpacity
-          style={[
-            styles.postButton,
-            { backgroundColor: branding.primaryColor }
-          ]}
-          onPress={handleSubmit}
-          disabled={saving}
-        >
-          <Text style={styles.postButtonText}>
-            {saving ? 'Posting Ad...' : 'Post now'}
-          </Text>
-        </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Category Selection Modal */}
@@ -910,29 +793,20 @@ const CreateAd = () => {
         onClose={() => setShowCategoryPicker(false)}
         title='Select Category'
         data={categories}
-        selectedValue={formData.category}
+        selectedValue={selectedCategoryId}
         onSelect={(categoryId) => {
-          setFormData((prev) => ({
-            ...prev,
-            category: categoryId,
-            subcategory: ''
-          }))
-          fetchSubcategories(categoryId)
+          const selectedCategory = categories.find((c) => c._id === categoryId)
+          if (selectedCategory) {
+            // Reset selected images when category changes
+            setSelectedImages([])
+            
+            setSelectedCategoryId(categoryId)
+            setSelectedCategoryName(selectedCategory.name)
+            const categoryKey = getCategoryKeyFromName(selectedCategory.name)
+            setSelectedCategoryKey(categoryKey || '')
+          }
         }}
         emptyMessage='No categories available'
-      />
-
-      {/* Subcategory Selection Modal */}
-      <SelectionModal
-        visible={showSubcategoryPicker}
-        onClose={() => setShowSubcategoryPicker(false)}
-        title='Select Subcategory'
-        data={subcategories}
-        selectedValue={formData.subcategory}
-        onSelect={(subcategoryId) => {
-          setFormData((prev) => ({ ...prev, subcategory: subcategoryId }))
-        }}
-        emptyMessage='No subcategories available'
       />
     </KeyboardAvoidingView>
   )
@@ -951,7 +825,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
     elevation: 4,
     shadowColor: '#000',
@@ -999,42 +873,6 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     marginTop: 8
-  },
-  imagesContainer: {
-    flexDirection: 'row',
-    marginBottom: 10
-  },
-  imageItem: {
-    marginRight: 12,
-    position: 'relative'
-  },
-  productImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5'
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#000',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  addImageButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    backgroundColor: '#f9f9f9'
   },
   inputGroup: {
     marginBottom: 20
@@ -1185,7 +1023,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 12,
     opacity: 0.7
+  },
+  carFormNote: {
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007bff'
+  },
+  noteText: {
+    fontSize: 16,
+    color: '#495057',
+    marginBottom: 8,
+    lineHeight: 24
+  },
+  categoryPrompt: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20
+  },
+  promptText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  promptSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 20
+  },
+  categoryInfo: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007bff'
+  },
+  categoryInfoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4
+  },
+  categoryPriceText: {
+    fontSize: 16,
+    fontWeight: '700'
   }
 })
 
 export default CreateAd
+

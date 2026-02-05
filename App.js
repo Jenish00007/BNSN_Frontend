@@ -181,14 +181,17 @@ LogBox.ignoreAllLogs() // Ignore all log notifications
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
+    const notificationType = notification?.request?.content?.data?.type;
+    
+    // Always play sound for chat messages
+    const shouldPlaySound = notificationType !== 'REVIEW_ORDER';
+    
     return {
-      shouldShowAlert:
-        notification?.request?.content?.data?.type !==
-        NOTIFICATION_TYPES.REVIEW_ORDER,
-      shouldPlaySound: false,
-      shouldSetBadge: false
+      shouldShowAlert: true,
+      shouldPlaySound: shouldPlaySound,
+      shouldSetBadge: true
     }
-  }
+  },
 })
 
 export default function App() {
@@ -770,7 +773,21 @@ async function registerForPushNotificationsAsync() {
       name: 'default',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C'
+      lightColor: '#FF231F7C',
+      sound: 'default', // Enable default notification sound
+      enableVibrate: true, // Enable vibration
+      playSound: true // Ensure sound plays
+    })
+    
+    // Create a separate channel for chat messages with sound
+    await Notifications.setNotificationChannelAsync('chat_messages', {
+      name: 'Chat Messages',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 500, 250],
+      lightColor: '#007AFF',
+      sound: 'message_sound', // Custom sound for chat messages
+      enableVibrate: true,
+      playSound: true
     })
   }
 

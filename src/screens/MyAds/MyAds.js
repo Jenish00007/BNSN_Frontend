@@ -77,12 +77,22 @@ const MyAds = () => {
         }
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.user || data.seller || data.data) {
-          const seller = data.user || data.seller || data.data
-          setSellerData(seller)
-        }
+      // Check if response is OK and has JSON content type
+      if (!response.ok) {
+        console.log('Seller data response not OK:', response.status)
+        return
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.log('Seller data response is not JSON')
+        return
+      }
+
+      const data = await response.json()
+      if (data.user || data.seller || data.data) {
+        const seller = data.user || data.seller || data.data
+        setSellerData(seller)
       }
     } catch (error) {
       console.error('Error fetching seller data:', error)
@@ -114,17 +124,24 @@ const MyAds = () => {
         }
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        const productsData = data.products || data.data || []
-        setProducts(productsData)
-      } else {
-        const data = await response.json()
-        Alert.alert('Error', data.message || 'Failed to fetch ads')
+      // Check if response is OK and has JSON content type
+      if (!response.ok) {
+        console.error('Products request failed:', response.status)
+        throw new Error(`HTTP ${response.status}: Failed to fetch products`)
       }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Products response is not JSON')
+        throw new Error('Server returned non-JSON response')
+      }
+
+      const data = await response.json()
+      const productsData = data.products || data.data || []
+      setProducts(productsData)
     } catch (error) {
       console.error('Error fetching products:', error)
-      Alert.alert('Error', 'Failed to load your ads')
+      Alert.alert('Error', error.message || 'Failed to load your ads')
     } finally {
       setLoading(false)
       setRefreshing(false)

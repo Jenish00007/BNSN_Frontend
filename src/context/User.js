@@ -277,9 +277,23 @@ export const UserProvider = (props) => {
         headers: headers
       })
 
+      // Check if response is OK and has JSON content type
+      if (!response.ok) {
+        console.error('Error fetching cart items: Response not OK', response.status)
+        setCartItems([])
+        return []
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Error fetching cart items: Response is not JSON')
+        setCartItems([])
+        return []
+      }
+
       const data = await response.json()
 
-      if (response.ok && data.success) {
+      if (data.success) {
         const items = Array.isArray(data.cartItems) ? data.cartItems : []
         setCartItems(items)
         return items

@@ -98,9 +98,14 @@ const ProductDetail = () => {
     ? product.images
     : [product?.image || product?.images?.[0]]
 
-  // Filter out any invalid image URLs and add fallback
-  const validImages = images
-    .filter((img) => {
+  // Memoized image processing to prevent re-calculation and optimize performance
+  const finalImages = useMemo(() => {
+    // Use the processed images array that handles both single and multiple images
+    const images = hasMultipleImages
+      ? product.images
+      : [product?.image || product?.images?.[0]]
+    
+    const validImages = images.filter(img => {
       if (!img) return false
       // Handle both string URLs and objects with url property
       if (typeof img === 'string') {
@@ -110,8 +115,7 @@ const ProductDetail = () => {
         return img.url.trim() !== ''
       }
       return false
-    })
-    .map((img) => {
+    }).map(img => {
       // Extract URL from object or use string directly
       if (typeof img === 'string') {
         return img
@@ -121,10 +125,9 @@ const ProductDetail = () => {
       }
       return IMAGE_LINK
     })
-
-  // If no valid images, use fallback
-  const finalImages = validImages.length > 0 ? validImages : [IMAGE_LINK]
-  console.log('finalImages', finalImages)
+    
+    return validImages.length > 0 ? validImages : [IMAGE_LINK]
+  }, [product?.images, product?.image, hasMultipleImages])
 
   useEffect(() => {
     return () => {
@@ -142,20 +145,7 @@ const ProductDetail = () => {
     const shopImageUrl =
       product?.shop?.avatar ||
       product?.shop?.logo ||
-      product?.shop?.image ||
-      product?.shop?.shopAvatar ||
       product?.shop?.logo_full_url
-
-    // Debug: Log shop data to understand the structure
-    console.log('Shop data:', {
-      shop: product?.shop,
-      avatar: product?.shop?.avatar,
-      logo: product?.shop?.logo,
-      image: product?.shop?.image,
-      shopAvatar: product?.shop?.shopAvatar,
-      logo_full_url: product?.shop?.logo_full_url,
-      shopImageUrl
-    })
 
     if (
       shopImageUrl &&
@@ -167,7 +157,6 @@ const ProductDetail = () => {
         new URL(shopImageUrl)
         return { uri: shopImageUrl }
       } catch (error) {
-        console.log('Invalid shop image URL:', shopImageUrl)
         return require('../../assets/images/placeholder.png')
       }
     }
@@ -198,16 +187,17 @@ const ProductDetail = () => {
               product.shop = data.shop
               // Force re-render
               setShopImageError(false)
+              setUserDetails(data.shop)
             }
           } else {
-            console.log('Non-JSON response received from shop API')
-          }
+          // Non-JSON response received
+        }
         } catch (jsonError) {
-          console.log('Error parsing JSON response:', jsonError)
+          // Error parsing JSON response
         }
       }
     } catch (error) {
-      console.log('Error fetching shop data:', error)
+      // Error fetching shop data
     }
   }
 
@@ -283,7 +273,6 @@ const ProductDetail = () => {
       )
       return
     }
-    console.log('check', product)
 
     let sellerId = null
     let sellerDisplayName = 'Seller'
@@ -603,15 +592,7 @@ const ProductDetail = () => {
 
     setSubmittingReview(true)
     try {
-      console.log('Submitting review with data:', {
-        rating: reviewRating,
-        comment: reviewInput,
-        productId: product._id,
-        orderId: orderIdForReview,
-        token: token ? 'Present' : 'Missing'
-      })
-
-      const res = await fetch(`${API_URL}/product/create-new-review`, {
+      const res = await fetch(`${API_URL}/review/create-new-review`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -626,10 +607,7 @@ const ProductDetail = () => {
         })
       })
 
-      console.log('Response status:', res.status)
       const data = await res.json()
-      console.log('Response data:', data)
-
       if (data.success) {
         setReviewInput('')
         setReviewRating(0)
@@ -645,6 +623,351 @@ const ProductDetail = () => {
     } finally {
       setSubmittingReview(false)
     }
+  }
+
+  // Function to render category-specific details
+  const renderCategorySpecificDetails = () => {
+    const details = []
+    
+    // Helper function to add detail if exists
+    const addDetail = (label, value) => {
+      if (value && value.toString().trim() !== '') {
+        details.push({ label, value: value.toString().trim() })
+      }
+    }
+
+    // ANIMAL category
+    if (product?.animalName) {
+      addDetail('Animal Name', product.animalName)
+      addDetail('Breed', product.breed)
+      addDetail('Age', product.age)
+      addDetail('Milk Yield', product.milkYield)
+      addDetail('Gender', product.gender)
+      addDetail('Vaccinated', product.vaccinated)
+      addDetail('Pregnant/Lactating', product.pregnantOrLactating)
+      addDetail('Quantity Available', product.quantityAvailable)
+      addDetail('Feed Type', product.feedType)
+      addDetail('Housing Type', product.housingType)
+    }
+    
+    // BIRD category
+    else if (product?.birdName) {
+      addDetail('Bird Name', product.birdName)
+      addDetail('Age', product.age)
+      addDetail('Gender', product.gender)
+      addDetail('Quantity Available', product.quantityAvailable)
+    }
+    
+    // TREE category
+    else if (product?.treeName) {
+      addDetail('Tree Name', product.treeName)
+      addDetail('Age of Tree', product.ageOfTree)
+      addDetail('Height', product.height)
+      addDetail('Trunk Girth', product.trunkGirth)
+      addDetail('Purpose', product.purpose)
+      addDetail('Quantity Available', product.quantityAvailable)
+    }
+    
+    // PADDY_RICE category
+    else if (product?.paddyRiceName) {
+      addDetail('Paddy/Rice Name', product.paddyRiceName)
+      addDetail('Listing Type', product.listingType)
+      addDetail('Category', product.category)
+      addDetail('Variety', product.varietyName)
+      addDetail('Farmer/Mill Name', product.farmerMillName)
+      addDetail('Harvest Year', product.harvestYear)
+      addDetail('Organic', product.organic)
+      addDetail('Quantity Available', product.quantityAvailable)
+      addDetail('Unit', product.unit)
+      addDetail('Price Per', product.pricePer)
+    }
+    
+    // VEGETABLE category
+    else if (product?.vegetableName) {
+      addDetail('Vegetable Name', product.vegetableName)
+      addDetail('Grade/Quality', product.gradeQuality)
+      addDetail('Harvest Date/Season', product.harvestDate)
+      addDetail('Organic', product.organic)
+      addDetail('Quantity Available', product.quantityAvailable)
+      addDetail('Unit', product.unit)
+      addDetail('Packing Type', product.packingType)
+      addDetail('Price Per', product.pricePer)
+    }
+    
+    // SEED category
+    else if (product?.seedName) {
+      addDetail('Seed Name', product.seedName)
+      addDetail('Seed Type', product.seedType)
+      addDetail('Harvest Year', product.harvestYear)
+      addDetail('Quantity Available', product.quantityAvailable)
+      addDetail('Unit', product.unit)
+      addDetail('Price Per', product.pricePer)
+    }
+    
+    // FRUIT category
+    else if (product?.fruitName) {
+      addDetail('Fruit Name', product.fruitName)
+      addDetail('Grade/Quality', product.gradeQuality)
+      addDetail('Harvest Date/Season', product.harvestDate)
+      addDetail('Organic', product.organic)
+      addDetail('Quantity Available', product.quantityAvailable)
+      addDetail('Unit', product.unit)
+      addDetail('Price Per', product.pricePer)
+    }
+    
+    // CAR category
+    else if (product?.carBrand) {
+      addDetail('Car Name', product.name)
+      addDetail('Brand', product.carBrand)
+      addDetail('Model', product.carModel)
+      addDetail('Variant', product.carVariant)
+      addDetail('Manufacturing Year', product.manufacturingYear)
+      addDetail('Fuel Type', product.fuelType)
+      addDetail('Transmission', product.transmission)
+      addDetail('Kilometers Driven', product.kilometersDriven)
+      addDetail('Number of Owners', product.numberOfOwners)
+      addDetail('RC Available', product.rcAvailable)
+      addDetail('Insurance Status', product.insuranceStatus)
+      addDetail('Insurance Expiry', product.insuranceExpiryDate)
+    }
+    
+    // BIKE category
+    else if (product?.brand && product?.model) {
+      addDetail('Bike Name', product.name)
+      addDetail('Brand', product.brand)
+      addDetail('Model', product.model)
+      addDetail('Variant', product.variant)
+      addDetail('Manufacturing Year', product.manufacturingYear)
+      addDetail('Fuel Type', product.fuelType)
+      addDetail('Gear Type', product.gearType)
+      addDetail('Condition', product.condition)
+      addDetail('Kilometers Driven', product.kilometersDriven)
+      addDetail('Number of Owners', product.numberOfOwners)
+      addDetail('RC Available', product.rcAvailable)
+      addDetail('Insurance Status', product.insuranceStatus)
+      addDetail('Insurance Expiry', product.insuranceExpiryDate)
+    }
+    
+    // MACHINERY category
+    else if (product?.machineryName) {
+      addDetail('Machinery Name', product.machineryName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Number', product.modelNumber)
+      addDetail('Manufacturing Year', product.manufacturingYear)
+      addDetail('Condition', product.condition)
+      addDetail('Working Status', product.workingStatus)
+      addDetail('Power/Capacity', product.powerCapacity)
+      addDetail('Fuel/Power Type', product.fuelPowerType)
+      addDetail('Phase', product.phase)
+    }
+    
+    // PROPERTY category
+    else if (product?.listingType) {
+      addDetail('Listing Type', product.listingType)
+      addDetail('Property Type', product.propertyType)
+      addDetail('Size', product.size)
+      addDetail('Property Condition', product.propertyCondition)
+    }
+    
+    // ELECTRONICS category
+    else if (product?.electronicsName) {
+      addDetail('Electronics Name', product.electronicsName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Number', product.modelNumber)
+      addDetail('Purchase Year', product.purchaseYear)
+      addDetail('Condition', product.condition)
+      addDetail('Working Status', product.workingStatus)
+      addDetail('Key Specifications', product.keySpecifications)
+      addDetail('Power Type', product.powerType)
+    }
+    
+    // MOBILE category
+    else if (product?.mobileName) {
+      addDetail('Mobile Name', product.mobileName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Name', product.modelName)
+      addDetail('Color', product.color)
+      addDetail('Purchase Year', product.purchaseYear)
+      addDetail('Condition', product.condition)
+      addDetail('Working Status', product.workingStatus)
+      addDetail('RAM', product.ram)
+      addDetail('Storage', product.storage)
+      addDetail('Battery Health', product.batteryHealth)
+      addDetail('Network Type', product.networkType)
+    }
+    
+    // FURNITURE category
+    else if (product?.furnitureName) {
+      addDetail('Furniture Name', product.furnitureName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Material Type', product.materialType)
+      addDetail('Purchase Year', product.purchaseYear)
+      addDetail('Condition', product.condition)
+      addDetail('Length', product.length)
+      addDetail('Width', product.width)
+      addDetail('Height', product.height)
+    }
+    
+    // FASHION category
+    else if (product?.fashionName) {
+      addDetail('Fashion Name', product.fashionName)
+      addDetail('Product Type', product.productType)
+      addDetail('Brand Name', product.brandName)
+      addDetail('Size', product.size)
+      addDetail('Color', product.color)
+      addDetail('Condition', product.condition)
+      addDetail('Material/Fabric Type', product.materialFabricType)
+      addDetail('Care Instructions', product.careInstructions)
+    }
+    
+    // JOB category
+    else if (product?.jobTitle) {
+      addDetail('Job Title', product.jobTitle)
+      addDetail('Job Category', product.jobCategory)
+      addDetail('Company Name', product.companyName)
+      addDetail('Job Type', product.jobType)
+      addDetail('Work Location', product.workLocation)
+      addDetail('Work Mode', product.workMode)
+      addDetail('Experience Required', product.experienceRequired)
+      addDetail('Qualification', product.qualification)
+      addDetail('Salary Range', product.salaryRange)
+      addDetail('Salary Type', product.salaryType)
+      addDetail('Skills Required', product.skillsRequired)
+      addDetail('Gender Preference', product.genderPreference)
+      addDetail('Age Limit', product.ageLimit)
+      addDetail('Hiring Type', product.hiringType)
+      addDetail('Number of Openings', product.numberOfOpenings)
+      addDetail('Joining Time', product.joiningTime)
+    }
+    
+    // PET category
+    else if (product?.petName) {
+      addDetail('Pet Name', product.petName)
+      addDetail('Breed', product.breed)
+      addDetail('Age', product.age)
+      addDetail('Gender', product.gender)
+      addDetail('Vaccinated', product.vaccinated)
+      addDetail('Purpose', product.purpose)
+    }
+    
+    // MUSIC_INSTRUMENT category
+    else if (product?.instrumentName) {
+      addDetail('Instrument Name', product.instrumentName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Name/Number', product.modelNameNumber)
+      addDetail('Purchase Year', product.purchaseYear)
+      addDetail('Condition', product.condition)
+      addDetail('Working Status', product.workingStatus)
+      addDetail('Instrument Type', product.instrumentType)
+      addDetail('Accessories Included', product.accessoriesIncluded)
+    }
+    
+    // GYM_EQUIPMENT category
+    else if (product?.equipmentName) {
+      addDetail('Equipment Name', product.equipmentName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Name/Number', product.modelNameNumber)
+      addDetail('Purchase Year', product.purchaseYear)
+      addDetail('Condition', product.condition)
+      addDetail('Working Status', product.workingStatus)
+      addDetail('Weight/Capacity', product.weightCapacity)
+      addDetail('Power Type', product.powerType)
+      addDetail('Voltage/Phase', product.voltagePhase)
+    }
+    
+    // FISH category
+    else if (product?.fishName) {
+      addDetail('Fish Name', product.fishName)
+      addDetail('Catch Type', product.catchType)
+      addDetail('Catch Date', product.catchDate)
+      addDetail('Freshness Level', product.freshnessLevel)
+      addDetail('Size', product.size)
+      addDetail('Cleaned', product.cleaned)
+      addDetail('Quantity Available', product.quantityAvailable)
+      addDetail('Unit', product.unit)
+      addDetail('Price Per', product.pricePer)
+    }
+    
+    // VEHICLE category
+    else if (product?.vehicleName) {
+      addDetail('Vehicle Name', product.vehicleName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Name/Number', product.modelNameNumber)
+      addDetail('Variant', product.variant)
+      addDetail('Manufacturing Year', product.manufacturingYear)
+      addDetail('Condition', product.condition)
+      addDetail('Kilometers Driven', product.kilometersDriven)
+      addDetail('Number of Owners', product.numberOfOwners)
+      addDetail('Fuel Type', product.fuelType)
+      addDetail('Transmission', product.transmission)
+      addDetail('Engine Capacity/Power', product.engineCapacityPower)
+      addDetail('RC Available', product.rcAvailable)
+      addDetail('Insurance Status', product.insuranceStatus)
+    }
+    
+    // SERVICE category
+    else if (product?.serviceName) {
+      addDetail('Service Name', product.serviceName)
+      addDetail('Service Title', product.serviceTitle)
+      addDetail('Service Type', product.serviceType)
+      addDetail('Services Offered', product.servicesOffered)
+      addDetail('Experience (Years)', product.experience)
+      addDetail('Availability', product.availability)
+      addDetail('Pricing Type', product.pricingType)
+    }
+    
+    // SCRAP category
+    else if (product?.scrapName) {
+      addDetail('Scrap Name', product.scrapName)
+      addDetail('Scrap Type/Name', product.scrapTypeName)
+      addDetail('Condition', product.condition)
+      addDetail('Weight/Quantity', product.weightQuantity)
+      addDetail('Unit', product.unit)
+    }
+    
+    // SPORTS_ITEM category
+    else if (product?.sportsItemName) {
+      addDetail('Sports Item Name', product.sportsItemName)
+      addDetail('Brand/Manufacturer', product.brand)
+      addDetail('Model Name', product.modelName)
+      addDetail('Purchase Year', product.purchaseYear)
+      addDetail('Condition', product.condition)
+      addDetail('Size/Weight', product.sizeWeight)
+      addDetail('Age Group', product.ageGroup)
+      addDetail('Accessories Included', product.accessoriesIncluded)
+    }
+    
+    // BOOK category
+    else if (product?.bookCategory) {
+      addDetail('Book Category', product.bookCategory)
+      addDetail('Book Title', product.bookTitle)
+      addDetail('Author Name', product.authorName)
+      addDetail('Publisher', product.publisher)
+      addDetail('Edition/Year', product.editionYear)
+      addDetail('Condition', product.condition)
+      addDetail('Language', product.language)
+      addDetail('Number of Books', product.numberOfBooks)
+    }
+
+    // Render details if any exist
+    if (details.length > 0) {
+      return (
+        <View style={styles.categoryDetailsGrid}>
+          {details.map((detail, index) => (
+            <View key={index} style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: branding.textColor }]}>
+                {detail.label}:
+              </Text>
+              <Text style={[styles.detailValue, { color: branding.textColor }]}>
+                {detail.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )
+    }
+
+    return null
   }
 
   // Main image and thumbnails UI
@@ -795,7 +1118,6 @@ const ProductDetail = () => {
                   onLoadStart={() => setShopImageLoading(true)}
                   onLoadEnd={() => setShopImageLoading(false)}
                   onError={(error) => {
-                    console.log('Shop avatar load error:', error.nativeEvent)
                     setShopImageError(true)
                     setShopImageLoading(false)
                   }}
@@ -978,6 +1300,14 @@ const ProductDetail = () => {
               {product?.description ||
                 'No description available for this product.'}
             </Text>
+          </View>
+
+          {/* Category-Specific Details */}
+          <View style={styles.categoryDetailsContainer}>
+            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+              Product Details
+            </Text>
+            {renderCategorySpecificDetails()}
           </View>
 
           {/* Tags */}

@@ -238,7 +238,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
     color: '#1e293b',
     fontWeight: '400',
-    textAlignVertical: 'top'
+    textAlignVertical: 'top',
+    backgroundColor: 'transparent'
   },
   sendButton: {
     width: 40,
@@ -249,7 +250,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 3
+    elevation: 3,
+    minWidth: 40,
+    minHeight: 40
   },
   sendButtonDisabled: {
     backgroundColor: '#94a3b8',
