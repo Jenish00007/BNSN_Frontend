@@ -244,6 +244,42 @@ const styles = StyleSheet.create({
         fontSize: scale(14),
         lineHeight: scale(20)
     },
+    contactValueContainer: {
+        flexDirection: 'column',
+        alignItems: 'flex-start'
+    },
+    upgradeButton: {
+        marginTop: scale(4),
+        paddingHorizontal: scale(12),
+        paddingVertical: scale(4),
+        borderRadius: scale(4),
+        borderWidth: scale(1),
+        alignSelf: 'flex-start'
+    },
+    upgradeButtonText: {
+        fontSize: scale(12),
+        fontWeight: '600'
+    },
+    warningText: {
+        fontSize: scale(11),
+        fontWeight: '600',
+        marginTop: scale(2)
+    },
+    viewedText: {
+        fontSize: scale(11),
+        fontWeight: '600',
+        marginTop: scale(2)
+    },
+    upgradeButtonsContainer: {
+        flexDirection: 'column',
+        marginTop: scale(4),
+    },
+    buyCreditsButton: {
+        marginBottom: scale(4),
+    },
+    premiumButton: {
+        // Additional styling for premium button if needed
+    },
     loadingRow: {
         flexDirection: 'row',
         alignItems: 'center',

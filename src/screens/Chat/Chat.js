@@ -21,7 +21,9 @@ import {
   Easing,
   Image,
   Modal,
-  Keyboard
+  Keyboard,
+  Linking,
+  ScrollView
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -29,11 +31,11 @@ import { useRoute, useFocusEffect } from '@react-navigation/native'
 import io from 'socket.io-client'
 import AuthContext from '../../context/Auth'
 import UserContext from '../../context/User'
+import { useSubscription } from '../../context/Subscription'
 import TextDefault from '../../components/Text/TextDefault/TextDefault'
 import { useAppBranding } from '../../utils/translationHelper'
 import { API_URL } from '../../config/api'
-// Import StyleSheet if not using external styles
-import styles from './styles' // Comment this out if using inline styles below
+import styles from './styles'
 
 // Or add this at the end of the file for inline styles:
 
@@ -133,6 +135,7 @@ const Chat = ({ navigation }) => {
     shopId,
     shopName,
     productId,
+    product: initialProduct,
     displayName: initialDisplayName,
     isChatDisabled: initialChatDisabled = false,
     chatDisabledReason: initialChatDisabledReason = null
@@ -151,6 +154,11 @@ const Chat = ({ navigation }) => {
   const [chatDisabledReason, setChatDisabledReason] = useState(
     initialChatDisabledReason || ''
   )
+  const [productDetails, setProductDetails] = useState(initialProduct || null)
+  const [eliteModalVisible, setEliteModalVisible] = useState(false)
+  const [activeTab, setActiveTab] = useState('chat')
+  const [offerAmount, setOfferAmount] = useState(null)
+  const [fetchingSellerPhone, setFetchingSellerPhone] = useState(false)
 
   const flatListRef = useRef(null)
   const sendButtonScale = useRef(new Animated.Value(1)).current
@@ -161,6 +169,8 @@ const Chat = ({ navigation }) => {
 
   const { token } = useContext(AuthContext)
   const { formetedProfileData: profile } = useContext(UserContext)
+  const { canViewContact, showContactLimitAlert, hasUnlimitedContacts } =
+    useSubscription()
   const branding = useAppBranding()
   const displayName =
     initialDisplayName ||
@@ -215,6 +225,41 @@ const Chat = ({ navigation }) => {
 
     return shopId ? 'seller' : null
   }, [detectedOtherRole, detectedSelfRole, shopId])
+
+  // Resolved product for header (from params or fetched)
+  const productForHeader = productDetails || initialProduct
+  const hasProductHeader = Boolean(
+    productForHeader && (productForHeader.name || productForHeader._id)
+  )
+
+  // Fetch product details when we have productId but missing price/image (e.g. from ChatList)
+  useEffect(() => {
+    const hasFullProduct =
+      productDetails?.price != null ||
+      productDetails?.discountPrice != null ||
+      productDetails?.image
+    if (productId && !hasFullProduct) {
+      let cancelled = false
+      const fetchProduct = async () => {
+        try {
+          const res = await fetch(`${API_URL}/event/get-product/${productId}`, {
+            headers: { 'Content-Type': 'application/json' }
+          })
+          const data = await res.json()
+          if (!cancelled && data.success && data.product) {
+            setProductDetails((prev) => ({ ...prev, ...data.product }))
+          }
+        } catch (err) {
+          if (!cancelled) console.error('Error fetching product for chat:', err)
+        }
+      }
+      fetchProduct()
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [productId])
+
   // Socket URL - Update this with your actual socket server URL
   const SOCKET_URL = 'https://bnsn.in'
 
@@ -401,7 +446,7 @@ const Chat = ({ navigation }) => {
     }
   }, [])
 
-  // Enhanced header
+  // Enhanced header with call button (premium can call; non-premium shows ? and opens modal on press)
   useEffect(() => {
     navigation.setOptions({
       title: displayName || 'Chat',
@@ -417,9 +462,68 @@ const Chat = ({ navigation }) => {
       headerTitleStyle: {
         fontWeight: '700',
         fontSize: 18
-      }
+      },
+      headerRight: () => (
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}
+        >
+          {resolvedSelfRole === 'buyer' && shopId && (
+            <TouchableOpacity
+              onPress={handleCallPress}
+              disabled={fetchingSellerPhone}
+              style={{ padding: 8, marginRight: 4 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              {fetchingSellerPhone ? (
+                <ActivityIndicator size='small' color='#fff' />
+              ) : (
+                <View style={{ position: 'relative' }}>
+                  <MaterialIcons name='phone' size={24} color='#fff' />
+                  {!canViewContact() && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        right: -4,
+                        top: -4,
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        borderRadius: 8,
+                        width: 16,
+                        height: 16,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: branding.primaryColor,
+                          fontWeight: '700'
+                        }}
+                      >
+                        ?
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={{ padding: 8 }} onPress={() => {}}>
+            <MaterialIcons name='more-vert' size={24} color='#fff' />
+          </TouchableOpacity>
+        </View>
+      )
     })
-  }, [navigation, displayName, branding])
+  }, [
+    navigation,
+    displayName,
+    branding,
+    resolvedSelfRole,
+    shopId,
+    handleCallPress,
+    canViewContact,
+    fetchingSellerPhone
+  ])
 
   // Animation for send button
   const animateSendButton = () => {
@@ -744,6 +848,73 @@ const Chat = ({ navigation }) => {
     }
   }
 
+  // Get seller phone: from otherUser (never display in UI) or fetch shop
+  const getSellerPhone = useCallback(async () => {
+    const phone = otherUser?.phoneNumber || otherUser?.phone
+    if (phone) return phone
+    if (!shopId) return null
+    try {
+      const res = await fetch(`${API_URL}/shop/get-shop/${shopId}`, {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (data.success && data.shop) {
+        return data.shop.phoneNumber || data.shop.phone || null
+      }
+    } catch (err) {
+      console.error('Error fetching seller phone:', err)
+    }
+    return null
+  }, [otherUser, shopId])
+
+  const handleCallPress = useCallback(async () => {
+    if (chatDisabled) return
+    if (!canViewContact()) {
+      setEliteModalVisible(true)
+      return
+    }
+    setFetchingSellerPhone(true)
+    try {
+      const phone = await getSellerPhone()
+      if (phone) {
+        await Linking.openURL(`tel:${phone}`)
+      } else {
+        Alert.alert(
+          'Phone unavailable',
+          'Seller phone number is not available right now.'
+        )
+      }
+    } catch (err) {
+      console.error('Call error:', err)
+      Alert.alert('Error', 'Unable to start the call. Please try again.')
+    } finally {
+      setFetchingSellerPhone(false)
+    }
+  }, [canViewContact, chatDisabled, getSellerPhone])
+
+  const handleSendOffer = useCallback(() => {
+    if (chatDisabled || !offerAmount || sending || !isConnected) return
+    const text = `I'd like to offer ₹${offerAmount}`
+    setInputText('')
+    setOfferAmount(null)
+    setActiveTab('chat')
+    if (socket) {
+      socket.emit('send-message', {
+        conversationId: conversationId,
+        sender: profile._id,
+        text
+      })
+    }
+  }, [
+    chatDisabled,
+    offerAmount,
+    sending,
+    isConnected,
+    socket,
+    conversationId,
+    profile._id
+  ])
+
   const formatMessageTime = (timestamp) => {
     const messageDate = new Date(timestamp)
     const now = new Date()
@@ -905,8 +1076,8 @@ const Chat = ({ navigation }) => {
                       {displayName
                         ? displayName.charAt(0).toUpperCase()
                         : otherUser?.name
-                        ? otherUser.name.charAt(0).toUpperCase()
-                        : 'U'}
+                          ? otherUser.name.charAt(0).toUpperCase()
+                          : 'U'}
                     </Text>
                   </View>
                 )}
@@ -992,6 +1163,77 @@ const Chat = ({ navigation }) => {
         </View>
       )}
 
+      {/* Product header strip: never show seller phone */}
+      {hasProductHeader && productForHeader && (
+        <View
+          style={[
+            styles.productHeaderStrip,
+            { borderBottomColor: branding.borderColor || '#e2e8f0' }
+          ]}
+        >
+          <Image
+            source={{
+              uri:
+                productForHeader.image ||
+                (productForHeader.images && productForHeader.images[0]) ||
+                (productForHeader.images && productForHeader.images[0]?.url) ||
+                ''
+            }}
+            style={styles.productHeaderImage}
+            defaultSource={require('../../assets/images/placeholder.png')}
+          />
+          <View style={styles.productHeaderTextWrap}>
+            <Text style={styles.productHeaderCategory} numberOfLines={1}>
+              {productForHeader.category?.name ||
+                productForHeader.category ||
+                'Listing'}
+            </Text>
+            <TextDefault style={styles.productHeaderTitle} numberOfLines={2}>
+              {productForHeader.name || 'Product'}
+            </TextDefault>
+            <Text
+              style={[
+                styles.productHeaderPrice,
+                { color: branding.primaryColor }
+              ]}
+            >
+              ₹
+              {productForHeader.price ??
+                productForHeader.discountPrice ??
+                productForHeader.askingPrice ??
+                '—'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Call owners directly banner - only for buyers, never show seller number */}
+      {resolvedSelfRole === 'buyer' && shopId && !chatDisabled && (
+        <View style={[styles.ctaBanner, { backgroundColor: '#FEF3C7' }]}>
+          <MaterialIcons
+            name='flash-on'
+            size={20}
+            color='#B45309'
+            style={{ marginRight: 8 }}
+          />
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => !canViewContact() && setEliteModalVisible(true)}
+          >
+            <Text style={styles.ctaBannerText}>
+              Call owners directly to buy fast
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Subscription')}>
+            <Text
+              style={[styles.ctaBannerButton, { color: branding.primaryColor }]}
+            >
+              Go Elite Pro &gt;
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1009,7 +1251,7 @@ const Chat = ({ navigation }) => {
                 flexGrow: 1,
                 justifyContent: messages.length === 0 ? 'center' : 'flex-end',
                 paddingBottom:
-                  Platform.OS === 'android' && keyboardHeight > 0 ? 80 : 16
+                  Platform.OS === 'android' && keyboardHeight > 0 ? 100 : 16
               }
             ]}
             onContentSizeChange={() => {
@@ -1058,63 +1300,318 @@ const Chat = ({ navigation }) => {
             </Animated.View>
           )}
 
-          {/* Message Input */}
-          <View
-            style={[
-              styles.inputContainer,
+          {/* Tabs: CHAT | MAKE OFFER (when product context) */}
+          {hasProductHeader && resolvedSelfRole === 'buyer' && (
+            <View
+              style={[
+                styles.tabRow,
+                { borderTopColor: branding.borderColor || '#e2e8f0' }
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'chat' && {
+                    borderBottomColor: branding.primaryColor
+                  }
+                ]}
+                onPress={() => setActiveTab('chat')}
+              >
+                <MaterialIcons
+                  name='chat-bubble-outline'
+                  size={18}
+                  color={
+                    activeTab === 'chat' ? branding.primaryColor : '#64748b'
+                  }
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'chat' && {
+                      color: branding.primaryColor,
+                      fontWeight: '700'
+                    }
+                  ]}
+                >
+                  CHAT
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'make_offer' && {
+                    borderBottomColor: branding.primaryColor
+                  }
+                ]}
+                onPress={() => setActiveTab('make_offer')}
+              >
+                <MaterialIcons
+                  name='handshake'
+                  size={18}
+                  color={
+                    activeTab === 'make_offer'
+                      ? branding.primaryColor
+                      : '#64748b'
+                  }
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'make_offer' && {
+                      color: branding.primaryColor,
+                      fontWeight: '700'
+                    }
+                  ]}
+                >
+                  MAKE OFFER
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Message Input (Chat tab) or Make Offer section */}
+          {activeTab !== 'make_offer' ? (
+            <View
+              style={[
+                styles.inputContainer,
                 {
                   borderTopColor: branding.borderColor || '#f0f0f0',
                   marginBottom:
-                    Platform.OS === 'android' && keyboardHeight > 0 ? 0 : 0
+                    Platform.OS === 'android' && keyboardHeight > 0
+                      ? keyboardHeight
+                      : 0
                 }
-            ]}
-          >
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder='Type a message...'
-                placeholderTextColor='#999'
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={1000}
+              ]}
+            >
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder='Type a message...'
+                  placeholderTextColor='#999'
+                  value={inputText}
+                  onChangeText={setInputText}
+                  multiline
+                  maxLength={1000}
                   editable={!sending && isConnected && !chatDisabled}
-                textAlignVertical='top'
-                onFocus={() => {
-                  setTimeout(() => {
-                    scrollToBottom()
-                  }, 300)
-                }}
-              />
-              <Animated.View
-                style={{ transform: [{ scale: sendButtonScale }] }}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    { backgroundColor: branding.primaryColor },
+                  textAlignVertical='top'
+                  onFocus={() => {
+                    setTimeout(() => scrollToBottom(), 300)
+                  }}
+                />
+                <Animated.View
+                  style={{ transform: [{ scale: sendButtonScale }] }}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      { backgroundColor: branding.primaryColor },
                       (!inputText.trim() ||
                         sending ||
                         !isConnected ||
                         chatDisabled) &&
-                    styles.sendButtonDisabled
-                  ]}
-                  onPress={sendMessage}
+                        styles.sendButtonDisabled
+                    ]}
+                    onPress={sendMessage}
                     disabled={
-                      !inputText.trim() || sending || !isConnected || chatDisabled
+                      !inputText.trim() ||
+                      sending ||
+                      !isConnected ||
+                      chatDisabled
                     }
-                >
-                  {sending ? (
-                    <ActivityIndicator size='small' color='#fff' />
-                  ) : (
-                    <MaterialIcons name='send' size={20} color='#fff' />
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+                  >
+                    {sending ? (
+                      <ActivityIndicator size='small' color='#fff' />
+                    ) : (
+                      <MaterialIcons name='send' size={20} color='#fff' />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
             </View>
-          </View>
+          ) : (
+            <View
+              style={[
+                styles.makeOfferContainer,
+                {
+                  borderTopColor: branding.borderColor || '#e2e8f0',
+                  marginBottom:
+                    Platform.OS === 'android' && keyboardHeight > 0
+                      ? keyboardHeight
+                      : 0
+                }
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.makeOfferButton,
+                  { backgroundColor: branding.primaryColor }
+                ]}
+                onPress={handleSendOffer}
+                disabled={
+                  !offerAmount || sending || !isConnected || chatDisabled
+                }
+              >
+                <MaterialIcons
+                  name='handshake'
+                  size={22}
+                  color='#fff'
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.makeOfferButtonText}>MAKE OFFER</Text>
+              </TouchableOpacity>
+              {productForHeader && (
+                <>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.suggestedPricesScroll}
+                  >
+                    {(() => {
+                      const base = Number(
+                        productForHeader.price ??
+                          productForHeader.discountPrice ??
+                          productForHeader.askingPrice ??
+                          0
+                      )
+                      if (!base) return []
+                      return [1, 0.95, 0.9, 0.85, 0.8].map(
+                        (ratio) => base * ratio
+                      )
+                    })().map((p, i) => {
+                      const amount = Math.round(Number(p))
+                      return (
+                        <TouchableOpacity
+                          key={i}
+                          style={[
+                            styles.priceChip,
+                            offerAmount === amount && {
+                              backgroundColor: branding.primaryColor
+                            }
+                          ]}
+                          onPress={() => setOfferAmount(amount)}
+                        >
+                          <Text
+                            style={[
+                              styles.priceChipText,
+                              offerAmount === amount && { color: '#fff' }
+                            ]}
+                          >
+                            ₹{amount}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </ScrollView>
+                  <Text style={styles.currentOfferLabel}>
+                    {offerAmount != null
+                      ? `₹${offerAmount}`
+                      : 'Select an amount'}
+                  </Text>
+                  {offerAmount != null && (
+                    <View style={styles.feedbackBanner}>
+                      <MaterialIcons
+                        name='thumb-up'
+                        size={18}
+                        color={branding.primaryColor}
+                      />
+                      <Text style={styles.feedbackBannerText}>
+                        Very good offer! High chances of seller's response.
+                      </Text>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={[
+                      styles.sendOfferButton,
+                      { backgroundColor: branding.primaryColor }
+                    ]}
+                    onPress={handleSendOffer}
+                    disabled={
+                      !offerAmount || sending || !isConnected || chatDisabled
+                    }
+                  >
+                    <Text style={styles.sendOfferButtonText}>Send</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Elite Buyer modal - never show seller number; premium unlocks call */}
+      <Modal
+        visible={eliteModalVisible}
+        transparent
+        animationType='fade'
+        onRequestClose={() => setEliteModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.modalOverlay}
+          onPress={() => setEliteModalVisible(false)}
+        >
+          <View style={styles.eliteModalContent}>
+            <TouchableOpacity
+              style={styles.eliteModalClose}
+              onPress={() => setEliteModalVisible(false)}
+            >
+              <MaterialIcons name='close' size={28} color='#1e293b' />
+            </TouchableOpacity>
+            <View style={styles.eliteLogoWrap}>
+              <MaterialIcons name='workspace-premium' size={48} color='#fff' />
+              <Text style={styles.eliteLogoText}>ELITE BUYER</Text>
+            </View>
+            <Text style={styles.eliteModalTitle}>
+              Want to unlock contact instantly?
+            </Text>
+            <Text style={styles.eliteModalSubtitle}>
+              Become an Elite Buyer to call owners directly.
+            </Text>
+            <View style={styles.elitePackageRow}>
+              <Text style={styles.elitePackageLabel}>10 Contacts</Text>
+              <View style={styles.eliteSavingsBadge}>
+                <Text style={styles.eliteSavingsText}>50% Savings</Text>
+              </View>
+            </View>
+            <View style={styles.elitePriceRow}>
+              <Text style={styles.elitePriceOld}>₹198</Text>
+              <Text
+                style={[styles.elitePriceNew, { color: branding.primaryColor }]}
+              >
+                ₹99
+              </Text>
+              <Text style={styles.elitePricePer}>₹10/Contact</Text>
+            </View>
+            <Text style={styles.elitePackageNote}>
+              Package applicable for Mobiles category in Chennai for 7 days.
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.elitePayButton,
+                { backgroundColor: branding.primaryColor }
+              ]}
+              onPress={() => {
+                setEliteModalVisible(false)
+                navigation.navigate('Subscription')
+              }}
+            >
+              <Text style={styles.elitePayButtonText}>Pay ₹99</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Subscription')}
+            >
+              <Text
+                style={[
+                  styles.eliteExploreLink,
+                  { color: branding.primaryColor }
+                ]}
+              >
+                Explore business packages &gt;
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   )
 }

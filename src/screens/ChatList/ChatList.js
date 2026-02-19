@@ -115,6 +115,9 @@ const ChatList = () => {
       conversationId: conversation._id,
       groupTitle: conversation.groupTitle,
       otherUser: conversation.otherUser || null,
+      shopId: conversation.otherUser?._id || null,
+      productId: conversation.productId || conversation.product?._id || null,
+      product: conversation.product || null,
       displayName:
         (conversation.otherUser &&
           (conversation.otherUser.displayName ||
@@ -370,9 +373,9 @@ const ChatList = () => {
                 : 'No buyers have contacted you yet'}
           </TextDefault>
           {conversations.length === 0 ? (
-          <TextDefault style={styles.emptySubtext}>
-            Start chatting with sellers
-          </TextDefault>
+            <TextDefault style={styles.emptySubtext}>
+              Start chatting with sellers
+            </TextDefault>
           ) : null}
         </View>
       ) : (

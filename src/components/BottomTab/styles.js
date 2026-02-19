@@ -1,104 +1,89 @@
 import { Dimensions, StyleSheet } from 'react-native';
 import { verticalScale, scale } from '../../utils/scaling';
 import { fontStyles } from '../../utils/fontStyles';
+
 const { height, width } = Dimensions.get('window');
+
+const TAB_HEIGHT = height * 0.07;
 
 const styles = StyleSheet.create({
   footerContainer: {
     width,
-    height: height * 0.08,
+    height: TAB_HEIGHT,
     flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E8E8E8',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
+
+  /* Regular tab buttons */
   footerBtnContainer: {
-    width: '20%',
+    flex: 1,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-  
+    paddingTop: verticalScale(6),
+    paddingBottom: verticalScale(4),
   },
-  imgContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
   activeText: {
-    marginTop: verticalScale(4),
-    fontSize: 10,
+    marginTop: verticalScale(2),
+    fontSize: scale(10),
     fontFamily: fontStyles.PoppinsBold,
     fontWeight: 'bold',
   },
   inactiveText: {
-    marginTop: verticalScale(4),
-    fontSize: 10,
-    fontFamily: fontStyles.PoppinsRegular,
-    fontWeight: 'bold',
-  },
-  profileContainer: {
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  profileBadge: {
-    width: verticalScale(8),
-    height: verticalScale(8),
-    position: 'absolute',
-    right: '25%',
-    top: 0,
-    borderRadius: verticalScale(4),
-  },
-  badgeContainer: {
-    position: 'absolute',
-    top: -scale(5),
-    right: -scale(10),
-    borderRadius: scale(10),
-    height: scale(16),
-    width: scale(16),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
+    marginTop: verticalScale(2),
     fontSize: scale(10),
-    fontWeight: 'bold',
+    fontFamily: fontStyles.PoppinsRegular,
   },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
+
+  /* Sell button — wrapper sits on the tab bar, button protrudes upward */
+  sellButtonWrapper: {
+    flex: 1,
     alignItems: 'center',
-    borderRadius: 25, 
-   
+    // Push the button up so it floats above the tab bar
+    marginTop: -verticalScale(24),
+    justifyContent: 'flex-start',
   },
-  sellButtonContainer: {
-    width: '20%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  sellButton: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(25),
+
+  /* Outer ring (yellow/gold border visible in screenshot) */
+  sellButtonOuter: {
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
+    borderWidth: scale(3),
+    borderColor: '#F5C518',   // OLX yellow ring
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 8,
   },
+
+  /* Inner white circle that holds the + icon */
+  sellButtonInner: {
+    width: scale(46),
+    height: scale(46),
+    borderRadius: scale(23),
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   sellText: {
-    marginTop: verticalScale(4),
-    fontSize: 10,
+    marginTop: verticalScale(3),
+    fontSize: scale(10),
     fontFamily: fontStyles.PoppinsRegular,
-    fontWeight: 'bold',
+    color: '#666666',
   },
 });
 

@@ -131,7 +131,7 @@ export default function CancellationPolicy() {
             7. Contact Us
           </Text>
           <Text style={styles.paragraph}>
-            For any questions about our cancellation policy or assistance with cancelling an order, please contact our customer support team at {config?.contactInfo?.email || 'bnsn.info@gmail.com'}
+            For any questions about our cancellation policy or assistance with cancelling an order, please contact our customer support team at {config?.contactInfo?.email || 'support@7ark.com'}
           </Text>
         </View>
       </ScrollView>

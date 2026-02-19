@@ -13,7 +13,6 @@ import { useNavigation } from '@react-navigation/native'
 const Categories = React.memo(function Categories({ categories }) {
   const navigation = useNavigation()
   const [renderedCategories, setRenderedCategories] = useState([])
-  const [useScrollView, setUseScrollView] = useState(false)
   const processedRef = useRef(false)
 
   // Process categories with useMemo for better performance
@@ -30,12 +29,8 @@ const Categories = React.memo(function Categories({ categories }) {
   // Update rendered categories when processed categories change
   useEffect(() => {
     if (processedCategories.length > 0) {
-      setRenderedCategories(processedCategories)
-
-      // If more than 4 categories, use ScrollView
-      if (processedCategories.length > 4) {
-        setUseScrollView(true)
-      }
+      // Show maximum 8 categories (4 per row, 2 rows)
+      setRenderedCategories(processedCategories.slice(0, 8))
     }
   }, [processedCategories])
 
@@ -84,40 +79,6 @@ const Categories = React.memo(function Categories({ categories }) {
     )
   }
 
-  const renderCategoryScrollView = (item, index) => {
-    const imageUrl = item?.imageUrl || item?.image || item?.images?.[0]
-
-    return (
-      <TouchableOpacity
-        onPress={() => navigation.push('SubCategory', { category: item })}
-        style={styles.touchableContainer}
-        key={item._key}
-      >
-        <View style={styles.container}>
-          <View style={styles.iconContainer}>
-            <Image
-              style={styles.icon}
-              source={{
-                uri: imageUrl,
-                cache: 'force-cache'
-              }}
-              onError={(error) => {
-                console.error(
-                  `ScrollView Image load error for category ${index} (${item?.name}):`,
-                  error.nativeEvent
-                )
-              }}
-              defaultSource={require('../../assets/images/placeholder.png')}
-              resizeMode='cover'
-            />
-          </View>
-          <Text style={styles.text} numberOfLines={2}>
-            {item?.name}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    )
-  }
 
   // If no categories, show empty state
   if (!categories || categories.length === 0) {
@@ -128,24 +89,6 @@ const Categories = React.memo(function Categories({ categories }) {
     )
   }
 
-  // Use ScrollView as fallback for better rendering
-  if (useScrollView) {
-    return (
-      <View style={styles.mainContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-        >
-          {renderedCategories.map((item, index) => (
-            <View key={`category-${item.id || item._id || index}`}>
-              {renderCategoryScrollView(item, index)}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    )
-  }
 
   // Ensure we have categories to render
   if (!renderedCategories || renderedCategories.length === 0) {
@@ -160,21 +103,23 @@ const Categories = React.memo(function Categories({ categories }) {
     <View style={styles.mainContainer}>
       <FlatList
         data={renderedCategories}
-        showsHorizontalScrollIndicator={false}
-        horizontal={true}
+        showsVerticalScrollIndicator={false}
+        horizontal={false}
+        numColumns={4}
         renderItem={renderCategory}
         keyExtractor={(item) => item._key}
-        initialNumToRender={Math.max(renderedCategories.length, 1)}
-        maxToRenderPerBatch={Math.max(renderedCategories.length, 1)}
-        windowSize={Math.max(renderedCategories.length, 1)}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={8}
         removeClippedSubviews={false}
         getItemLayout={(data, index) => ({
-          length: 80, // Updated from 100 to match new container width
-          offset: 80 * index, // Updated from 100 to match new container width
+          length: 80,
+          offset: 80 * Math.floor(index / 4) * 2,
           index
         })}
         contentContainerStyle={styles.listContainer}
         extraData={renderedCategories.length}
+        scrollEnabled={false}
       />
     </View>
   )
@@ -188,7 +133,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5 // Reduced from 10
   },
   touchableContainer: {
-    marginRight: 5 // Reduced from 10
+    flex: 1,
+    margin: 5,
+    maxWidth: 80
   },
   iconContainer: {
     backgroundColor: '#F5F5F5',

@@ -128,7 +128,7 @@ export default function PrivacyPolicy() {
           </Text>
           <Text style={styles.paragraph}>
             If you have any questions about this Privacy Policy, please contact us:{'\n'}
-            Email: {contactInfo?.email || 'bnsn.info@gmail.com'}
+            Email: {contactInfo?.email || 'support@7ark.com'}
           </Text>
         </View>
       </ScrollView>

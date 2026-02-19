@@ -172,7 +172,7 @@ export default function About() {
           <Text style={styles.missionTitle}>Contact Us</Text>
           <Text style={styles.missionText}>
             Have questions or feedback? We'd love to hear from you!{'\n\n'}
-            Email: {contactInfo?.email || 'bnsn.info@gmail.com'}
+            Email: {contactInfo?.email || 'support@7ark.com'}
           </Text>
         </View>
       </ScrollView>

@@ -30,6 +30,7 @@ import { MaterialIcons, FontAwesome } from '@expo/vector-icons'
 import AuthContext from '../../context/Auth'
 import { LocationContext } from '../../context/Location'
 import UserContext from '../../context/User'
+import { useSubscription } from '../../context/Subscription'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
 import { theme } from '../../utils/themeColors' // Import the theme object
 import styles from './ProductDetailsStyles' // Base styles
@@ -38,6 +39,7 @@ import { IMAGE_LINK } from '../../utils/constants'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import moment from 'moment'
 import { API_URL } from '../../config/api'
+import ContactViewsIndicator from '../../components/ContactViewsIndicator/ContactViewsIndicator'
 
 const { width } = Dimensions.get('window')
 
@@ -47,6 +49,16 @@ const ProductDetail = () => {
   const { product } = route.params
   const { location } = useContext(LocationContext)
   const { isLoggedIn, addToCart } = useContext(UserContext)
+  const {
+    canViewContact,
+    addViewedContact,
+    hasViewedContact,
+    showContactLimitAlert,
+    formatPhoneNumber,
+    getRemainingFreeContacts,
+    hasUnlimitedContacts,
+    FREE_CONTACT_LIMIT
+  } = useSubscription()
 
   const branding = useAppBranding()
   const [loading, setLoading] = useState(false)
@@ -85,6 +97,7 @@ const ProductDetail = () => {
   const [userDetailsLoading, setUserDetailsLoading] = useState(false)
   const [userDetailsError, setUserDetailsError] = useState(null)
   const isMountedRef = useRef(true)
+  const [contactViewed, setContactViewed] = useState(false)
 
   // Get the current color scheme (system preference)
   const colorScheme = useColorScheme()
@@ -104,28 +117,30 @@ const ProductDetail = () => {
     const images = hasMultipleImages
       ? product.images
       : [product?.image || product?.images?.[0]]
-    
-    const validImages = images.filter(img => {
-      if (!img) return false
-      // Handle both string URLs and objects with url property
-      if (typeof img === 'string') {
-        return img.trim() !== ''
-      }
-      if (typeof img === 'object' && img.url) {
-        return img.url.trim() !== ''
-      }
-      return false
-    }).map(img => {
-      // Extract URL from object or use string directly
-      if (typeof img === 'string') {
-        return img
-      }
-      if (typeof img === 'object' && img.url) {
-        return img.url
-      }
-      return IMAGE_LINK
-    })
-    
+
+    const validImages = images
+      .filter((img) => {
+        if (!img) return false
+        // Handle both string URLs and objects with url property
+        if (typeof img === 'string') {
+          return img.trim() !== ''
+        }
+        if (typeof img === 'object' && img.url) {
+          return img.url.trim() !== ''
+        }
+        return false
+      })
+      .map((img) => {
+        // Extract URL from object or use string directly
+        if (typeof img === 'string') {
+          return img
+        }
+        if (typeof img === 'object' && img.url) {
+          return img.url
+        }
+        return IMAGE_LINK
+      })
+
     return validImages.length > 0 ? validImages : [IMAGE_LINK]
   }, [product?.images, product?.image, hasMultipleImages])
 
@@ -190,8 +205,8 @@ const ProductDetail = () => {
               setUserDetails(data.shop)
             }
           } else {
-          // Non-JSON response received
-        }
+            // Non-JSON response received
+          }
         } catch (jsonError) {
           // Error parsing JSON response
         }
@@ -324,7 +339,17 @@ const ProductDetail = () => {
         shopName: sellerDisplayName,
         productId: product._id,
         displayName: sellerDisplayName,
-        otherUser: otherParticipant
+        otherUser: otherParticipant,
+        product: {
+          _id: product._id,
+          name: product.name,
+          price:
+            product.discountPrice ?? product.price ?? product.originalPrice,
+          image: product.image || product.images?.[0],
+          images: product.images,
+          category: product.category,
+          subcategory: product.subcategory
+        }
       })
     } else {
       Alert.alert('Error', 'Unable to contact seller at this time.')
@@ -334,6 +359,14 @@ const ProductDetail = () => {
   const handleCall = () => {
     if (!isLoggedIn) {
       navigation.navigate('Login')
+      return
+    }
+
+    // Check if user can view contact
+    if (!canViewContact()) {
+      showContactLimitAlert(() => {
+        navigation.navigate('Subscription')
+      })
       return
     }
 
@@ -539,8 +572,35 @@ const ProductDetail = () => {
     setReviews(product?.reviews || [])
   }
 
-  const renderContactRow = (icon, label, value) => {
+  const renderContactRow = (
+    icon,
+    label,
+    value,
+    isPhone = false,
+    contactId = null
+  ) => {
     if (!value) return null
+
+    // Always hide phone number by default, show only when user has views left
+    let displayValue = value
+    let showUpgradeButton = false
+    let alreadyViewed = false
+
+    if (isPhone && contactId) {
+      alreadyViewed = hasViewedContact(contactId)
+
+      if (!canViewContact() && !alreadyViewed) {
+        // User has used all free contacts and hasn't viewed this contact - hide number and show upgrade
+        displayValue = formatPhoneNumber(value, true)
+        showUpgradeButton = true
+      } else {
+        // User has free contacts or has already viewed this contact - show full number
+        if (!alreadyViewed && canViewContact()) {
+          addViewedContact(contactId)
+        }
+        displayValue = value
+      }
+    }
 
     return (
       <View style={styles.contactInfoRow}>
@@ -556,14 +616,64 @@ const ProductDetail = () => {
           >
             {label}
           </Text>
-          <Text
-            style={[
-              styles.contactInfoValue,
-              { color: branding.textColor, opacity: 0.85 }
-            ]}
-          >
-            {value}
-          </Text>
+          <View style={styles.contactValueContainer}>
+            <Text
+              style={[
+                styles.contactInfoValue,
+                {
+                  color: branding.textColor,
+                  opacity: showUpgradeButton ? 0.6 : 0.85
+                }
+              ]}
+            >
+              {displayValue}
+            </Text>
+            {showUpgradeButton && (
+              <View style={styles.upgradeButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.upgradeButton, styles.buyCreditsButton]}
+                  onPress={() => navigation.navigate('BuyContacts')}
+                >
+                  <Text
+                    style={[
+                      styles.upgradeButtonText,
+                      { color: branding.primaryColor }
+                    ]}
+                  >
+                    Buy 7 Credits - ₹49
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.upgradeButton, styles.premiumButton]}
+                  onPress={() => navigation.navigate('Subscription')}
+                >
+                  <Text
+                    style={[
+                      styles.upgradeButtonText,
+                      { color: branding.primaryColor }
+                    ]}
+                  >
+                    Premium Unlimited
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {isPhone && !showUpgradeButton && alreadyViewed && (
+              <Text style={[styles.viewedText, { color: '#4CAF50' }]}>
+                ✓ Already viewed
+              </Text>
+            )}
+            {isPhone &&
+              !showUpgradeButton &&
+              !alreadyViewed &&
+              getRemainingFreeContacts() <= 1 && (
+                <Text style={[styles.warningText, { color: '#ff6b6b' }]}>
+                  {getRemainingFreeContacts() === 1
+                    ? 'Last free contact!'
+                    : 'No free contacts left!'}
+                </Text>
+              )}
+          </View>
         </View>
       </View>
     )
@@ -628,7 +738,7 @@ const ProductDetail = () => {
   // Function to render category-specific details
   const renderCategorySpecificDetails = () => {
     const details = []
-    
+
     // Helper function to add detail if exists
     const addDetail = (label, value) => {
       if (value && value.toString().trim() !== '') {
@@ -649,7 +759,7 @@ const ProductDetail = () => {
       addDetail('Feed Type', product.feedType)
       addDetail('Housing Type', product.housingType)
     }
-    
+
     // BIRD category
     else if (product?.birdName) {
       addDetail('Bird Name', product.birdName)
@@ -657,7 +767,7 @@ const ProductDetail = () => {
       addDetail('Gender', product.gender)
       addDetail('Quantity Available', product.quantityAvailable)
     }
-    
+
     // TREE category
     else if (product?.treeName) {
       addDetail('Tree Name', product.treeName)
@@ -667,7 +777,7 @@ const ProductDetail = () => {
       addDetail('Purpose', product.purpose)
       addDetail('Quantity Available', product.quantityAvailable)
     }
-    
+
     // PADDY_RICE category
     else if (product?.paddyRiceName) {
       addDetail('Paddy/Rice Name', product.paddyRiceName)
@@ -681,7 +791,7 @@ const ProductDetail = () => {
       addDetail('Unit', product.unit)
       addDetail('Price Per', product.pricePer)
     }
-    
+
     // VEGETABLE category
     else if (product?.vegetableName) {
       addDetail('Vegetable Name', product.vegetableName)
@@ -693,7 +803,7 @@ const ProductDetail = () => {
       addDetail('Packing Type', product.packingType)
       addDetail('Price Per', product.pricePer)
     }
-    
+
     // SEED category
     else if (product?.seedName) {
       addDetail('Seed Name', product.seedName)
@@ -703,7 +813,7 @@ const ProductDetail = () => {
       addDetail('Unit', product.unit)
       addDetail('Price Per', product.pricePer)
     }
-    
+
     // FRUIT category
     else if (product?.fruitName) {
       addDetail('Fruit Name', product.fruitName)
@@ -714,7 +824,7 @@ const ProductDetail = () => {
       addDetail('Unit', product.unit)
       addDetail('Price Per', product.pricePer)
     }
-    
+
     // CAR category
     else if (product?.carBrand) {
       addDetail('Car Name', product.name)
@@ -730,7 +840,7 @@ const ProductDetail = () => {
       addDetail('Insurance Status', product.insuranceStatus)
       addDetail('Insurance Expiry', product.insuranceExpiryDate)
     }
-    
+
     // BIKE category
     else if (product?.brand && product?.model) {
       addDetail('Bike Name', product.name)
@@ -747,7 +857,7 @@ const ProductDetail = () => {
       addDetail('Insurance Status', product.insuranceStatus)
       addDetail('Insurance Expiry', product.insuranceExpiryDate)
     }
-    
+
     // MACHINERY category
     else if (product?.machineryName) {
       addDetail('Machinery Name', product.machineryName)
@@ -760,7 +870,7 @@ const ProductDetail = () => {
       addDetail('Fuel/Power Type', product.fuelPowerType)
       addDetail('Phase', product.phase)
     }
-    
+
     // PROPERTY category
     else if (product?.listingType) {
       addDetail('Listing Type', product.listingType)
@@ -768,7 +878,7 @@ const ProductDetail = () => {
       addDetail('Size', product.size)
       addDetail('Property Condition', product.propertyCondition)
     }
-    
+
     // ELECTRONICS category
     else if (product?.electronicsName) {
       addDetail('Electronics Name', product.electronicsName)
@@ -780,7 +890,7 @@ const ProductDetail = () => {
       addDetail('Key Specifications', product.keySpecifications)
       addDetail('Power Type', product.powerType)
     }
-    
+
     // MOBILE category
     else if (product?.mobileName) {
       addDetail('Mobile Name', product.mobileName)
@@ -795,7 +905,7 @@ const ProductDetail = () => {
       addDetail('Battery Health', product.batteryHealth)
       addDetail('Network Type', product.networkType)
     }
-    
+
     // FURNITURE category
     else if (product?.furnitureName) {
       addDetail('Furniture Name', product.furnitureName)
@@ -807,7 +917,7 @@ const ProductDetail = () => {
       addDetail('Width', product.width)
       addDetail('Height', product.height)
     }
-    
+
     // FASHION category
     else if (product?.fashionName) {
       addDetail('Fashion Name', product.fashionName)
@@ -819,7 +929,7 @@ const ProductDetail = () => {
       addDetail('Material/Fabric Type', product.materialFabricType)
       addDetail('Care Instructions', product.careInstructions)
     }
-    
+
     // JOB category
     else if (product?.jobTitle) {
       addDetail('Job Title', product.jobTitle)
@@ -839,7 +949,7 @@ const ProductDetail = () => {
       addDetail('Number of Openings', product.numberOfOpenings)
       addDetail('Joining Time', product.joiningTime)
     }
-    
+
     // PET category
     else if (product?.petName) {
       addDetail('Pet Name', product.petName)
@@ -849,7 +959,7 @@ const ProductDetail = () => {
       addDetail('Vaccinated', product.vaccinated)
       addDetail('Purpose', product.purpose)
     }
-    
+
     // MUSIC_INSTRUMENT category
     else if (product?.instrumentName) {
       addDetail('Instrument Name', product.instrumentName)
@@ -861,7 +971,7 @@ const ProductDetail = () => {
       addDetail('Instrument Type', product.instrumentType)
       addDetail('Accessories Included', product.accessoriesIncluded)
     }
-    
+
     // GYM_EQUIPMENT category
     else if (product?.equipmentName) {
       addDetail('Equipment Name', product.equipmentName)
@@ -874,7 +984,7 @@ const ProductDetail = () => {
       addDetail('Power Type', product.powerType)
       addDetail('Voltage/Phase', product.voltagePhase)
     }
-    
+
     // FISH category
     else if (product?.fishName) {
       addDetail('Fish Name', product.fishName)
@@ -887,7 +997,7 @@ const ProductDetail = () => {
       addDetail('Unit', product.unit)
       addDetail('Price Per', product.pricePer)
     }
-    
+
     // VEHICLE category
     else if (product?.vehicleName) {
       addDetail('Vehicle Name', product.vehicleName)
@@ -904,7 +1014,7 @@ const ProductDetail = () => {
       addDetail('RC Available', product.rcAvailable)
       addDetail('Insurance Status', product.insuranceStatus)
     }
-    
+
     // SERVICE category
     else if (product?.serviceName) {
       addDetail('Service Name', product.serviceName)
@@ -915,7 +1025,7 @@ const ProductDetail = () => {
       addDetail('Availability', product.availability)
       addDetail('Pricing Type', product.pricingType)
     }
-    
+
     // SCRAP category
     else if (product?.scrapName) {
       addDetail('Scrap Name', product.scrapName)
@@ -924,7 +1034,7 @@ const ProductDetail = () => {
       addDetail('Weight/Quantity', product.weightQuantity)
       addDetail('Unit', product.unit)
     }
-    
+
     // SPORTS_ITEM category
     else if (product?.sportsItemName) {
       addDetail('Sports Item Name', product.sportsItemName)
@@ -936,7 +1046,7 @@ const ProductDetail = () => {
       addDetail('Age Group', product.ageGroup)
       addDetail('Accessories Included', product.accessoriesIncluded)
     }
-    
+
     // BOOK category
     else if (product?.bookCategory) {
       addDetail('Book Category', product.bookCategory)
@@ -1161,15 +1271,20 @@ const ProductDetail = () => {
               {(product?.shop?.email ||
                 ((product?.shop?.phoneNumber || product?.shop?.phone) &&
                   !product?.shop?.hidePhoneNumber)) && (
-                <View style={styles.contactInfoContainer}>
-                  {renderContactRow('email', 'Email', product?.shop?.email)}
-                  {!product?.shop?.hidePhoneNumber &&
-                    renderContactRow(
-                      'phone',
-                      'Phone',
-                      product?.shop?.phoneNumber || product?.shop?.phone
-                    )}
-                </View>
+                <>
+                  <ContactViewsIndicator />
+                  <View style={styles.contactInfoContainer}>
+                    {renderContactRow('email', 'Email', product?.shop?.email)}
+                    {!product?.shop?.hidePhoneNumber &&
+                      renderContactRow(
+                        'phone',
+                        'Phone',
+                        product?.shop?.phoneNumber || product?.shop?.phone,
+                        true,
+                        product?.shop?._id || product?.shop?.id
+                      )}
+                  </View>
+                </>
               )}
             </View>
           ) : (
@@ -1228,15 +1343,20 @@ const ProductDetail = () => {
                   {(userDetails?.email ||
                     (userDetails?.phoneNumber &&
                       !userDetails?.hidePhoneNumber)) && (
-                    <View style={styles.contactInfoContainer}>
-                      {renderContactRow('email', 'Email', userDetails?.email)}
-                      {!userDetails?.hidePhoneNumber &&
-                        renderContactRow(
-                          'phone',
-                          'Phone',
-                          userDetails?.phoneNumber
-                        )}
-                    </View>
+                    <>
+                      <ContactViewsIndicator />
+                      <View style={styles.contactInfoContainer}>
+                        {renderContactRow('email', 'Email', userDetails?.email)}
+                        {!userDetails?.hidePhoneNumber &&
+                          renderContactRow(
+                            'phone',
+                            'Phone',
+                            userDetails?.phoneNumber,
+                            true,
+                            userDetails?._id || userDetails?.id
+                          )}
+                      </View>
+                    </>
                   )}
                 </>
               ) : userDetailsError ? (

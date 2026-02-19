@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "862286395471",
-    "project_id": "bnsn-fe953",
-    "storage_bucket": "bnsn-fe953.firebasestorage.app"
+    "project_number": "970351516529",
+    "project_id": "ark-52853",
+    "storage_bucket": "ark-52853.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:862286395471:android:9662f0994fc8ea8f2ad23a",
+        "mobilesdk_app_id": "1:970351516529:android:a10d2512499336eb7ff4d0",
         "android_client_info": {
-          "package_name": "com.bnsn.bnsn"
+          "package_name": "com.sevenark.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDbyT9H9zd7k2rPlJSmzsjBNUZNijRZgyE"
+          "current_key": "AIzaSyCdlSUNccO1Xow1QPmpya_T1ZHEC5pTWyw"
         }
       ],
       "services": {

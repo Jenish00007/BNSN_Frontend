@@ -37,19 +37,19 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="qauds"/>
-        <data android:scheme="com.bnsn.bnsn"/>
-        <data android:scheme="exp+qauds"/>
+        <data android:scheme="7ark"/>
+        <data android:scheme="com.sevenark.app"/>
+        <data android:scheme="exp+7ark"/>
       </intent-filter>
       <intent-filter android:autoVerify="true" data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
-        <data android:scheme="qauds"/>
+        <data android:scheme="7ark"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
       <intent-filter android:autoVerify="true" data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
-        <data android:scheme="exp+qauds-awgr9sutfyddrgo3dqakf"/>
+        <data android:scheme="exp+7ark-awgr9sutfyddrgo3dqakf"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>

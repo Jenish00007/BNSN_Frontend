@@ -166,7 +166,7 @@ export default function TermsAndConditions() {
           </Text>
           <Text style={styles.paragraph}>
             If you have any questions about these Terms and Conditions, please contact us:{'\n'}
-            Email: {contactInfo?.email || 'bnsn.info@gmail.com'}
+            Email: {contactInfo?.email || 'support@7ark.com'}
           </Text>
         </View>
       </ScrollView>

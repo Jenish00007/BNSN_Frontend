@@ -11,6 +11,7 @@ import {
   requestLocationPermissionUntilGranted
 } from './src/ui/hooks/useLocation'
 import { LocationContext } from './src/context/Location'
+import { SubscriptionProvider } from './src/context/Subscription'
 import AnimatedSplash from './src/components/AnimatedSplash'
 import TextDefault from './src/components/Text/TextDefault/TextDefault'
 
@@ -711,21 +712,23 @@ export default function App() {
             barStyle={theme === 'Dark' ? 'light-content' : 'dark-content'}
           />
           <LocationContext.Provider value={{ location, setLocation }}>
-            <ConfigurationProvider>
-              <AuthProvider>
-                <UserProvider>
-                  <OrdersProvider>
-                    <AppContainer />
-                    <ReviewModal
-                      ref={reviewModalRef}
-                      onOverlayPress={onOverlayPress}
-                      theme={Theme[theme]}
-                      orderId={orderId}
-                    />
-                  </OrdersProvider>
-                </UserProvider>
-              </AuthProvider>
-            </ConfigurationProvider>
+            <SubscriptionProvider>
+              <ConfigurationProvider>
+                <AuthProvider>
+                  <UserProvider>
+                    <OrdersProvider>
+                      <AppContainer />
+                      <ReviewModal
+                        ref={reviewModalRef}
+                        onOverlayPress={onOverlayPress}
+                        theme={Theme[theme]}
+                        orderId={orderId}
+                      />
+                    </OrdersProvider>
+                  </UserProvider>
+                </AuthProvider>
+              </ConfigurationProvider>
+            </SubscriptionProvider>
           </LocationContext.Provider>
           <FlashMessage MessageComponent={MessageComponent} />
         </ThemeContext.Provider>

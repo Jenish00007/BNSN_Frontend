@@ -95,7 +95,7 @@ export default function Help() {
   });
 
   const handleEmailPress = () => {
-    Linking.openURL(`mailto:${contactInfo?.email || 'bnsn.info@gmail.com'}`);
+    Linking.openURL(`mailto:${contactInfo?.email || 'support@7ark.com'}`);
   };
 
   const handlePhonePress = () => {
@@ -170,7 +170,7 @@ export default function Help() {
               color={appBranding.primaryColor}
               style={styles.contactIcon}
             />
-            <Text style={styles.contactText}>Email: {contactInfo?.email || 'bnsn.info@gmail.com'}</Text>
+            <Text style={styles.contactText}>Email: {contactInfo?.email || 'support@7ark.com'}</Text>
           </TouchableOpacity>
 
           <View style={styles.contactItem}>

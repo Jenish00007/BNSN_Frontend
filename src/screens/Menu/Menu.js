@@ -1114,15 +1114,10 @@ function Menu() {
   return (
     <>
       <SafeAreaView
-        edges={['bottom', 'left', 'right']}
+        edges={['left', 'right']}
         style={[styles().flex, { backgroundColor: 'black' }]}
       >
-        <View
-          style={[
-            styles().flex,
-            styles(currentTheme, brandingColors).screenBackground
-          ]}
-        >
+        <View style={[styles().flex, styles(currentTheme, brandingColors).screenBackground, { paddingBottom: 0 }]}>
           <View style={styles().flex}>
             <View style={styles().mainContentContainer}>
               {/* Search Bar Section */}
@@ -1237,7 +1232,7 @@ function Menu() {
                           <>
                             <View style={styles().sectionHeader}>
                               <TextDefault style={styles().sectionTitle}>
-                                Brows Categories
+                                Browse Categories
                               </TextDefault>
                               <TouchableOpacity
                                 onPress={() =>
@@ -1532,7 +1527,7 @@ function Menu() {
                                 />
                               </View>
                             ) : (
-                              <View style={{ padding: 10 }}>
+                              <View style={{ padding: 10, paddingBottom: 0 }}>
                                 {allproducts && allproducts.length > 0 ? (
                                   <>
                                     <View
@@ -1630,8 +1625,9 @@ function Menu() {
             location={location}
           /> */}
         </View>
+              <BottomTab screen='HOME' />
+
       </SafeAreaView>
-      <BottomTab screen='HOME' />
     </>
   )
 }

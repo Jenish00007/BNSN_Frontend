@@ -1,35 +1,42 @@
 {
   "expo": {
-    "name": "BNSN",
-    "scheme": "qauds",
+    "name": "7ARK",
+    "scheme": "7ark",
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",
-    "slug": "bnsn",
+    "slug": "7ark",
     "owner": "bnsn.info7",
     "privacy": "public",
     "androidStatusBar": {
       "backgroundColor": "#000000"
     },
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "splash": {
       "resizeMode": "cover",
       "backgroundColor": "#645faa"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.bnsn.bnsn",
+      "bundleIdentifier": "com.sevenark.app",
       "config": {
         "googleMapsApiKey": "###### Key #######"
       },
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to use location to determine the delivery address for your orders.",
-        "UIBackgroundModes": ["remote-notification"],
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
         "NSUserTrackingUsageDescription": "Allow this app to collect app-related data that can be used for tracking you or your device.",
         "CFBundleURLTypes": [
           {
@@ -45,11 +52,11 @@
       "color": "#F16122",
       "icon": "./assets/not-icon.png",
       "androidMode": "default",
-      "androidCollapsedTitle": "Qauds"
+      "androidCollapsedTitle": "7ARK"
     },
     "android": {
       "versionCode": 13,
-      "package": "com.bnsn.bnsn",
+      "package": "com.sevenark.app",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "intentFilters": [
@@ -58,20 +65,26 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "qauds"
+              "scheme": "7ark"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
-              "scheme": "exp+qauds-awgr9sutfyddrgo3dqakf"
+              "scheme": "exp+7ark-awgr9sutfyddrgo3dqakf"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "config": {
@@ -133,7 +146,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Qauds to use your location."
+          "locationAlwaysAndWhenInUsePermission": "Allow 7ARK to use your location."
         }
       ]
     ],
@@ -145,7 +158,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "1bd50086-c028-4741-97f3-d5783c0aa106"
+        "projectId": "c4ed6541-4349-49f7-92db-86288bf5afba"
       }
     }
   }

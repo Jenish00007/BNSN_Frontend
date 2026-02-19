@@ -1,4 +1,4 @@
-package com.bnsn.bnsn
+package com.sevenark.app
 
 import android.app.Application
 import android.content.res.Configuration

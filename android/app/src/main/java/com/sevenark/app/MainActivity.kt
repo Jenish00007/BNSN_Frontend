@@ -1,4 +1,4 @@
-package com.bnsn.bnsn
+package com.sevenark.app
 
 import android.os.Build
 import android.os.Bundle

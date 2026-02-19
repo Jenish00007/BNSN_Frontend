@@ -121,7 +121,7 @@ export default function RefundPolicy() {
             7. Contact Us
           </Text>
           <Text style={styles.paragraph}>
-            For any questions about our refund policy, please contact our customer support team at {contactInfo?.email || 'bnsn.info@gmail.com'}
+            For any questions about our refund policy, please contact our customer support team at {contactInfo?.email || 'support@7ark.com'}
           </Text>
         </View>
       </ScrollView>

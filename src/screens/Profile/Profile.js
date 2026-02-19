@@ -29,6 +29,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false)
   const [userData, setUserDataLocal] = useState({})
   const [hidePhoneNumber, setHidePhoneNumber] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { t } = useTranslation()
   const branding = useAppBranding()
 
@@ -100,7 +101,8 @@ const ProfilePage = () => {
         name: formetedProfileData.name || '',
         email: formetedProfileData.email || '',
         phone:
-          formetedProfileData.phoneNumber || formetedProfileData.phone || ''
+          formetedProfileData.phoneNumber || formetedProfileData.phone || '',
+        password: formetedProfileData.password || ''
       })
       setHidePhoneNumber(formetedProfileData.hidePhoneNumber || false)
     }
@@ -158,7 +160,8 @@ const ProfilePage = () => {
         (formetedProfileData.email || '') ||
       (userData.phone || '') !==
         (formetedProfileData.phoneNumber || formetedProfileData.phone || '') ||
-      hidePhoneNumber !== (formetedProfileData.hidePhoneNumber || false)
+      hidePhoneNumber !== (formetedProfileData.hidePhoneNumber || false) ||
+      userData.password !== (formetedProfileData.password || '')
 
     if (!hasChanges) {
       Alert.alert('Info', 'No changes detected.')
@@ -171,7 +174,8 @@ const ProfilePage = () => {
         name: userData.name.trim(),
         email: userData.email.trim().toLowerCase(),
         phoneNumber: userData.phone || '',
-        hidePhoneNumber: hidePhoneNumber
+        hidePhoneNumber: hidePhoneNumber,
+        password: userData.password || ''
       }
 
       console.log('Profile Update Request:', {
@@ -370,13 +374,18 @@ const ProfilePage = () => {
                   }
                 ]}
               >
-                <Text
-                  style={[styles.passwordDots, { color: branding.textColor }]}
+                <TextInput
+                  style={[styles.passwordInput, { color: branding.textColor }]}
+                  placeholder={userData.password ? 'Current password: •••••' : 'Enter new password'}
+                  placeholderTextColor={branding.textColor + '80'}
+                  secureTextEntry={!showPassword}
+                  value={userData.password || ''}
+                  onChangeText={(text) => handleChange('password', text)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
                 >
-                  ••••••••
-                </Text>
-                <TouchableOpacity>
-                  <Feather name='eye' size={20} color={branding.primaryColor} />
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={branding.primaryColor} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -475,6 +484,13 @@ const styles = StyleSheet.create({
   },
   passwordDots: {
     fontSize: 16
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1e293b',
+    padding: 0,
+    margin: 0
   },
   toggleContainer: {
     flexDirection: 'row',
