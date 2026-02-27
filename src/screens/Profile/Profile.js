@@ -183,7 +183,7 @@ const ProfilePage = () => {
         method: 'PUT',
         body: requestBody
       })
-
+      
       const response = await fetch(`${API_URL}/user/update-user-info`, {
         method: 'PUT',
         headers: {

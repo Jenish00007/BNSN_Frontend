@@ -60,6 +60,9 @@ const ProductDetail = () => {
     FREE_CONTACT_LIMIT
   } = useSubscription()
 
+  const remaining = getRemainingFreeContacts()
+const used = FREE_CONTACT_LIMIT - remaining
+
   const branding = useAppBranding()
   const [loading, setLoading] = useState(false)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
@@ -280,6 +283,7 @@ const ProductDetail = () => {
     }
 
     if (product?.status && product.status !== 'active') {
+      console.log(product,"product")
       Alert.alert(
         'Listing unavailable',
         product.status === 'sold'
@@ -362,8 +366,8 @@ const ProductDetail = () => {
       return
     }
 
-    // Check if user can view contact
-    if (!canViewContact()) {
+    // Check if user can view contact (free 7 contacts + any purchased credits or Elite)
+    if (!canViewContact() && !hasUnlimitedContacts) {
       showContactLimitAlert(() => {
         navigation.navigate('Subscription')
       })
@@ -376,8 +380,19 @@ const ProductDetail = () => {
       userDetails?.phoneNumber ||
       userDetails?.phone
 
+    // Use seller/shop/user id as contactId for quota tracking
+    const contactId =
+      product?.shop?._id ||
+      product?.shopId ||
+      userDetails?._id ||
+      userDetails?.id
+
     if (phoneNumber) {
       try {
+        // Count this as a viewed contact if not already counted and not Elite
+        if (!hasUnlimitedContacts && contactId) {
+          addViewedContact(contactId)
+        }
         const { Linking } = require('react-native')
         Linking.openURL(`tel:${phoneNumber}`)
       } catch (error) {
@@ -1272,18 +1287,49 @@ const ProductDetail = () => {
                 ((product?.shop?.phoneNumber || product?.shop?.phone) &&
                   !product?.shop?.hidePhoneNumber)) && (
                 <>
-                  <ContactViewsIndicator />
-                  <View style={styles.contactInfoContainer}>
-                    {renderContactRow('email', 'Email', product?.shop?.email)}
-                    {!product?.shop?.hidePhoneNumber &&
-                      renderContactRow(
-                        'phone',
-                        'Phone',
-                        product?.shop?.phoneNumber || product?.shop?.phone,
-                        true,
-                        product?.shop?._id || product?.shop?.id
-                      )}
-                  </View>
+                  {getRemainingFreeContacts() > 0 ? (
+                    <>
+                      <ContactViewsIndicator />
+                      <View style={styles.contactInfoContainer}>
+                        {renderContactRow('email', 'Email', product?.shop?.email)}
+                        {!product?.shop?.hidePhoneNumber &&
+                          renderContactRow(
+                            'phone',
+                            'Phone',
+                            product?.shop?.phoneNumber || product?.shop?.phone,
+                            true,
+                            product?.shop?._id || product?.shop?.id
+                          )}
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <ContactViewsIndicator />
+                      <View style={styles.paymentOptionsContainer}>
+                        <Text style={[styles.paymentTitle, { color: branding.textColor }]}>
+                          Get More Contacts to Connect with Sellers
+                        </Text>
+                        <View style={styles.paymentButtonsContainer}>
+                          <TouchableOpacity
+                            style={[styles.paymentButton, styles.buyCreditsButton]}
+                            onPress={() => navigation.navigate('BuyContacts')}
+                          >
+                            <MaterialIcons name='add-circle' size={16} color='white' />
+                            <Text style={styles.paymentButtonText}>Buy 7 Contacts - ₹49</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.paymentButton, styles.premiumButton]}
+                            onPress={() => navigation.navigate('Subscription')}
+                          >
+                            <MaterialIcons name='star' size={16} color={branding.primaryColor} />
+                            <Text style={[styles.paymentButtonText, { color: branding.primaryColor }]}>
+                              Go Elite Unlimited
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </>
               )}
             </View>
@@ -1344,18 +1390,27 @@ const ProductDetail = () => {
                     (userDetails?.phoneNumber &&
                       !userDetails?.hidePhoneNumber)) && (
                     <>
-                      <ContactViewsIndicator />
-                      <View style={styles.contactInfoContainer}>
-                        {renderContactRow('email', 'Email', userDetails?.email)}
-                        {!userDetails?.hidePhoneNumber &&
-                          renderContactRow(
-                            'phone',
-                            'Phone',
-                            userDetails?.phoneNumber,
-                            true,
-                            userDetails?._id || userDetails?.id
-                          )}
-                      </View>
+                      {getRemainingFreeContacts() > 0 ? (
+                        <>
+                          <ContactViewsIndicator />
+                          <View style={styles.contactInfoContainer}>
+                            {renderContactRow('email', 'Email', userDetails?.email)}
+                            {!userDetails?.hidePhoneNumber &&
+                              renderContactRow(
+                                'phone',
+                                'Phone',
+                                userDetails?.phoneNumber,
+                                true,
+                                userDetails?._id || userDetails?.id
+                              )}
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <ContactViewsIndicator />
+                         +
+                        </>
+                      )}
                     </>
                   )}
                 </>
@@ -1686,9 +1741,15 @@ const ProductDetail = () => {
         <TouchableOpacity
           style={[
             styles.actionButton,
-            { backgroundColor: branding.primaryColor }
+            {
+              backgroundColor:
+                canViewContact() || hasUnlimitedContacts
+                  ? branding.primaryColor
+                  : '#ccc'
+            }
           ]}
           onPress={handleCall}
+          disabled={!canViewContact() && !hasUnlimitedContacts}
         >
           <Ionicons name='call' size={24} color='#fff' />
           <Text style={styles.buttonText}>Call</Text>

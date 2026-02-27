@@ -1,109 +1,170 @@
 import React, { useContext } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useSubscription } from '../../context/Subscription'
 import { useAppBranding } from '../../utils/translationHelper'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
 import { theme } from '../../utils/themeColors'
+import { useNavigation } from '@react-navigation/native'
 
 const ContactViewsIndicator = () => {
-  const { 
-    contactViewsCount, 
-    hasUnlimitedContacts, 
-    FREE_CONTACT_LIMIT, 
+  const navigation = useNavigation()
+  const {
     getRemainingFreeContacts,
-    contactCredits
+    FREE_CONTACT_LIMIT,
+    hasUnlimitedContacts,
+    addContactCredits
   } = useSubscription()
-  
-  const { primaryColor, textColor } = useAppBranding()
-  const themeContext = useContext(ThemeContext)
-  const currentTheme = theme[themeContext.ThemeValue]
 
-  // Don't show if user has unlimited contacts
-  if (hasUnlimitedContacts) return null
+  if (hasUnlimitedContacts) {
+    return (
+      <View style={ciStyles.wrapper}>
+        <MaterialIcons name='phone' size={16} color='#4CAF50' />
+        <Text style={[ciStyles.label, { color: '#4CAF50' }]}>
+          Unlimited contacts (Premium)
+        </Text>
+      </View>
+    )
+  }
 
   const remaining = getRemainingFreeContacts()
-  const totalCredits = contactCredits || FREE_CONTACT_LIMIT
-  const percentageUsed = (contactViewsCount / totalCredits) * 100
+  const limit = FREE_CONTACT_LIMIT          // always 7
+  const used = limit - remaining
+  const progress = Math.min(used / limit, 1) // 0 – 1, never > 1
+  const isLow = remaining <= 1
+  const barColor = isLow ? '#FF5252' : '#5B5EA6'
 
-  // Don't show if no contacts have been used yet
-  if (contactViewsCount === 0) return null
-
-  return (
-    <View style={[styles.container, { borderColor: currentTheme.border }]}>
-      <View style={styles.content}>
-        <View style={styles.iconTextContainer}>
-          <MaterialIcons 
-            name="phone" 
-            size={16} 
-            color={percentageUsed >= 80 ? '#ff6b6b' : primaryColor} 
-          />
-          <Text style={[
-            styles.text,
-            { 
-              color: percentageUsed >= 80 ? '#ff6b6b' : textColor,
-              fontWeight: percentageUsed >= 80 ? '600' : '500'
-            }
-          ]}>
-            {remaining} of {totalCredits} contacts left
+  // If no credits left, show payment options
+  if (remaining === 0) {
+    return (
+      <View style={ciStyles.container}>
+        <View style={ciStyles.row}>
+          <MaterialIcons name='phone-locked' size={16} color='#FF5252' />
+          <Text style={[ciStyles.label, { color: '#FF5252' }]}>
+            No contacts left
           </Text>
         </View>
         
-        <View style={styles.progressBarContainer}>
-          <View style={[
-            styles.progressBarBackground,
-            { backgroundColor: currentTheme.border }
-          ]}>
-            <View style={[
-              styles.progressBarFill,
-              { 
-                width: `${percentageUsed}%`,
-                backgroundColor: percentageUsed >= 80 ? '#ff6b6b' : primaryColor
-              }
-            ]} />
-          </View>
+        <Text style={ciStyles.message}>
+          You've used all your free contacts. Get more to continue connecting with sellers.
+        </Text>
+        
+        <View style={ciStyles.buttonContainer}>
+          <TouchableOpacity
+            style={[ciStyles.button, ciStyles.primaryButton]}
+            onPress={() => navigation.navigate('BuyContacts')}
+          >
+            <MaterialIcons name='add-circle' size={16} color='white' />
+            <Text style={ciStyles.buttonText}>Buy 7 Contacts - ₹49</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[ciStyles.button, ciStyles.secondaryButton]}
+            onPress={() => navigation.navigate('Subscription')}
+          >
+            <MaterialIcons name='star' size={16} color='#5B5EA6' />
+            <Text style={[ciStyles.buttonText, { color: '#5B5EA6' }]}>
+              Go Elite Unlimited
+            </Text>
+          </TouchableOpacity>
         </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={ciStyles.container}>
+      {/* Header row */}
+      <View style={ciStyles.row}>
+        <MaterialIcons name='phone' size={16} color={barColor} />
+        <Text style={[ciStyles.label, { color: barColor }]}>
+          {remaining} of {limit} contacts left
+        </Text>
+      </View>
+
+      {/* Progress track — overflow:hidden keeps the fill inside */}
+      <View style={ciStyles.track}>
+        <View
+          style={[
+            ciStyles.fill,
+            {
+              width: `${progress * 100}%`,
+              backgroundColor: barColor
+            }
+          ]}
+        />
       </View>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+const ciStyles = {
   container: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-    padding: 12,
-    borderRadius: 8,
     borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    overflow: 'hidden'          // prevents children from leaking out
   },
-  content: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  iconTextContainer: {
+  wrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 10
   },
-  text: {
-    fontSize: 14,
-    marginLeft: 6,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8
   },
-  progressBarContainer: {
-    width: '100%',
-    height: 4,
+  label: {
+    fontSize: 13,
+    fontWeight: '600'
   },
-  progressBarBackground: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 2,
+  message: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 16
   },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 2,
-    transition: 'width 0.3s ease',
+  buttonContainer: {
+    gap: 8
   },
-})
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8
+  },
+  primaryButton: {
+    backgroundColor: '#5B5EA6'
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#5B5EA6'
+  },
+  buttonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'white'
+  },
+  track: {
+    height: 5,
+    borderRadius: 4,
+    backgroundColor: '#E0E0E0',
+    overflow: 'hidden'          // clips the fill bar at the track boundary
+  },
+  fill: {
+    height: 5,
+    borderRadius: 4
+  }
+}
 
 export default ContactViewsIndicator

@@ -2,6 +2,8 @@ import React, { createContext, useState, useEffect, useContext } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Alert } from 'react-native'
 import { API_URL } from '../config/api'
+import AuthContext from './Auth'
+import UserContext from './User'
 
 const SubscriptionContext = createContext({})
 
@@ -12,22 +14,59 @@ export const SubscriptionProvider = ({ children }) => {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true)
   const [userId, setUserId] = useState(null)
   const [contactCredits, setContactCredits] = useState(7) // Default to 7 free credits
+
+  // Access contexts safely - provider hierarchy ensures they're available
+  const authContext = useContext(AuthContext)
+  const userContext = useContext(UserContext)
   
+  const token = authContext?.token
+  const dataProfile = userContext?.dataProfile
+
   const FREE_CONTACT_LIMIT = 7
-  const CONTACT_VIEWS_KEY = '@contact_views_count'
-  const VIEWED_CONTACTS_KEY = '@viewed_contacts'
-  const UNLIMITED_CONTACTS_KEY = '@unlimited_contacts_active'
-  const CONTACT_CREDITS_KEY = '@contact_credits'
 
   // Load subscription data from AsyncStorage
   useEffect(() => {
     loadSubscriptionData()
   }, [])
 
-  // Fetch user ID from AsyncStorage
+  // Reload subscription data when user profile changes
+  useEffect(() => {
+    if (dataProfile && dataProfile._id) {
+      setUserId(dataProfile._id)
+      loadSubscriptionData()
+    }
+  }, [dataProfile])
+
+  // Fetch user ID from UserContext or API
   const getUserId = async () => {
     try {
-      const userData = await AsyncStorage.getItem('@user')
+      // First try to get user from UserContext
+      if (dataProfile && dataProfile._id) {
+        setUserId(dataProfile._id)
+        return dataProfile._id
+      }
+      
+      // If not in UserContext, try to fetch from API using token
+      if (token) {
+        const response = await fetch(`${API_URL}/user/getuser`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.user && data.user._id) {
+            setUserId(data.user._id)
+            return data.user._id
+          }
+        }
+      }
+      
+      // Fallback to AsyncStorage (for backward compatibility)
+      const userData = await AsyncStorage.getItem('user')
       if (userData) {
         const user = JSON.parse(userData)
         setUserId(user._id)
@@ -42,7 +81,7 @@ export const SubscriptionProvider = ({ children }) => {
   // Fetch contact views from backend
   const fetchContactViewsFromBackend = async (userId) => {
     if (!userId) return { contactViews: 0, viewedContacts: [] }
-    
+
     try {
       const response = await fetch(`${API_URL}/contact-views/${userId}`, {
         method: 'GET',
@@ -50,7 +89,7 @@ export const SubscriptionProvider = ({ children }) => {
           'Content-Type': 'application/json'
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         return {
@@ -64,13 +103,23 @@ export const SubscriptionProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching contact views from backend:', error)
     }
-    return { contactViews: 0, viewedContacts: [], hasUnlimitedContacts: false, subscriptionExpiry: null, contactCredits: 7 }
+    return {
+      contactViews: 0,
+      viewedContacts: [],
+      hasUnlimitedContacts: false,
+      subscriptionExpiry: null,
+      contactCredits: 7
+    }
   }
 
-  // Update contact views in backend
-  const updateContactViewsInBackend = async (userId, contactViews, viewedContacts) => {
-    if (!userId) return false
-    
+  // Update contact views in backend (DB is the single source of truth)
+  const updateContactViewsInBackend = async (
+    userId,
+    contactViews,
+    viewedContacts
+  ) => {
+    if (!userId) return null
+
     try {
       const response = await fetch(`${API_URL}/contact-views/${userId}`, {
         method: 'PUT',
@@ -79,19 +128,35 @@ export const SubscriptionProvider = ({ children }) => {
         },
         body: JSON.stringify({ contactViews, viewedContacts })
       })
-      
-      return response.ok
+
+      if (!response.ok) {
+        return null
+      }
+
+      const data = await response.json()
+
+      // Sync all relevant fields from the backend
+      setContactViewsCount(data.contactViews || 0)
+      setViewedContacts(data.viewedContacts || [])
+      if (typeof data.contactCredits === 'number') {
+        setContactCredits(data.contactCredits)
+      }
+      if (typeof data.hasUnlimitedContacts === 'boolean') {
+        setHasUnlimitedContacts(data.hasUnlimitedContacts)
+      }
+
+      return data
     } catch (error) {
       console.error('Error updating contact views in backend:', error)
-      return false
+      return null
     }
   }
 
-  // Add contact credits to user
+  // Add contact credits to user (handled in backend/database)
   const addContactCredits = async (credits = 7) => {
     try {
       if (!userId) return false
-      
+
       const response = await fetch(`${API_URL}/contact-credits/add`, {
         method: 'POST',
         headers: {
@@ -104,13 +169,11 @@ export const SubscriptionProvider = ({ children }) => {
           currency: 'INR'
         })
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setContactViewsCount(data.contactViews)
         setContactCredits(data.contactCredits)
-        // Also update local storage
-        await AsyncStorage.setItem(CONTACT_CREDITS_KEY, data.contactCredits.toString())
         return true
       }
     } catch (error) {
@@ -122,48 +185,27 @@ export const SubscriptionProvider = ({ children }) => {
   const loadSubscriptionData = async () => {
     try {
       setSubscriptionLoading(true)
-      
+
       // Get user ID first
       const currentUserId = await getUserId()
-      
-      // Fetch contact views from backend if user is logged in
-      let backendData = { contactViews: 0, viewedContacts: [], hasUnlimitedContacts: false, subscriptionExpiry: null, contactCredits: 7 }
+
+      // If user is logged in, fetch full subscription/contact data from backend.
+      // All limits, credits and viewed contacts are now driven by the database.
+      let backendData = {
+        contactViews: 0,
+        viewedContacts: [],
+        hasUnlimitedContacts: false,
+        subscriptionExpiry: null,
+        contactCredits: FREE_CONTACT_LIMIT
+      }
       if (currentUserId) {
         backendData = await fetchContactViewsFromBackend(currentUserId)
       }
-      
-      const [localViewsCount, localViewedContacts, unlimitedStatus, localCredits] = await Promise.all([
-        AsyncStorage.getItem(CONTACT_VIEWS_KEY),
-        AsyncStorage.getItem(VIEWED_CONTACTS_KEY),
-        AsyncStorage.getItem(UNLIMITED_CONTACTS_KEY),
-        AsyncStorage.getItem(CONTACT_CREDITS_KEY)
-      ])
 
-      // Parse local viewed contacts
-      const parsedLocalViewedContacts = localViewedContacts ? JSON.parse(localViewedContacts) : []
-      
-      // Use the higher of backend or local count and merge viewed contacts
-      const finalCount = Math.max(
-        backendData.contactViews,
-        localViewsCount ? parseInt(localViewsCount, 10) : 0
-      )
-      
-      // Use backend credits or local credits
-      const finalCredits = backendData.contactCredits || (localCredits ? parseInt(localCredits, 10) : 7)
-      
-      // Merge viewed contacts from backend and local
-      const allViewedContacts = [...new Set([...backendData.viewedContacts, ...parsedLocalViewedContacts])]
-      
-      setContactViewsCount(finalCount)
-      setViewedContacts(allViewedContacts)
-      setHasUnlimitedContacts(backendData.hasUnlimitedContacts || unlimitedStatus === 'true')
-      setContactCredits(finalCredits)
-      
-      // Sync local storage with backend if backend has higher count
-      if (backendData.contactViews > (localViewsCount ? parseInt(localViewsCount, 10) : 0)) {
-        await AsyncStorage.setItem(CONTACT_VIEWS_KEY, backendData.contactViews.toString())
-        await AsyncStorage.setItem(VIEWED_CONTACTS_KEY, JSON.stringify(backendData.viewedContacts))
-      }
+      setContactViewsCount(backendData.contactViews || 0)
+      setViewedContacts(backendData.viewedContacts || [])
+      setHasUnlimitedContacts(backendData.hasUnlimitedContacts || false)
+      setContactCredits(backendData.contactCredits || FREE_CONTACT_LIMIT)
     } catch (error) {
       console.error('Error loading subscription data:', error)
     } finally {
@@ -178,24 +220,30 @@ export const SubscriptionProvider = ({ children }) => {
 
   // Add contact to viewed contacts
   const addViewedContact = async (contactId) => {
+    // If user already has unlimited, or this contact was already counted, nothing to do.
     if (hasUnlimitedContacts || hasViewedContact(contactId)) return true
+
+    // Lazy-load userId if it wasn't available when the provider mounted
+    let effectiveUserId = userId
+    if (!effectiveUserId) {
+      effectiveUserId = await getUserId()
+      if (!effectiveUserId) {
+        return false
+      }
+    }
 
     try {
       const newViewedContacts = [...viewedContacts, contactId]
       const newCount = newViewedContacts.length
-      
-      // Update local storage immediately for responsiveness
-      await AsyncStorage.setItem(CONTACT_VIEWS_KEY, newCount.toString())
-      await AsyncStorage.setItem(VIEWED_CONTACTS_KEY, JSON.stringify(newViewedContacts))
-      setContactViewsCount(newCount)
-      setViewedContacts(newViewedContacts)
-      
-      // Update backend in the background
-      if (userId) {
-        updateContactViewsInBackend(userId, newCount, newViewedContacts)
-      }
-      
-      return true
+
+      // Let backend calculate & persist views + credits, then sync state from response
+      const result = await updateContactViewsInBackend(
+        effectiveUserId,
+        newCount,
+        newViewedContacts
+      )
+
+      return !!result
     } catch (error) {
       console.error('Error adding viewed contact:', error)
       return false
@@ -204,19 +252,21 @@ export const SubscriptionProvider = ({ children }) => {
 
   // Increment contact views count (deprecated - use addViewedContact instead)
   const incrementContactViews = async () => {
-    console.warn('incrementContactViews is deprecated, use addViewedContact instead')
+    console.warn(
+      'incrementContactViews is deprecated, use addViewedContact instead'
+    )
     return true
   }
 
   // Check if user can view more contacts
   const canViewContact = () => {
-    return hasUnlimitedContacts || contactViewsCount < contactCredits
+    return hasUnlimitedContacts || contactCredits > 0
   }
 
   // Get remaining free contacts
   const getRemainingFreeContacts = () => {
     if (hasUnlimitedContacts) return 'Unlimited'
-    return Math.max(0, contactCredits - contactViewsCount)
+    return Math.max(0, contactCredits)
   }
 
   // Activate unlimited contacts subscription
@@ -235,18 +285,11 @@ export const SubscriptionProvider = ({ children }) => {
             duration: 'monthly'
           })
         })
-        
+
         if (response.ok) {
-          // Update local storage
-          await AsyncStorage.setItem(UNLIMITED_CONTACTS_KEY, 'true')
           setHasUnlimitedContacts(true)
           return true
         }
-      } else {
-        // Fallback to local only if no user ID
-        await AsyncStorage.setItem(UNLIMITED_CONTACTS_KEY, 'true')
-        setHasUnlimitedContacts(true)
-        return true
       }
     } catch (error) {
       console.error('Error activating unlimited contacts:', error)

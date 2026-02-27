@@ -446,6 +446,7 @@ function Menu() {
       // Create all fetch promises for parallel execution
       const fetchPromises = []
 
+
       // Banners
       fetchPromises.push(
         fetch(`${API_URL}/admin-banner/all`, {
@@ -470,6 +471,7 @@ function Menu() {
 
       // Categories (only once)
       if (!categoriesFetchedRef.current) {
+        console.log(`${API_URL}/categories`)
         fetchPromises.push(
           fetch(`${API_URL}/categories`, {
             method: 'GET',
@@ -805,6 +807,7 @@ function Menu() {
 
   useEffect(() => {
     fetchData('all')
+    console.log(`${API_URL}/categories`)
   }, [])
 
   // Header

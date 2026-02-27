@@ -712,10 +712,10 @@ export default function App() {
             barStyle={theme === 'Dark' ? 'light-content' : 'dark-content'}
           />
           <LocationContext.Provider value={{ location, setLocation }}>
-            <SubscriptionProvider>
-              <ConfigurationProvider>
-                <AuthProvider>
-                  <UserProvider>
+            <ConfigurationProvider>
+              <AuthProvider>
+                <UserProvider>
+                  <SubscriptionProvider>
                     <OrdersProvider>
                       <AppContainer />
                       <ReviewModal
@@ -725,10 +725,10 @@ export default function App() {
                         orderId={orderId}
                       />
                     </OrdersProvider>
-                  </UserProvider>
-                </AuthProvider>
-              </ConfigurationProvider>
-            </SubscriptionProvider>
+                  </SubscriptionProvider>
+                </UserProvider>
+              </AuthProvider>
+            </ConfigurationProvider>
           </LocationContext.Provider>
           <FlashMessage MessageComponent={MessageComponent} />
         </ThemeContext.Provider>

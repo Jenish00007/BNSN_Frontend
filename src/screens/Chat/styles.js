@@ -512,6 +512,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff'
   },
+  eliteBuyCreditsButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    marginBottom: 12
+  },
+  eliteBuyCreditsButtonText: {
+    fontSize: 16,
+    fontWeight: '700'
+  },
   eliteExploreLink: {
     fontSize: 14,
     fontWeight: '600'

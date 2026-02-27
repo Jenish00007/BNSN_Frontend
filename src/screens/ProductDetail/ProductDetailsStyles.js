@@ -788,6 +788,46 @@ const styles = StyleSheet.create({
         borderRadius: scale(10),
         gap: scale(10),
     },
+    // Payment Options Styles
+    paymentOptionsContainer: {
+        borderWidth: scale(1),
+        borderColor: '#ddd',
+        borderRadius: scale(10),
+        paddingHorizontal: scale(12),
+        paddingVertical: scale(10),
+        marginBottom: scale(10),
+    },
+    paymentTitle: {
+        fontSize: scale(14),
+        fontWeight: '600',
+        marginBottom: scale(12),
+        textAlign: 'center',
+    },
+    paymentButtonsContainer: {
+        gap: scale(8),
+    },
+    paymentButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: scale(8),
+        paddingVertical: scale(12),
+        paddingHorizontal: scale(16),
+        borderRadius: scale(8),
+    },
+    buyCreditsButton: {
+        backgroundColor: '#5B5EA6',
+    },
+    premiumButton: {
+        backgroundColor: 'transparent',
+        borderWidth: scale(1),
+        borderColor: '#5B5EA6',
+    },
+    paymentButtonText: {
+        fontSize: scale(13),
+        fontWeight: '600',
+        color: 'white',
+    },
 });
 
 export default styles;

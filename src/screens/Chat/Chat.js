@@ -169,7 +169,7 @@ const Chat = ({ navigation }) => {
 
   const { token } = useContext(AuthContext)
   const { formetedProfileData: profile } = useContext(UserContext)
-  const { canViewContact, showContactLimitAlert, hasUnlimitedContacts } =
+  const { canViewContact, addViewedContact, hasUnlimitedContacts } =
     useSubscription()
   const branding = useAppBranding()
   const displayName =
@@ -470,7 +470,7 @@ const Chat = ({ navigation }) => {
           {resolvedSelfRole === 'buyer' && shopId && (
             <TouchableOpacity
               onPress={handleCallPress}
-              disabled={fetchingSellerPhone}
+              disabled={fetchingSellerPhone || (!canViewContact() && !hasUnlimitedContacts)}
               style={{ padding: 8, marginRight: 4 }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
@@ -478,8 +478,12 @@ const Chat = ({ navigation }) => {
                 <ActivityIndicator size='small' color='#fff' />
               ) : (
                 <View style={{ position: 'relative' }}>
-                  <MaterialIcons name='phone' size={24} color='#fff' />
-                  {!canViewContact() && (
+                  <MaterialIcons 
+                    name='phone' 
+                    size={24} 
+                    color={!canViewContact() && !hasUnlimitedContacts ? '#ccc' : '#fff'} 
+                  />
+                  {!hasUnlimitedContacts && !canViewContact() && (
                     <View
                       style={{
                         position: 'absolute',
@@ -521,6 +525,7 @@ const Chat = ({ navigation }) => {
     resolvedSelfRole,
     shopId,
     handleCallPress,
+    hasUnlimitedContacts,
     canViewContact,
     fetchingSellerPhone
   ])
@@ -869,14 +874,22 @@ const Chat = ({ navigation }) => {
 
   const handleCallPress = useCallback(async () => {
     if (chatDisabled) return
-    if (!canViewContact()) {
+
+    const contactId = shopId || otherUser?._id
+
+    // User must either be Elite or have remaining contact credits
+    if (!hasUnlimitedContacts && !canViewContact()) {
       setEliteModalVisible(true)
       return
     }
+
     setFetchingSellerPhone(true)
     try {
       const phone = await getSellerPhone()
       if (phone) {
+        if (!hasUnlimitedContacts && contactId) {
+          addViewedContact(contactId)
+        }
         await Linking.openURL(`tel:${phone}`)
       } else {
         Alert.alert(
@@ -890,7 +903,15 @@ const Chat = ({ navigation }) => {
     } finally {
       setFetchingSellerPhone(false)
     }
-  }, [canViewContact, chatDisabled, getSellerPhone])
+  }, [
+    hasUnlimitedContacts,
+    canViewContact,
+    chatDisabled,
+    getSellerPhone,
+    addViewedContact,
+    shopId,
+    otherUser
+  ])
 
   const handleSendOffer = useCallback(() => {
     if (chatDisabled || !offerAmount || sending || !isConnected) return
@@ -1218,7 +1239,11 @@ const Chat = ({ navigation }) => {
           />
           <TouchableOpacity
             style={{ flex: 1 }}
-            onPress={() => !canViewContact() && setEliteModalVisible(true)}
+            onPress={() =>
+              !hasUnlimitedContacts && !canViewContact()
+                ? setEliteModalVisible(true)
+                : null
+            }
           >
             <Text style={styles.ctaBannerText}>
               Call owners directly to buy fast
@@ -1250,8 +1275,7 @@ const Chat = ({ navigation }) => {
               {
                 flexGrow: 1,
                 justifyContent: messages.length === 0 ? 'center' : 'flex-end',
-                paddingBottom:
-                  Platform.OS === 'android' && keyboardHeight > 0 ? 100 : 16
+                paddingBottom: 16
               }
             ]}
             onContentSizeChange={() => {
@@ -1375,11 +1399,7 @@ const Chat = ({ navigation }) => {
               style={[
                 styles.inputContainer,
                 {
-                  borderTopColor: branding.borderColor || '#f0f0f0',
-                  marginBottom:
-                    Platform.OS === 'android' && keyboardHeight > 0
-                      ? keyboardHeight
-                      : 0
+                  borderTopColor: branding.borderColor || '#f0f0f0'
                 }
               ]}
             >
@@ -1433,11 +1453,7 @@ const Chat = ({ navigation }) => {
               style={[
                 styles.makeOfferContainer,
                 {
-                  borderTopColor: branding.borderColor || '#e2e8f0',
-                  marginBottom:
-                    Platform.OS === 'android' && keyboardHeight > 0
-                      ? keyboardHeight
-                      : 0
+                  borderTopColor: branding.borderColor || '#e2e8f0'
                 }
               ]}
             >
@@ -1595,7 +1611,26 @@ const Chat = ({ navigation }) => {
                 navigation.navigate('Subscription')
               }}
             >
-              <Text style={styles.elitePayButtonText}>Pay ₹99</Text>
+              <Text style={styles.elitePayButtonText}>Go Elite Unlimited</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.eliteBuyCreditsButton,
+                { borderColor: branding.primaryColor }
+              ]}
+              onPress={() => {
+                setEliteModalVisible(false)
+                navigation.navigate('BuyContacts')
+              }}
+            >
+              <Text
+                style={[
+                  styles.eliteBuyCreditsButtonText,
+                  { color: branding.primaryColor }
+                ]}
+              >
+                Buy 7 Contacts - ₹49
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('Subscription')}
