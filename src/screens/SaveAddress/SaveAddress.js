@@ -364,11 +364,11 @@ function SaveAddress(props) {
                       <View style={styles().locationIcon}>
                         <TouchableOpacity
                           style={styles().locationIconStyles}
-                          onPress={() => handleLabelSelection('other')}
+                          onPress={() => handleLabelSelection('default')}
                         >
                           <CustomOtherIcon
                             iconColor={
-                              selectedLabel === 'other'
+                              selectedLabel === 'default'
                                 ? currentTheme.newheaderColor
                                 : currentTheme.darkBgFont
                             }
@@ -378,18 +378,18 @@ function SaveAddress(props) {
                       <View style={styles().locationTypes}>
                         <TouchableOpacity
                           style={styles().locationStyles}
-                          onPress={() => handleLabelSelection('other')}
+                          onPress={() => handleLabelSelection('default')}
                         >
                           <TextDefault
                             H5
                             bolder
                             textColor={
-                              selectedLabel === 'other'
+                              selectedLabel === 'default'
                                 ? currentTheme.newheaderColor
                                 : currentTheme.darkBgFont
                             }
                           >
-                            {t('Other')}
+                            {t('Default')}
                           </TextDefault>
                         </TouchableOpacity>
                       </View>

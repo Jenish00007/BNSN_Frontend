@@ -29,6 +29,7 @@ import {
 import { useLocation } from '../../ui/hooks'
 import Search from '../../components/Main/Search/Search'
 import UserContext from '../../context/User'
+import AuthContext from '../../context/Auth'
 import { LocationContext } from '../../context/Location'
 import { scale } from '../../utils/scaling'
 import { safeJsonParse } from '../../utils/stockUtils'
@@ -65,6 +66,7 @@ import CustomApartmentIcon from '../../assets/SVG/imageComponents/CustomApartmen
 import Spinner from '../../components/Spinner/Spinner'
 import CarouselSlider from '../../components/Slider/Slider'
 import Categories from '../../components/Categories/Categories'
+import MainModalize from '../../components/Main/Modalize/MainModalize.js'
 import BottomTab from '../../components/BottomTab/BottomTab'
 import Products from '../../components/Products/Products'
 import CategoryListView from '../../components/NearByShop/CategoryListView'
@@ -101,8 +103,11 @@ function Menu() {
   const Analytics = analytics()
   const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
-  const { loadingOrders, isLoggedIn, profile, fetchCartItems } =
+  const [savedAddresses, setSavedAddresses] = useState([])
+  const [addressesLoading, setAddressesLoading] = useState(false)
+  const { isLoggedIn, profile, fetchCartItems } =
     useContext(UserContext)
+  const { token } = useContext(AuthContext)
   const { location, setLocation } = useContext(LocationContext)
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({
@@ -259,7 +264,19 @@ function Menu() {
         locationColor: '#FFFFFF',
         locationLabelColor: '#FFFFFF',
         open: onOpen,
-        headerLeft: null
+        headerLeft: null,
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={onOpen}
+            style={{ padding: scale(10) }}
+          >
+            <MaterialIcons
+              name="location-on"
+              size={scale(20)}
+              color={textColor}
+            />
+          </TouchableOpacity>
+        )
       })
     )
   }, [navigation, currentTheme])
@@ -270,6 +287,7 @@ function Menu() {
     House: CustomHomeIcon,
     Office: CustomWorkIcon,
     Apartment: CustomApartmentIcon,
+    Default: CustomOtherIcon,
     Other: CustomOtherIcon
   }
 
@@ -810,9 +828,43 @@ function Menu() {
     console.log(`${API_URL}/categories`)
   }, [])
 
+  // Fetch saved addresses
+  const fetchSavedAddresses = useCallback(async () => {
+    if (!token) return
+    
+    setAddressesLoading(true)
+    try {
+      const response = await fetch(`${API_URL}/user/get-user-addresses`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'zoneId': '[3,1]',
+          latitude: '23.793544663762145',
+          longitude: '90.41166342794895',
+          'X-localization': 'en',
+        },
+      })
+      
+      const data = await response.json()
+      if (response.ok && data.addresses) {
+        setSavedAddresses(data.addresses)
+      } else {
+        setSavedAddresses([])
+      }
+    } catch (error) {
+      console.error('Error fetching saved addresses:', error)
+      setSavedAddresses([])
+    } finally {
+      setAddressesLoading(false)
+    }
+  }, [token])
+
+  
   // Header
   const modalHeader = () => (
     <View style={[styles().addNewAddressbtn]}>
+      {/* Current Location */}
       <View style={styles().addressContainer}>
         <TouchableOpacity
           style={[styles(currentTheme, brandingColors).addButton]}
@@ -837,6 +889,54 @@ function Menu() {
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Saved Addresses Section */}
+      {savedAddresses.length > 0 && (
+        <View style={styles().savedAddressesSection}>
+          <TextDefault bold H5 style={styles().sectionTitle}>
+            {t('savedAddresses') || 'Saved Addresses'}
+          </TextDefault>
+          {savedAddresses.map((address) => (
+            <TouchableOpacity
+              key={address.id}
+              style={[
+                styles().addressItem,
+                { backgroundColor: currentTheme.newheaderBG }
+              ]}
+              onPress={() => {
+                const locationData = {
+                  label: 'selectedAddress',
+                  latitude: address.latitude,
+                  longitude: address.longitude,
+                  deliveryAddress: address.address,
+                  city: address.city || address.address,
+                }
+                setLocation(locationData)
+                const modal = modalRef.current
+                modal?.close()
+              }}
+            >
+              <View style={styles().addressItemContent}>
+                <View style={styles().addressIcon}>
+                  <SimpleLineIcons
+                    name='location-pin'
+                    size={scale(16)}
+                    color={currentTheme.buttonBackground}
+                  />
+                </View>
+                <View style={styles().addressTextContainer}>
+                  <TextDefault bold H6 textColor={currentTheme.newFontcolor}>
+                    {address.address_type || 'Address'}
+                  </TextDefault>
+                  <TextDefault H7 textColor={currentTheme.fontSecondColor}>
+                    {address.address}
+                  </TextDefault>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   )
 
@@ -1616,7 +1716,7 @@ function Menu() {
           </View>
 
           {/* Modal */}
-          {/* <MainModalize
+          <MainModalize
             modalRef={modalRef}
             currentTheme={currentTheme}
             isLoggedIn={isLoggedIn}
@@ -1626,9 +1726,9 @@ function Menu() {
             setAddressLocation={setAddressLocation}
             profile={profile}
             location={location}
-          /> */}
+          />
         </View>
-              <BottomTab screen='HOME' />
+        <BottomTab screen='HOME' />
 
       </SafeAreaView>
     </>

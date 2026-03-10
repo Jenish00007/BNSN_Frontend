@@ -44,13 +44,13 @@ const labelValues = [
     icon: <Entypo name="home" size={24} />
   },
   {
-    title: 'Work',
-    value: 'Work',
+    title: 'Office',
+    value: 'Office',
     icon: <MaterialIcons name="work" size={24} />
   },
   {
-    title: 'Other',
-    value: 'Other',
+    title: 'Default',
+    value: 'Default',
     icon: <Foundation name="heart" size={24} />
   }
 ]

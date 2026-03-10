@@ -571,7 +571,7 @@ export const UserProvider = (props) => {
   return (
     <UserContext.Provider
       value={{
-        isLoggedIn: !!token && dataProfile && !!dataProfile,
+        isLoggedIn: !!token,
         loadingProfile: loadingProfile,
         errorProfile,
         formetedProfileData,

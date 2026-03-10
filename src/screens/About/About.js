@@ -31,7 +31,7 @@ export default function About() {
       backgroundColor: currentTheme.themeBackground,
     },
     header: {
-      backgroundColor: config?.appColors?.primary || appBranding.headerColor,
+      backgroundColor: appBranding.primaryColor,
       paddingTop: 20,
       paddingBottom: 15,
       flexDirection: 'row',

@@ -40,7 +40,7 @@ function Addresses() {
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
   const { t } = useTranslation()
-  const { location } = useContext(LocationContext)
+  const { location, setLocation } = useContext(LocationContext)
 
   const [addresses, setAddresses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -157,6 +157,7 @@ function Addresses() {
   const addressIcons = {
     'home': CustomHomeIcon,
     'office': CustomWorkIcon,
+    'default': CustomOtherIcon,
     'apartment': CustomApartmentIcon,
     'other': CustomOtherIcon
   }
@@ -185,6 +186,33 @@ function Addresses() {
     )
   }
 
+
+  // Add function to set address as current location
+  const setAsCurrentLocation = async(address) => {
+    try {
+      const newLocation = {
+        label: 'selectedAddress',
+        latitude: address.latitude,
+        longitude: address.longitude,
+        deliveryAddress: address.address,
+        city: address.city || address.address,
+        timestamp: Date.now()
+      }
+      
+      setLocation(newLocation)
+      FlashMessage({ 
+        message: t('addressSetAsCurrent') || 'Address set as current location' 
+      })
+      
+      // Go back to previous screen
+      navigation.goBack()
+    } catch (error) {
+      console.error('Error setting current location:', error)
+      FlashMessage({ 
+        message: t('errorSettingLocation') || 'Error setting location' 
+      })
+    }
+  }
 
   const onDeleteAddress = async (addressId) => {
     console.log("Delete address with ID:", addressId);
@@ -280,6 +308,17 @@ function Addresses() {
               <View style={styles().buttonsAddress}>
                 <TouchableOpacity
                   activeOpacity={0.7}
+                  onPress={() => setAsCurrentLocation(address)}
+                >
+                  <MaterialIcons
+                    name='location-on'
+                    size={scale(20)}
+                    color={currentTheme.main || '#007AFF'}
+                  />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  activeOpacity={0.7}
                   onPress={() => {
                     // const [longitude, latitude] = address.location.coordinates
                     navigation.navigate('AddNewAddress', {
@@ -303,7 +342,6 @@ function Addresses() {
                   activeOpacity={0.7}
                   //disabled={loadingMutation}
                   onPress={() => {
-                   
                     onDeleteAddress(address.id);
                     FlashMessage({ message: t('addressDeletedMessage') })
                   }}

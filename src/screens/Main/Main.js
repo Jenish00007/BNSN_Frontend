@@ -331,6 +331,7 @@ function Main(props) {
     House: CustomHomeIcon,
     Office: CustomWorkIcon,
     Apartment: CustomApartmentIcon,
+    Default: CustomOtherIcon,
     Other: CustomOtherIcon
   }
 

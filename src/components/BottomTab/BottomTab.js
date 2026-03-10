@@ -49,9 +49,9 @@ function BottomTab({ screen }) {
         <Text style={getTextStyle('CHATS')}>Chats</Text>
       </TouchableOpacity>
 
-      {/* Sell — floating circle with yellow ring */}
+      {/* Sell — floating circle with primary color ring */}
       <TouchableOpacity onPress={() => navigate('Sell')} style={styles.sellTabItem}>
-        <View style={styles.sellRing}>
+        <View style={[styles.sellRing, { backgroundColor: branding.primaryColor || '#002F5F' }]}>
           <View style={styles.sellInnerCircle}>
             <MaterialCommunityIcons
               name="plus"

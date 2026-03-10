@@ -15,6 +15,10 @@ import { SubscriptionProvider } from './src/context/Subscription'
 import AnimatedSplash from './src/components/AnimatedSplash'
 import TextDefault from './src/components/Text/TextDefault/TextDefault'
 
+// Polyfill crypto.getRandomValues for UUID library compatibility
+import 'react-native-get-random-values'
+import 'expo-crypto'
+
 // Geocoding service with retry logic and fallbacks
 const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
   const maxRetries = 3

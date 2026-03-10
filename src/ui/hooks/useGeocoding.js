@@ -6,6 +6,11 @@ const useGeocoding = () => {
 
   const getAddress = async (latitude, longitude) => {
     try {
+      // Validate coordinates
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        throw new Error('Invalid coordinates provided')
+      }
+
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_KEY}&language=en`
       )
@@ -32,6 +37,10 @@ const useGeocoding = () => {
       }
     } catch (error) {
       console.error('Error fetching address:', error.message)
+      // Provide more specific error information
+      if (error.response) {
+        console.error('API Response Error:', error.response.status, error.response.data)
+      }
       throw error
     }
   }

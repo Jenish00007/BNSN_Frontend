@@ -97,6 +97,40 @@ const styles = (props = null, branding = null) =>
       alignItems: 'flex-start',
       marginRight: scale(5)
     },
+    savedAddressesSection: {
+      width: '100%',
+      ...alignment.PTmedium,
+      ...alignment.PBsmall
+    },
+    sectionTitle: {
+      ...alignment.PBsmall,
+      ...alignment.PLmedium,
+      ...alignment.PRmedium
+    },
+    addressItem: {
+      width: '100%',
+      padding: scale(12),
+      marginBottom: scale(8),
+      borderRadius: scale(8),
+      borderWidth: scale(1),
+      borderColor: props != null ? props.color10 : '#E0E0E0'
+    },
+    addressItemContent: {
+      flexDirection: 'row',
+      alignItems: 'center'
+    },
+    addressIcon: {
+      width: scale(32),
+      height: scale(32),
+      borderRadius: scale(16),
+      backgroundColor: branding?.primaryColor || (props != null ? props.color8 : '#F0F0F0'),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: scale(12)
+    },
+    addressTextContainer: {
+      flex: 1
+    },
     overlay: {
       backgroundColor:
         branding?.secondaryColor || (props != null ? props.backgroundColor2 : 'rgba(0, 0, 0, 0.5)')

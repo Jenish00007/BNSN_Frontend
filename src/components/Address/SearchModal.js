@@ -102,7 +102,11 @@ export default function SearchModal({
               )
             } //
             onPress={(data, details = null) => {
-              onSubmit(data.description, details.geometry.location)
+              // Fix: Use proper event persistence for React Native synthetic events
+              if (data && data.persist) {
+                data.persist()
+              }
+              onSubmit(data.description, details?.geometry?.location || data.geometry?.location)
             }}
             getDefaultValue={() => {
               return '' // text input default value

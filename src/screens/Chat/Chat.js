@@ -151,6 +151,7 @@ const Chat = ({ navigation }) => {
   const [conversationId, setConversationId] = useState(initialConversationId)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [chatDisabled, setChatDisabled] = useState(Boolean(initialChatDisabled))
+  const [typingTimeout, setTypingTimeout] = useState(null)
   const [chatDisabledReason, setChatDisabledReason] = useState(
     initialChatDisabledReason || ''
   )
@@ -260,8 +261,8 @@ const Chat = ({ navigation }) => {
     }
   }, [productId])
 
-  // Socket URL - Update this with your actual socket server URL
-  const SOCKET_URL = 'https://bnsn.in'
+  // Socket URL - Production socket server is working
+  const SOCKET_URL = 'https://7ark.in'
 
   useEffect(() => {
     // Only initialize once
@@ -271,6 +272,11 @@ const Chat = ({ navigation }) => {
     }
 
     return () => {
+      // Cleanup typing timeout
+      if (typingTimeout) {
+        clearTimeout(typingTimeout)
+      }
+      
       if (socket) {
         if (profile?._id && (conversationId || route.params?.conversationId)) {
           socket.emit('leave-chat-room', {
@@ -279,7 +285,6 @@ const Chat = ({ navigation }) => {
           })
         }
         socket.disconnect()
-        socketInitializedRef.current = false
       }
     }
   }, [])
@@ -582,9 +587,8 @@ const Chat = ({ navigation }) => {
         auth: {
           token: token
         },
-        path: '/api/socket.io/', // ✅ MUST MATCH SERVER + NGINX
-        transports: ['websocket'],
-        auth: { token },
+        path: '/socket.io/', // Use correct path without /api prefix
+        transports: ['websocket', 'polling'], // Add polling as fallback
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
@@ -721,6 +725,51 @@ const Chat = ({ navigation }) => {
     }).start(() => setIsTyping(false))
   }
 
+  // Cleanup typing timeout when it changes
+  useEffect(() => {
+    return () => {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout)
+      }
+    }
+  }, [typingTimeout])
+
+  const handleTyping = (text) => {
+    setInputText(text)
+    
+    // Emit typing event only if socket is connected and there's text
+    if (socket && isConnected && conversationId && text.trim()) {
+      // Clear existing timeout
+      if (typingTimeout) {
+        clearTimeout(typingTimeout)
+      }
+      
+      // Emit typing event
+      socket.emit('typing', {
+        conversationId: conversationId,
+        userId: profile._id
+      })
+      
+      // Set timeout to emit stop-typing after 1 second of inactivity
+      const newTimeout = setTimeout(() => {
+        if (socket && isConnected && conversationId) {
+          socket.emit('stop-typing', {
+            conversationId: conversationId,
+            userId: profile._id
+          })
+        }
+      }, 1000)
+      
+      setTypingTimeout(newTimeout)
+    } else if (socket && isConnected && conversationId && !text.trim()) {
+      // Emit stop-typing if text is cleared
+      socket.emit('stop-typing', {
+        conversationId: conversationId,
+        userId: profile._id
+      })
+    }
+  }
+
   const fetchMessages = async (convId = null) => {
     try {
       const convIdToUse = convId || conversationId
@@ -770,6 +819,14 @@ const Chat = ({ navigation }) => {
     setInputText('')
     setSending(true)
     animateSendButton()
+
+    // Emit stop-typing when sending a message
+    if (socket && isConnected && conversationId) {
+      socket.emit('stop-typing', {
+        conversationId: conversationId,
+        userId: profile._id
+      })
+    }
 
     try {
       if (socket) {
@@ -1409,7 +1466,7 @@ const Chat = ({ navigation }) => {
                   placeholder='Type a message...'
                   placeholderTextColor='#999'
                   value={inputText}
-                  onChangeText={setInputText}
+                  onChangeText={handleTyping}
                   multiline
                   maxLength={1000}
                   editable={!sending && isConnected && !chatDisabled}

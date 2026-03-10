@@ -1,5 +1,5 @@
-import React, { useContext, useRef } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import React, { useContext, useRef, useState, useMemo } from 'react';
+import { View, TouchableOpacity, ScrollView, Text } from 'react-native';
 import { Modalize } from 'react-native-modalize';
 import { MaterialIcons, AntDesign, SimpleLineIcons } from '@expo/vector-icons';
 import TextDefault from '../../Text/TextDefault/TextDefault';
@@ -7,6 +7,9 @@ import { alignment } from '../../../utils/alignment';
 import { scale } from '../../../utils/scaling';
 import styles from './styles';
 import { useTranslation } from'react-i18next';
+import { LocationContext } from '../../../context/Location';
+import AuthContext from '../../../context/Auth';
+import { API_URL } from '../../../config/api';
 
 const MainModalize = ({
   modalRef,
@@ -19,8 +22,47 @@ const MainModalize = ({
   profile,
   location,
 }) => {
-  const { t} = useTranslation();
-  return (
+  const { t } = useTranslation();
+  const { token } = useContext(AuthContext);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const { setLocation } = useContext(LocationContext);
+
+  // Fetch saved addresses
+  const fetchSavedAddresses = async () => {
+    if (!token) {
+      return;
+    }
+    
+    setAddressesLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/user/get-user-addresses`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'zoneId': '[3,1]',
+          latitude: '23.793544663762145',
+          longitude: '90.41166342794895',
+          'X-localization': 'en',
+        },
+      });
+      
+      const data = await response.json();
+      if (response.ok && data.addresses) {
+        setSavedAddresses(data.addresses);
+      } else {
+        setSavedAddresses([]);
+      }
+    } catch (error) {
+      console.error('MainModalize: Error fetching saved addresses:', error);
+      setSavedAddresses([]);
+    } finally {
+      setAddressesLoading(false);
+    }
+  };
+
+    return (
     <Modalize
       ref={modalRef}
       modalStyle={styles(currentTheme).modal}
@@ -29,6 +71,7 @@ const MainModalize = ({
       handleStyle={styles(currentTheme).handle}
       handlePosition='inside'
       modalPosition='top'
+      onOpen={() => fetchSavedAddresses()}
       openAnimationConfig={{
         timing: { duration: 400 },
         spring: { speed: 20, bounciness: 10 },
@@ -38,34 +81,81 @@ const MainModalize = ({
         spring: { speed: 20, bounciness: 10 },
       }}
       flatListProps={{
-        data: isLoggedIn && profile ? profile.addresses : '',
-        ListHeaderComponent: modalHeader(),
-        ListFooterComponent: modalFooter(),
+        data: useMemo(() => {
+          const profileAddresses = (isLoggedIn && profile ? profile.addresses || [] : []);
+          const allAddresses = [...profileAddresses, ...savedAddresses];
+          return allAddresses;
+        }, [isLoggedIn, profile, savedAddresses]),
+        ListHeaderComponent: useMemo(() => modalHeader(), []),
+        ListFooterComponent: useMemo(() => modalFooter(), []),
         showsVerticalScrollIndicator: false,
-        keyExtractor: (item) => item._id,
-        renderItem: ({ item: address }) => (
+        keyExtractor: (item) => item._id || item.id,
+        renderItem: useMemo(() => ({ item: address }) => (
           <View style={styles(currentTheme).addressbtn}>
             <TouchableOpacity
               style={styles(currentTheme).addressContainer}
               activeOpacity={0.7}
-              onPress={() => setAddressLocation(address)}
+              onPress={() => {
+                // Set as current location and close modal
+                const locationData = {
+                  label: 'selectedAddress',
+                  latitude: address.latitude,
+                  longitude: address.longitude,
+                  deliveryAddress: address.deliveryAddress || address.address,
+                  city: address.city || address.address,
+                };
+                setLocation(locationData);
+                const modal = modalRef.current;
+                modal?.close();
+              }}
             >
               <View style={styles().addressSubContainer}>
                 <View style={[styles(currentTheme).homeIcon]}>
-                  {addressIcons[address.label]
-                    ? React.createElement(addressIcons[address.label], {
-                        fill: currentTheme.darkBgFont,
-                      })
-                    : React.createElement(addressIcons['Other'], {
-                        fill: currentTheme.darkBgFont,
-                      })}
+                  {(() => {
+                    try {
+                      // Get the icon component with fallbacks
+                      const IconComponent = addressIcons && address.addressType && addressIcons[address.addressType] 
+                        ? addressIcons[address.addressType]
+                        : addressIcons && addressIcons['Default']
+                        ? addressIcons['Default']
+                        : addressIcons && addressIcons['Other']
+                        ? addressIcons['Other']
+                        : null;
+                      
+                      // If we have a valid icon component, render it
+                      if (IconComponent && typeof IconComponent === 'function') {
+                        return React.createElement(IconComponent, {
+                          fill: currentTheme.darkBgFont,
+                        });
+                      }
+                      
+                      // Fallback to a simple icon if no custom icon is available
+                      return (
+                        <SimpleLineIcons
+                          name='home'
+                          size={scale(20)}
+                          color={currentTheme.darkBgFont}
+                        />
+                      );
+                    } catch (error) {
+                      console.error('Error rendering address icon:', error);
+                      // Ultimate fallback
+                      return (
+                        <SimpleLineIcons
+                          name='home'
+                          size={scale(20)}
+                          color={currentTheme.darkBgFont}
+                        />
+                      );
+                    }
+                  })()}
                 </View>
                 <View style={[styles().titleAddress]}>
                   <TextDefault
                     textColor={currentTheme.darkBgFont}
                     style={styles(currentTheme).labelStyle}
                   >
-                    {t(address.label)}
+                    {t(address.addressType)}
                   </TextDefault>
                 </View>
               </View>
@@ -76,16 +166,14 @@ const MainModalize = ({
                     textColor={currentTheme.fontSecondColor}
                     small
                   >
-                    {address.deliveryAddress}
+                    {address.deliveryAddress || address.address || [address.address1, address.address2].filter(Boolean).join(', ')}
                   </TextDefault>
                 </View>
               </View>
             </TouchableOpacity>
             <View style={styles().addressTick}>
               {address._id === location?._id &&
-                ![t('currentLocation'), t('selectedLocation')].includes(
-                  location.label
-                ) && (
+                ![t('currentLocation'), t('selectedLocation')].includes(location.label) && (
                   <MaterialIcons
                     name='check'
                     size={scale(25)}
@@ -95,6 +183,7 @@ const MainModalize = ({
             </View>
           </View>
         ),
+        []),
       }}
     ></Modalize>
   );

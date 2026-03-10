@@ -47,6 +47,9 @@ import { theme } from '../../utils/themeColors'
 import navigationOptions from './navigationOptions'
 import TextDefault from '../../components/Text/TextDefault/TextDefault'
 import { LocationContext } from '../../context/Location'
+import CustomHomeIcon from '../../assets/SVG/imageComponents/CustomHomeIcon'
+import CustomWorkIcon from '../../assets/SVG/imageComponents/CustomWorkIcon'
+import CustomOtherIcon from '../../assets/SVG/imageComponents/CustomOtherIcon'
 import { ActiveOrdersAndSections } from '../../components/Main/ActiveOrdersAndSections'
 import { alignment } from '../../utils/alignment'
 import Spinner from '../../components/Spinner/Spinner'
@@ -146,9 +149,13 @@ function Main(props) {
   }
 
   const addressIcons = {
-    Home: 'home',
-    Work: 'briefcase',
-    Other: 'location-pin'
+    'Home': CustomHomeIcon,
+    'Office': CustomWorkIcon,
+    'Default': CustomOtherIcon,
+    'home': CustomHomeIcon,
+    'office': CustomWorkIcon,
+    'default': CustomOtherIcon,
+    'currentLocation': CustomOtherIcon
   }
 
   const setAddressLocation = async address => {
@@ -259,7 +266,7 @@ function Main(props) {
             } else {
               const modal = modalRef.current
               modal?.close()
-              props.navigation.navigate({ name: 'CreateAccount' })
+              navigation.navigate('CreateAccount')
             }
           }}>
           <View style={styles().addressSubContainer}>
@@ -542,11 +549,19 @@ function Main(props) {
                     activeOpacity={0.7}
                     onPress={() => setAddressLocation(address)}>
                     <View style={styles().addressSubContainer}>
-                      <SimpleLineIcons
-                        name={addressIcons[address.label]}
-                        size={scale(12)}
-                        color={currentTheme.black}
-                      />
+                      {addressIcons[address.label] ? (
+                        React.createElement(addressIcons[address.label], {
+                          fill: currentTheme.black,
+                          width: scale(12),
+                          height: scale(12)
+                        })
+                      ) : (
+                        <SimpleLineIcons
+                          name="location-pin"
+                          size={scale(12)}
+                          color={currentTheme.black}
+                        />
+                      )}
                       <View style={styles().mL5p} />
                       <TextDefault bold>{t(address.label)}</TextDefault>
                     </View>
