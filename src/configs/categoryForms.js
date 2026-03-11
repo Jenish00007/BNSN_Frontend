@@ -2,8 +2,8 @@
 export const CATEGORY_FORMS = {
   ANIMAL: {
     name: 'Animals',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'animalName',
@@ -102,8 +102,8 @@ export const CATEGORY_FORMS = {
 
   BIRD: {
     name: 'Birds',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'birdName',
@@ -160,8 +160,8 @@ export const CATEGORY_FORMS = {
 
   TREE: {
     name: 'Trees',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'treeName',
@@ -231,8 +231,8 @@ export const CATEGORY_FORMS = {
 
   PADDY_RICE: {
     name: 'Paddy/Rice',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'paddyRiceName',
@@ -331,8 +331,8 @@ export const CATEGORY_FORMS = {
 
   VEGETABLE: {
     name: 'Vegetables',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'vegetableName',
@@ -416,8 +416,8 @@ export const CATEGORY_FORMS = {
 
   SEED: {
     name: 'Seeds',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'seedName',
@@ -487,8 +487,8 @@ export const CATEGORY_FORMS = {
 
   FRUIT: {
     name: 'Fruits',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'fruitName',
@@ -565,8 +565,8 @@ export const CATEGORY_FORMS = {
 
   CAR: {
     name: 'Cars',
-    price: 199,
-    freePosts: 0,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'name',
@@ -677,8 +677,8 @@ export const CATEGORY_FORMS = {
 
   BIKE: {
     name: 'Bikes',
-    price: 99,
-    freePosts: 0,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'name',
@@ -796,8 +796,8 @@ export const CATEGORY_FORMS = {
 
   MACHINERY: {
     name: 'Machinery',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'machineryName',
@@ -888,8 +888,8 @@ export const CATEGORY_FORMS = {
 
   PROPERTY: {
     name: 'Properties',
-    price: 199,
-    freePosts: 0,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'listingType',
@@ -945,8 +945,8 @@ export const CATEGORY_FORMS = {
 
   ELECTRONICS: {
     name: 'Electronics',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'electronicsName',
@@ -1030,8 +1030,8 @@ export const CATEGORY_FORMS = {
 
   MOBILE: {
     name: 'Mobiles',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'mobileName',
@@ -1135,8 +1135,8 @@ export const CATEGORY_FORMS = {
 
   FURNITURE: {
     name: 'Furniture',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'furnitureName',
@@ -1219,8 +1219,8 @@ export const CATEGORY_FORMS = {
 
   FASHION: {
     name: 'Fashion',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'fashionName',
@@ -1305,8 +1305,8 @@ export const CATEGORY_FORMS = {
 
   JOB: {
     name: 'Jobs',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'jobTitle',
@@ -1433,8 +1433,8 @@ export const CATEGORY_FORMS = {
 
   PET: {
     name: 'Pets',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'petName',
@@ -1504,8 +1504,8 @@ export const CATEGORY_FORMS = {
 
   MUSIC_INSTRUMENT: {
     name: 'Musical Instruments',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'instrumentName',
@@ -1589,8 +1589,8 @@ export const CATEGORY_FORMS = {
 
   GYM_EQUIPMENT: {
     name: 'Gym & Fitness',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'equipmentName',
@@ -1681,8 +1681,8 @@ export const CATEGORY_FORMS = {
 
   FISH: {
     name: 'Fishes',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'fishName',
@@ -1773,8 +1773,8 @@ export const CATEGORY_FORMS = {
 
   VEHICLE: {
     name: 'Vehicle',
-    price: 149,
-    freePosts: 0,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'vehicleName',
@@ -1892,8 +1892,8 @@ export const CATEGORY_FORMS = {
 
   SERVICE: {
     name: 'Other Services',
-    price: 49,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'serviceName',
@@ -2028,8 +2028,8 @@ export const CATEGORY_FORMS = {
 
   SPORTS_ITEM: {
     name: 'Sports Items',
-    price: 29,
-    freePosts: 1,
+    price: 0,
+    freePosts: 999,
     fields: [
       {
         key: 'sportsItemName',

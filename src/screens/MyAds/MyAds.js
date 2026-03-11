@@ -379,7 +379,7 @@ const MyAds = () => {
     performProductStatusUpdate({
       productId: product._id,
       endpoint: 'republish-product',
-      successMessage: 'Ad republished for another 30 days'
+      successMessage: 'Ad republished for another 6 months'
     })
   }
 

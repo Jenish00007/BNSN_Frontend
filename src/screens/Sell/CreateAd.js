@@ -350,22 +350,7 @@ const CreateAd = () => {
       return
     }
 
-    // Check free post availability
-    const postInfo = await checkFreePostAvailability(selectedCategoryName)
-    
-    if (!postInfo.canPostForFree && postInfo.postCost > 0) {
-      // Navigate to payment screen
-      navigation.navigate('PaymentScreen', {
-        categoryName: selectedCategoryName,
-        cost: postInfo.postCost,
-        formData: categoryFormData,
-        selectedImages: selectedImages,
-        categoryId: selectedCategoryId
-      })
-      return
-    }
-
-    // Proceed with free post
+    // Always proceed with free posting since all categories are now free
     await submitProduct(false)
   }
 
@@ -746,19 +731,7 @@ const CreateAd = () => {
             </TouchableOpacity>
           </View>
           
-          {/* Show category pricing info */}
-          {selectedCategoryKey && CATEGORY_FORMS[selectedCategoryKey] && (
-            <View style={styles.categoryInfo}>
-              <Text style={[styles.categoryInfoText, { color: branding.textColor }]}>
-                {CATEGORY_FORMS[selectedCategoryKey].freePosts > 0
-                  ? `${CATEGORY_FORMS[selectedCategoryKey].freePosts} Free Post${CATEGORY_FORMS[selectedCategoryKey].freePosts > 1 ? 's' : ''} Available`
-                  : 'Paid Posting Only'}
-              </Text>
-              <Text style={[styles.categoryPriceText, { color: branding.primaryColor }]}>
-                Price: ₹{CATEGORY_FORMS[selectedCategoryKey].price}
-              </Text>
-            </View>
-          )}
+         
         </View>
 
         {/* Show Dynamic Category Form */}

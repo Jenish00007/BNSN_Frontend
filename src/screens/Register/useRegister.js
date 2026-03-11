@@ -106,34 +106,29 @@ const useRegister = () => {
 
         const config = { 
           headers: { 
-            "Content-Type": "multipart/form-data",
+            "Content-Type": "application/json",
             "Accept": "application/json"
           } 
         }
 
-        const newForm = new FormData()
-        
-        // Add the default avatar
-        newForm.append("file", {
-          uri: DEFAULT_AVATAR,
-          type: 'image/jpeg',
-          name: 'avatar.jpg'
-        })
-        newForm.append("name", name)
-        newForm.append("email", email.toLowerCase().trim())
-        newForm.append("password", password)
-        newForm.append("phoneNumber", phoneNumber)
+        const userData = {
+          name,
+          email: email.toLowerCase().trim(),
+          password,
+          phoneNumber,
+          avatar: DEFAULT_AVATAR
+        }
 
-        console.log('Sending registration request with form data:', {
+        console.log('Sending registration request with user data:', {
           name,
           email: email.toLowerCase().trim(),
           phoneNumber,
-          hasFile: true
+          hasAvatar: true
         });
 
         const apiResponse = await api.post(
           '/user/create-user',
-          newForm,
+          userData,
           config
         )
 

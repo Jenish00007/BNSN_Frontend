@@ -300,21 +300,26 @@ const styles = StyleSheet.create({
   ctaBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginHorizontal: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginHorizontal: 8,
     marginTop: 8,
-    borderRadius: 10
+    borderRadius: 8,
+    minHeight: 44
   },
   ctaBannerText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#92400e'
+    color: '#92400e',
+    marginRight: 8,
+    flexWrap: 'wrap'
   },
   ctaBannerButton: {
-    fontSize: 14,
-    fontWeight: '700'
+    fontSize: 13,
+    fontWeight: '700',
+    minWidth: 100,
+    textAlign: 'center'
   },
   tabRow: {
     flexDirection: 'row',

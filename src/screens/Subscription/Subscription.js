@@ -41,8 +41,8 @@ const features = [
   },
   {
     icon: 'all-inclusive',
-    title: 'Unlimited Contacts',
-    description: 'View as many seller numbers as you want',
+    title: '7 Contact Credits',
+    description: 'Get 7 seller contact numbers with your subscription',
     tag: null
   },
   {
@@ -131,8 +131,8 @@ const Subscription = () => {
 
   const handlePurchase = () => {
     navigation.navigate('SubscriptionPayment', {
-      amount: 99,
-      title: 'Elite Buyer Subscription'
+      amount: 49,
+      title: 'Gold Membership'
     })
   }
 
@@ -167,7 +167,7 @@ const Subscription = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
           <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Elite Buyer</Text>
+        <Text style={s.headerTitle}>Gold Membership</Text>
         <View style={{ width: 36 }} />
       </Animated.View>
 
@@ -188,21 +188,21 @@ const Subscription = () => {
             <MaterialIcons name="workspace-premium" size={36} color={GOLD} />
           </View>
 
-          <Text style={s.heroTitle}>Elite Buyer</Text>
+          <Text style={s.heroTitle}>Gold Membership</Text>
           <Text style={s.heroSub}>
-            Unlock direct seller calls, unlimited contacts &amp; close deals faster.
+            Unlock direct seller calls, 7 contact credits &amp; close deals faster.
           </Text>
 
           {/* Price chip */}
           <View style={s.priceChip}>
-            <Text style={s.priceAmount}>₹99</Text>
+            <Text style={s.priceAmount}>₹49</Text>
             <Text style={s.pricePer}> / 7 days</Text>
           </View>
         </Animated.View>
 
         {/* ── Value pills ── */}
         <View style={s.valueRow}>
-          {['Unlimited Contacts', 'High-Intent', 'Cancel Anytime'].map((v, i) => (
+          {['7 Contact Credits', 'High-Intent', 'Cancel Anytime'].map((v, i) => (
             <View key={i} style={s.valuePill}>
               <Text style={s.valuePillText}>{v}</Text>
             </View>
@@ -243,7 +243,7 @@ const Subscription = () => {
             activeOpacity={1}
           >
             <Text style={s.ctaText}>
-              {hasUnlimitedContacts ? '✓  You are an Elite Buyer' : 'Unlock Elite Buyer  –  ₹99'}
+              {hasUnlimitedContacts ? '✓  You are a Gold Member' : 'Unlock Gold Membership  –  ₹49'}
             </Text>
             {!hasUnlimitedContacts && (
               <MaterialIcons name="arrow-forward" size={18} color={DARK_BG} style={{ marginLeft: 8 }} />

@@ -611,11 +611,31 @@ export default function App() {
 
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        if (
-          notification?.request?.content?.data?.type ===
-          NOTIFICATION_TYPES.REVIEW_ORDER
-        ) {
-          const id = notification?.request?.content?.data?._id
+        const notificationType = notification?.request?.content?.data?.type
+        const notificationData = notification?.request?.content?.data
+        
+        // Handle chat notifications
+        if (notificationType === 'chat') {
+          console.log('Chat notification received:', notificationData)
+          
+          // Navigate to chat screen if app is in foreground
+          if (notificationData?.conversationId) {
+            // Use the navigation ref to navigate
+            const { navigationRef } = require('./src/routes/navigationService')
+            if (navigationRef.isReady()) {
+              navigationRef.navigate('Chat', {
+                conversationId: notificationData.conversationId,
+                // Pass other relevant data if needed
+                groupTitle: notificationData.senderName ? `Chat with ${notificationData.senderName}` : 'New Message',
+                forceNavigate: true // Force navigation even if already in chat
+              })
+            }
+          }
+        }
+        
+        // Handle review order notifications (existing logic)
+        if (notificationType === NOTIFICATION_TYPES.REVIEW_ORDER) {
+          const id = notificationData?._id
           if (id) {
             setOrderId(id)
             reviewModalRef?.current?.open()
@@ -625,11 +645,28 @@ export default function App() {
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        if (
-          response?.notification?.request?.content?.data?.type ===
-          NOTIFICATION_TYPES.REVIEW_ORDER
-        ) {
-          const id = response?.notification?.request?.content?.data?._id
+        const notificationType = response?.notification?.request?.content?.data?.type
+        const notificationData = response?.notification?.request?.content?.data
+        
+        // Handle chat notifications when user taps on notification
+        if (notificationType === 'chat') {
+          console.log('Chat notification response received:', notificationData)
+          
+          if (notificationData?.conversationId) {
+            const { navigationRef } = require('./src/routes/navigationService')
+            if (navigationRef.isReady()) {
+              navigationRef.navigate('Chat', {
+                conversationId: notificationData.conversationId,
+                groupTitle: notificationData.senderName ? `Chat with ${notificationData.senderName}` : 'New Message',
+                forceNavigate: true
+              })
+            }
+          }
+        }
+        
+        // Handle review order notifications (existing logic)
+        if (notificationType === NOTIFICATION_TYPES.REVIEW_ORDER) {
+          const id = notificationData?._id
           if (id) {
             setOrderId(id)
             reviewModalRef?.current?.open()

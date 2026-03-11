@@ -266,20 +266,64 @@ function Menu() {
         open: onOpen,
         headerLeft: null,
         headerRight: () => (
-          <TouchableOpacity
-            onPress={onOpen}
-            style={{ padding: scale(10) }}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingRight: scale(4)
+            }}
           >
-            <MaterialIcons
-              name="location-on"
-              size={scale(20)}
-              color={textColor}
-            />
-          </TouchableOpacity>
+            {/* Favourites Icon */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Favourite')}
+              style={{
+                padding: scale(8),
+                marginRight: scale(2)
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons
+                name="favorite-border"
+                size={scale(22)}
+                color={textColor}
+              />
+            </TouchableOpacity>
+
+            {/* Notifications Icon */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Notifications')}
+              style={{
+                padding: scale(8),
+                marginRight: scale(2)
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons
+                name="notifications-none"
+                size={scale(22)}
+                color={textColor}
+              />
+            </TouchableOpacity>
+
+            {/* Location / Address Modal Trigger */}
+            <TouchableOpacity
+              onPress={onOpen}
+              style={{
+                padding: scale(8)
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons
+                name="location-on"
+                size={scale(22)}
+                color={textColor}
+              />
+            </TouchableOpacity>
+          </View>
         )
       })
     )
-  }, [navigation, currentTheme])
+  }, [navigation, currentTheme, primaryColor, textColor])
 
   //Remove the onError function and any other unused GraphQL-related code
 
@@ -1217,14 +1261,20 @@ function Menu() {
   return (
     <>
       <SafeAreaView
-        edges={['left', 'right']}
+        edges={['left', 'right', 'bottom']}
         style={[styles().flex, { backgroundColor: 'black' }]}
       >
-        <View style={[styles().flex, styles(currentTheme, brandingColors).screenBackground, { paddingBottom: 0 }]}>
+        <View
+          style={[
+            styles().flex,
+            styles(currentTheme, brandingColors).screenBackground,
+            { paddingBottom: 0 }
+          ]}
+        >
           <View style={styles().flex}>
             <View style={styles().mainContentContainer}>
-              {/* Search Bar Section */}
 
+              {/* Search Bar Section */}
               <Search
                 setSearch={handleSearch}
                 search={search}
@@ -1239,22 +1289,17 @@ function Menu() {
                 <View style={styles().searchList}>
                   <FlatList
                     key='search-results-grid'
-                    contentInset={{
-                      top: 0
-                    }}
+                    contentInset={{ top: 0 }}
                     contentContainerStyle={{
                       paddingTop: 0,
-                      paddingHorizontal: scale(12)
+                      paddingHorizontal: scale(12),
+                      paddingBottom: scale(70)
                     }}
-                    contentOffset={{
-                      y: 0
-                    }}
-                    scrollIndicatorInsets={{
-                      top: 0
-                    }}
+                    contentOffset={{ y: 0 }}
+                    scrollIndicatorInsets={{ top: 0 }}
                     showsVerticalScrollIndicator={false}
-                    numColumns={2} // Add 2-column layout
-                    columnWrapperStyle={{ justifyContent: 'space-between' }} // Space between columns
+                    numColumns={2}
+                    columnWrapperStyle={{ justifyContent: 'space-between' }}
                     ListEmptyComponent={
                       searchLoading ? (
                         <View style={{ padding: 20, alignItems: 'center' }}>
@@ -1283,7 +1328,7 @@ function Menu() {
                       )
                     }
                     keyExtractor={(item, index) =>
-                      `search-${item?._id?.toString() || index}-${index}`
+                      `search-${item?._id?.toString() || index}-${index}` 
                     }
                     refreshControl={
                       <RefreshControl
@@ -1305,30 +1350,19 @@ function Menu() {
               ) : (
                 <FlatList
                   data={[
-                    // { type: 'banner', id: 'banner' },
                     { type: 'categories', id: 'categories' },
-                    // { type: 'latest', id: 'latest' },
                     { type: 'events', id: 'events' },
                     { type: 'recommended', id: 'recommended' },
                     { type: 'offers', id: 'offers' },
-                    // { type: 'popular', id: 'popular' },
                     { type: 'allProducts', id: 'allProducts' }
                   ]}
                   keyExtractor={(item) => item.id}
                   onEndReached={loadMoreAllProducts}
                   onEndReachedThreshold={0.1}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: scale(70) }}
                   renderItem={({ item }) => {
                     switch (item.type) {
-                      // case 'banner':
-                      //   return (
-                      //     <View style={{ padding: 10 }}>
-                      //       {bannersLoading ? (
-                      //         <ListLoadingComponent horizontal={false} count={1} type="banner" />
-                      //       ) : banners.length > 0 ? (
-                      //         <CarouselSlider banners={banners} />
-                      //       ) : null}
-                      //     </View>
-                      //   );
 
                       case 'categories':
                         return (
@@ -1338,9 +1372,7 @@ function Menu() {
                                 Browse Categories
                               </TextDefault>
                               <TouchableOpacity
-                                onPress={() =>
-                                  navigation.navigate('AllCategories')
-                                }
+                                onPress={() => navigation.navigate('AllCategories')}
                                 style={styles().viewAllButton}
                               >
                                 <Text
@@ -1475,7 +1507,6 @@ function Menu() {
                         )
 
                       case 'events':
-                        // Only show events section if there are events available
                         if (events.length === 0 && !eventsLoading) {
                           return null
                         }
@@ -1524,90 +1555,6 @@ function Menu() {
                                   )}
                                   keyExtractor={(eventItem, index) =>
                                     `events-${eventItem?._id?.toString() || index}-${index}`
-                                  }
-                                />
-                              </View>
-                            )}
-                          </>
-                        )
-
-                      // case 'latest':
-                      //   return (
-                      //     <>
-                      //       <View style={styles().sectionHeader}>
-                      //         <TextDefault style={styles().sectionTitle}>{getNewOnAppText()}</TextDefault>
-                      //         <TouchableOpacity
-                      //           onPress={() => navigation.navigate('AllPopularItems', { type: 'latest' })}
-                      //           style={styles().viewAllButton}
-                      //         >
-                      //           <Text style={[styles().viewAllText, { color: primaryColor }]}>
-                      //             View All
-                      //           </Text>
-                      //           <MaterialIcons name="arrow-forward-ios" size={14} color={primaryColor} />
-                      //         </TouchableOpacity>
-                      //       </View>
-                      //       {nearbyMarketsLoading ? (
-                      //         <ListLoadingComponent count={3} type="nearbyStore" />
-                      //       ) : (
-                      //         <View >
-                      //           <FlatList
-                      //             data={latestItem}
-                      //             horizontal={true}
-                      //             showsHorizontalScrollIndicator={false}
-                      //             renderItem={({ item: productItem, index }) => (
-                      //               <CategoryListView data={{ item: productItem, index }} />
-                      //             )}
-                      //             keyExtractor={(productItem, index) => `latest-${productItem?._id?.toString() || index}-${index}`}
-                      //           />
-                      //         </View>
-                      //       )}
-                      //     </>
-                      //   );
-
-                      case 'popular':
-                        return (
-                          <>
-                            <View style={styles().sectionHeader}>
-                              <TextDefault style={styles().sectionTitle}>
-                                Most Popular Items 🔥
-                              </TextDefault>
-                              <TouchableOpacity
-                                onPress={() =>
-                                  navigation.navigate('AllPopularItems')
-                                }
-                                style={styles().viewAllButton}
-                              >
-                                <Text
-                                  style={[
-                                    styles().viewAllText,
-                                    { color: primaryColor }
-                                  ]}
-                                >
-                                  View All
-                                </Text>
-                                <MaterialIcons
-                                  name='arrow-forward-ios'
-                                  size={14}
-                                  color={primaryColor}
-                                />
-                              </TouchableOpacity>
-                            </View>
-                            {popularItemLoading ? (
-                              <ListLoadingComponent count={3} type='product' />
-                            ) : (
-                              <View>
-                                <FlatList
-                                  data={popularItem}
-                                  horizontal={true}
-                                  showsHorizontalScrollIndicator={false}
-                                  renderItem={({ item: productItem }) => (
-                                    <Products
-                                      item={productItem}
-                                      horizontal={true}
-                                    />
-                                  )}
-                                  keyExtractor={(productItem, index) =>
-                                    `popular-${productItem?._id?.toString() || index}-${index}`
                                   }
                                 />
                               </View>
@@ -1709,7 +1656,6 @@ function Menu() {
                         return null
                     }
                   }}
-                  showsVerticalScrollIndicator={false}
                 />
               )}
             </View>
