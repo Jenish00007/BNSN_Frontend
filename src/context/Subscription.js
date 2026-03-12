@@ -153,7 +153,7 @@ export const SubscriptionProvider = ({ children }) => {
   }
 
   // Add contact credits to user (handled in backend/database)
-  const addContactCredits = async (credits = 7) => {
+  const addContactCredits = async (credits = 7, duration = 30) => {
     try {
       if (!userId) return false
 
@@ -165,15 +165,19 @@ export const SubscriptionProvider = ({ children }) => {
         body: JSON.stringify({
           userId,
           credits,
+          duration, // Duration in days
           amount: 49, // ₹49 for 7 contacts
-          currency: 'INR'
+          currency: 'INR',
+          plan: 'contact_credits'
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setContactViewsCount(data.contactViews)
-        setContactCredits(data.contactCredits)
+        setContactViewsCount(data.contactViews || 0)
+        setContactCredits(data.contactCredits || credits)
+        // Reload subscription data to get the latest state
+        await loadSubscriptionData()
         return true
       }
     } catch (error) {

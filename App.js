@@ -15,6 +15,9 @@ import { SubscriptionProvider } from './src/context/Subscription'
 import AnimatedSplash from './src/components/AnimatedSplash'
 import TextDefault from './src/components/Text/TextDefault/TextDefault'
 
+// Firebase messaging
+import { initializeMessaging } from './src/utils/firebaseMessaging'
+
 // Polyfill crypto.getRandomValues for UUID library compatibility
 import 'react-native-get-random-values'
 import 'expo-crypto'
@@ -558,6 +561,14 @@ export default function App() {
   useEffect(() => {
     requestTrackingPermissions()
     getFCMToken()
+    
+    // Initialize Firebase messaging handlers
+    try {
+      initializeMessaging()
+      console.log('🔔 [APP] Firebase messaging initialized')
+    } catch (error) {
+      console.error('🔔 [APP] Error initializing Firebase messaging:', error)
+    }
   }, [])
 
   const client = setupApolloClient()

@@ -23,7 +23,7 @@ const ChatList = () => {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [activeRoleFilter, setActiveRoleFilter] = useState('seller')
+  const [activeRoleFilter, setActiveRoleFilter] = useState('all')
 
   const navigation = useNavigation()
   const { token } = useContext(AuthContext)
@@ -33,16 +33,19 @@ const ChatList = () => {
   // Fetch conversations when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      console.log('🔔 [CHATLIST] Screen focused, fetching conversations...')
       if (token && profile) {
         fetchConversations()
       } else {
+        console.log('🔔 [CHATLIST] No token or profile, setting loading to false')
         setLoading(false)
       }
-    }, [token, profile])
+    }, [token, profile, fetchConversations])
   )
 
   const fetchConversations = async () => {
     try {
+      console.log('🔔 [CHATLIST] Fetching conversations for user:', profile._id)
       setLoading(true)
       const response = await fetch(
         `${API_URL}/conversation/get-all-conversation-user/${profile._id}`,
@@ -53,13 +56,61 @@ const ChatList = () => {
         }
       )
       const data = await response.json()
-      console.log('Conversations fetched:', data)
+      console.log('🔔 [CHATLIST] Conversations fetched:', data)
       if (data.success) {
         const normalized = (data.conversations || []).map((conv) => {
+          console.log('=== Processing conversation:', conv._id, '===')
+          console.log('Backend currentUserRole:', conv.currentUserRole)
+          console.log('Backend otherUserRole:', conv.otherUserRole)
+          console.log('Other user data:', conv.otherUser)
+          
           const otherUser = conv.otherUser || {}
-          const looksLikeShop =
-            otherUser.address !== undefined && otherUser.address !== null
-          const conversationRole = looksLikeShop ? 'seller' : 'buyer'
+          let currentUserRole = conv.currentUserRole || null
+          let otherUserRole = conv.otherUserRole || null
+
+          // Frontend fallback: determine roles based on product ownership
+          if (!currentUserRole || !otherUserRole) {
+            console.log('Roles missing, using frontend detection...')
+
+            // Most reliable: check if current user owns product
+            const productOwnerId =
+              conv.product?.userId ||
+              conv.product?.user?._id ||
+              conv.productUserId ||
+              null
+
+            if (productOwnerId) {
+              const currentUserIsProductOwner =
+                productOwnerId === profile._id ||
+                productOwnerId?.toString() === profile._id?.toString()
+
+              currentUserRole = currentUserIsProductOwner ? 'seller' : 'buyer'
+              otherUserRole = currentUserIsProductOwner ? 'buyer' : 'seller'
+
+              console.log('Product owner detection - productOwnerId:', productOwnerId, 'currentUserId:', profile._id)
+              console.log('currentUserIsProductOwner:', currentUserIsProductOwner)
+            } else {
+              // Last resort fallback: check otherUser.role from backend
+              if (otherUser.role) {
+                otherUserRole = otherUser.role
+                currentUserRole = otherUserRole === 'seller' ? 'buyer' : 'seller'
+              } else {
+                // Cannot determine — default to buyer (safer assumption)
+                currentUserRole = 'buyer'
+                otherUserRole = 'seller'
+              }
+              console.log('No product owner data, using fallback roles')
+            }
+
+            console.log('Detected currentUserRole:', currentUserRole)
+            console.log('Detected otherUserRole:', otherUserRole)
+          }
+
+          console.log('Final roles - currentUserRole:', currentUserRole, 'otherUserRole:', otherUserRole)
+
+          // Use backend-provided role information first, fallback to detection
+          let conversationRole = otherUserRole
+          
           const productStatus =
             conv.productStatus || conv.product?.status || null
           const isChatDisabled =
@@ -72,6 +123,8 @@ const ChatList = () => {
           return {
             ...conv,
             conversationRole,
+            currentUserRole,
+            otherUserRole,
             productStatus,
             statusLabel,
             isChatDisabled,
@@ -86,6 +139,8 @@ const ChatList = () => {
         })
 
         setConversations(normalized)
+        console.log('🔔 [CHATLIST] Conversations set:', normalized.length, 'conversations')
+        console.log('🔔 [CHATLIST] Conversation IDs:', normalized.map(c => c._id))
       }
     } catch (error) {
       console.error('Error fetching conversations:', error)
@@ -111,11 +166,26 @@ const ChatList = () => {
       return
     }
 
+    // Determine the correct shopId and role context for navigation
+    const shopId = conversation.otherUserRole === 'seller' 
+      ? conversation.otherUser?._id 
+      : conversation.sellerId
+    
+    const isCurrentUserSeller = conversation.currentUserRole === 'seller'
+
+    // Log navigation data for debugging
+    console.log('🔔 [CHATLIST] Navigating to Chat with:')
+    console.log('🔔 [CHATLIST] Conversation ID:', conversation._id)
+    console.log('🔔 [CHATLIST] Product ID:', conversation.productId || conversation.product?._id)
+    console.log('🔔 [CHATLIST] Other User:', conversation.otherUser?.name)
+    console.log('🔔 [CHATLIST] Current User Role:', conversation.currentUserRole)
+    console.log('🔔 [CHATLIST] Other User Role:', conversation.otherUserRole)
+
     navigation.navigate('Chat', {
       conversationId: conversation._id,
       groupTitle: conversation.groupTitle,
       otherUser: conversation.otherUser || null,
-      shopId: conversation.otherUser?._id || null,
+      shopId: shopId || null,
       productId: conversation.productId || conversation.product?._id || null,
       product: conversation.product || null,
       displayName:
@@ -126,7 +196,10 @@ const ChatList = () => {
         'Conversation',
       isChatDisabled: conversation.isChatDisabled,
       chatDisabledReason: conversation.chatDisabledReason,
-      productStatus: conversation.productStatus
+      productStatus: conversation.productStatus,
+      // Pass role context for better UI handling
+      currentUserRole: conversation.currentUserRole,
+      otherUserRole: conversation.otherUserRole
     })
   }
 
@@ -134,14 +207,28 @@ const ChatList = () => {
     const otherUser = item.otherUser
     const displayName = otherUser?.name || item.groupTitle || 'Conversation'
     const avatar = otherUser?.avatar
-    const roleLabel =
-      item.conversationRole === 'seller'
-        ? 'Seller'
-        : item.conversationRole === 'buyer'
-          ? 'Buyer'
-          : null
+    const currentUserRole = item.currentUserRole
+    const otherUserRole = item.otherUserRole || item.conversationRole
+    
+    // Determine role label based on who the other person is
+    const roleLabel = otherUserRole === 'seller' 
+      ? 'Seller' 
+      : otherUserRole === 'buyer' 
+        ? 'Buyer' 
+        : null
+    
+    // Show context about current user's role in this conversation
+    const getContextText = () => {
+      if (currentUserRole === 'seller') {
+        return 'You are selling'
+      } else if (currentUserRole === 'buyer') {
+        return 'You are buying'
+      }
+      return null
+    }
 
     const statusText = item.statusLabel
+    const contextText = getContextText()
 
     return (
       <TouchableOpacity
@@ -176,6 +263,11 @@ const ChatList = () => {
           <TextDefault H5 bold numberOfLines={1}>
             {displayName}
           </TextDefault>
+          {contextText && (
+            <TextDefault small style={styles.contextText}>
+              {contextText}
+            </TextDefault>
+          )}
           {statusText && (
             <View
               style={[
@@ -217,11 +309,11 @@ const ChatList = () => {
                 styles.roleBadge,
                 {
                   backgroundColor:
-                    item.conversationRole === 'seller'
+                    otherUserRole === 'seller'
                       ? (branding.primaryColor || '#007AFF') + '20'
                       : (branding.accentColor || '#38A169') + '20',
                   borderColor:
-                    item.conversationRole === 'seller'
+                    otherUserRole === 'seller'
                       ? branding.primaryColor || '#007AFF'
                       : branding.accentColor || '#38A169'
                 }
@@ -234,7 +326,7 @@ const ChatList = () => {
                   styles.roleBadgeText,
                   {
                     color:
-                      item.conversationRole === 'seller'
+                      otherUserRole === 'seller'
                         ? branding.primaryColor || '#007AFF'
                         : branding.accentColor || '#38A169'
                   }
@@ -255,14 +347,39 @@ const ChatList = () => {
   }
 
   const filteredConversations = useMemo(() => {
-    if (!activeRoleFilter) return conversations
-    return conversations.filter(
-      (conversation) => conversation.conversationRole === activeRoleFilter
+    console.log('=== Filtering conversations ===')
+    console.log('Active filter:', activeRoleFilter)
+    console.log('Total conversations:', conversations.length)
+    
+    if (activeRoleFilter === 'all') {
+      console.log('All filter - returning all conversations')
+      return conversations
+    }
+    
+    const filtered = conversations.filter(
+      (conversation) => {
+        // Filter based on current user's role in the conversation
+        if (activeRoleFilter === 'seller') {
+          const matches = conversation.currentUserRole === 'seller'
+          console.log('Seller filter - conversation', conversation._id, 'role:', conversation.currentUserRole, 'matches:', matches)
+          return matches
+        } else if (activeRoleFilter === 'buyer') {
+          const matches = conversation.currentUserRole === 'buyer'
+          console.log('Buyer filter - conversation', conversation._id, 'role:', conversation.currentUserRole, 'matches:', matches)
+          return matches
+        }
+        return false
+      }
     )
+    
+    console.log('Filtered conversations count:', filtered.length)
+    console.log('Filtered conversation IDs:', filtered.map(c => c._id))
+    return filtered
   }, [conversations, activeRoleFilter])
 
   const renderRoleFilters = () => {
     const filters = [
+      { key: 'all', label: 'All' },
       { key: 'seller', label: 'Seller' },
       { key: 'buyer', label: 'Buyer' }
     ]
@@ -368,15 +485,25 @@ const ChatList = () => {
           <TextDefault H4 bold style={styles.emptyText}>
             {conversations.length === 0
               ? 'No conversations yet'
-              : activeRoleFilter === 'seller'
-                ? "You're not buying from anyone yet"
-                : 'No buyers have contacted you yet'}
+              : activeRoleFilter === 'all'
+                ? 'No conversations found'
+                : activeRoleFilter === 'seller'
+                  ? 'No selling conversations yet'
+                  : 'No buying conversations yet'}
           </TextDefault>
           {conversations.length === 0 ? (
             <TextDefault style={styles.emptySubtext}>
-              Start chatting with sellers
+              {profile?.isSeller ? 'Start chatting with buyers' : 'Start chatting with sellers'}
             </TextDefault>
-          ) : null}
+          ) : activeRoleFilter === 'all' ? (
+            <TextDefault style={styles.emptySubtext}>
+              Try switching to Seller or Buyer filter
+            </TextDefault>
+          ) : (
+            <TextDefault style={styles.emptySubtext}>
+              {activeRoleFilter === 'seller' ? 'Buyers haven\'t contacted you yet' : 'You haven\'t started any buying conversations yet'}
+            </TextDefault>
+          )}
         </View>
       ) : (
         <FlatList

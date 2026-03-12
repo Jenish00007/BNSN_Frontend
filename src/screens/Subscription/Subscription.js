@@ -132,7 +132,9 @@ const Subscription = () => {
   const handlePurchase = () => {
     navigation.navigate('SubscriptionPayment', {
       amount: 49,
-      title: 'Gold Membership'
+      title: 'Gold Membership',
+      credits: 7,
+      duration: 30
     })
   }
 

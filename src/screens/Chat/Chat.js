@@ -31,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useRoute, useFocusEffect } from '@react-navigation/native'
 import io from 'socket.io-client'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import AuthContext from '../../context/Auth'
 import UserContext from '../../context/User'
 import { useSubscription } from '../../context/Subscription'
@@ -224,6 +225,10 @@ const styles = StyleSheet.create({
   avatarContainer: {
     marginRight: scaleSize(6)
   },
+  userInfoContainer: {
+    flex: 1,
+    justifyContent: 'center'
+  },
   userAvatar: {
     width: scaleSize(isTablet ? 36 : 28),
     height: scaleSize(isTablet ? 36 : 28),
@@ -242,6 +247,13 @@ const styles = StyleSheet.create({
     fontSize: scaleFontSize(12),
     color: '#64748b',
     fontWeight: '500'
+  },
+  userRoleBadge: {
+    fontSize: scaleFontSize(10),
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: scaleSize(1)
   },
   messageBubble: {
     paddingHorizontal: scaleSize(isTablet ? 16 : 12),
@@ -637,7 +649,9 @@ const Chat = ({ navigation }) => {
     displayName: initialDisplayName,
     isChatDisabled: initialChatDisabled = false,
     chatDisabledReason: initialChatDisabledReason = null,
-    forceNavigate = false
+    forceNavigate = false,
+    currentUserRole: initialCurrentUserRole,
+    otherUserRole: initialOtherUserRole
   } = route.params || {}
 
   const [messages, setMessages] = useState([])
@@ -648,6 +662,101 @@ const Chat = ({ navigation }) => {
   const [isConnected, setIsConnected] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [conversationId, setConversationId] = useState(initialConversationId)
+  
+  // Create conversation if none exists
+  const createConversationIfNeeded = async () => {
+    if (!conversationId && productId && otherUser) {
+      console.log('🔔 [CHAT] No conversation exists, creating new one...')
+      console.log('🔔 [CHAT] Product ID:', productId)
+      console.log('🔔 [CHAT] Product name:', productDetails?.name || initialProduct?.name)
+      console.log('🔔 [CHAT] Other user:', otherUser.name)
+      console.log('🔔 [CHAT] Current user:', profile.name)
+      
+      try {
+        const token = await AsyncStorage.getItem('token')
+        if (!token) {
+          console.error('🔔 [CHAT] No auth token found')
+          return null
+        }
+        
+        const conversationData = {
+          groupTitle: displayName || otherUser.name || 'Conversation',
+          userId: profile._id,
+          sellerId: otherUser._id,
+          productId: productId
+        }
+        
+        console.log('🔔 [CHAT] Creating conversation with data:', conversationData)
+        
+        const response = await fetch(`${API_URL}/conversation/create-new-conversation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(conversationData)
+        })
+        
+        const data = await response.json()
+        console.log('🔔 [CHAT] Conversation creation response:', data)
+        
+        if (data.success && data.conversation) {
+          console.log('🔔 [CHAT] New conversation created:', data.conversation._id)
+          setConversationId(data.conversation._id)
+          
+          // Update route params to reflect the new conversation
+          navigation.setParams({
+            conversationId: data.conversation._id
+          })
+          
+          // Emit event to refresh ChatList
+          if (navigation.emit) {
+            navigation.emit('conversationCreated', {
+              conversationId: data.conversation._id,
+              productId: productId,
+              otherUser: otherUser
+            })
+          }
+          
+          // Alternative: Force ChatList refresh by navigating back and forth
+          // This ensures the ChatList will refetch conversations
+          try {
+            navigation.getParent()?.setParams({
+              refreshChatList: Date.now()
+            })
+          } catch (error) {
+            console.log('🔔 [CHAT] Could not refresh ChatList:', error.message)
+          }
+          
+          return data.conversation._id
+        } else {
+          console.error('🔔 [CHAT] Failed to create conversation:', data)
+          console.error('🔔 [CHAT] Error details:', data.message || 'Unknown error')
+          return null
+        }
+      } catch (error) {
+        console.error('🔔 [CHAT] Error creating conversation:', error)
+        console.error('🔔 [CHAT] Error stack:', error.stack)
+        return null
+      }
+    }
+    return conversationId
+  }
+  
+  // Log conversation ID for debugging
+  useEffect(() => {
+    console.log('🔔 [CHAT] Conversation ID from params:', initialConversationId)
+    console.log('🔔 [CHAT] Current conversation ID state:', conversationId)
+    console.log('🔔 [CHAT] Route params:', route.params)
+    
+    // Validate conversation ID format
+    if (initialConversationId) {
+      console.log('🔔 [CHAT] Conversation ID length:', initialConversationId.length)
+      console.log('🔔 [CHAT] Conversation ID format check:', /^[0-9a-f]{24}$/.test(initialConversationId) ? 'Valid' : 'Invalid')
+    } else {
+      console.log('🔔 [CHAT] No initial conversation ID - will create if needed')
+    }
+  }, [initialConversationId, conversationId, route.params])
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [chatDisabled, setChatDisabled] = useState(Boolean(initialChatDisabled))
   const [typingTimeout, setTypingTimeout] = useState(null)
@@ -675,24 +784,34 @@ const Chat = ({ navigation }) => {
     groupTitle || shopName || 'Chat'
 
   const detectedSelfRole = useMemo(() => {
-  // First check if current user is the shop owner
-  if (shopId && profile?._id === shopId) {
-    return 'seller'
-  }
-  
-  // Check if current user is a buyer (not shop owner)
-  if (shopId && profile?._id !== shopId) {
-    return 'buyer'
-  }
-  
-  // Fallback to role detection from profile
-  const directRole = deriveUserRole(profile)
-  if (directRole) return directRole
-  
-  return null
-}, [profile, shopId])
+    // First prioritize role passed from ChatList
+    if (initialCurrentUserRole) {
+      return initialCurrentUserRole
+    }
+    
+    // Check if current user is the shop owner
+    if (shopId && profile?._id === shopId) {
+      return 'seller'
+    }
+    
+    // Check if current user is a buyer (not shop owner)
+    if (shopId && profile?._id !== shopId) {
+      return 'buyer'
+    }
+    
+    // Fallback to role detection from profile
+    const directRole = deriveUserRole(profile)
+    if (directRole) return directRole
+    
+    return null
+  }, [profile, shopId, initialCurrentUserRole])
 
 const detectedOtherRole = useMemo(() => {
+  // First prioritize role passed from ChatList
+  if (initialOtherUserRole) {
+    return initialOtherUserRole
+  }
+  
   // If we have shopId, the other person is the shop owner (seller)
   if (shopId) {
     return 'seller'
@@ -709,7 +828,7 @@ const detectedOtherRole = useMemo(() => {
   }
   
   return null
-}, [otherUser, shopId, detectedSelfRole])
+}, [otherUser, shopId, detectedSelfRole, initialOtherUserRole])
 
 const resolvedSelfRole = useMemo(() => {
   // Use detected role if available
@@ -857,7 +976,7 @@ const resolvedOtherRole = useMemo(() => {
     if (messages.length > 0 && !loading) {
       setTimeout(() => scrollToBottom(), 100)
     }
-  }, [messages, loading])
+  }, [messages, loading, scrollToBottom])
 
   // ── Keyboard handling (Android) ──
   useEffect(() => {
@@ -869,12 +988,24 @@ const resolvedOtherRole = useMemo(() => {
       const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
       return () => { showSub.remove(); hideSub.remove() }
     }
-  }, [])
+  }, [scrollToBottom])
 
   // ── Header options ──
   useEffect(() => {
+    const getRoleContextText = () => {
+      if (resolvedSelfRole === 'seller') {
+        return 'Selling'
+      } else if (resolvedSelfRole === 'buyer') {
+        return 'Buying'
+      }
+      return null
+    }
+    
+    const roleContext = getRoleContextText()
+    const headerTitle = roleContext ? `${displayName} (${roleContext})` : (displayName || 'Chat')
+    
     navigation.setOptions({
-      title: displayName || 'Chat',
+      title: headerTitle,
       headerStyle: {
         backgroundColor: branding.primaryColor || '#007AFF',
         shadowColor: branding.primaryColor || '#007AFF',
@@ -884,7 +1015,7 @@ const resolvedOtherRole = useMemo(() => {
         elevation: 8
       },
       headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: '700', fontSize: scaleFontSize(18) },
+      headerTitleStyle: { fontWeight: '700', fontSize: scaleFontSize(16) },
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: scaleSize(8) }}>
           {resolvedSelfRole === 'buyer' && shopId && (
@@ -915,6 +1046,25 @@ const resolvedOtherRole = useMemo(() => {
                   )}
                 </View>
               )}
+            </TouchableOpacity>
+          )}
+          {resolvedSelfRole === 'seller' && (
+            <TouchableOpacity
+              style={{ padding: scaleSize(8), marginRight: scaleSize(4) }}
+              onPress={() => {
+                Alert.alert(
+                  'Seller Tools',
+                  'As a seller, you can:\n\n• View buyer inquiries\n• Respond to messages\n• Manage your listings',
+                  [{ text: 'OK', style: 'default' }]
+                )
+              }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <MaterialIcons
+                name='store'
+                size={scaleSize(24)}
+                color='#fff'
+              />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={{ padding: scaleSize(8) }} onPress={() => {}}>
@@ -961,12 +1111,32 @@ const resolvedOtherRole = useMemo(() => {
       setSocket(socketInstance)
 
       socketInstance.on('connect', () => {
+        console.log('🔔 [CHAT] Socket connected, ID:', socketInstance.id)
         setIsConnected(true)
-        if (conversationId) {
-          socketInstance.emit('join-chat-room', { userId: profile._id, conversationId })
-          fetchMessages(conversationId)
-          markMessagesAsRead(conversationId)
+        
+        // Try to create conversation if needed, then join
+        const joinOrCreateConversation = async () => {
+          const convId = await createConversationIfNeeded()
+          
+          if (convId) {
+            console.log('🔔 [CHAT] Joining conversation room:', convId)
+            console.log('🔔 [CHAT] User ID:', profile._id)
+            
+            socketInstance.emit('join-chat-room', { 
+              userId: profile._id, 
+              conversationId: convId 
+            })
+            
+            fetchMessages(convId)
+            markMessagesAsRead(convId)
+          } else {
+            console.error('🔔 [CHAT] No conversation ID available for joining room')
+            Alert.alert('Error', 'Unable to create or join conversation')
+            navigation.goBack()
+          }
         }
+        
+        joinOrCreateConversation()
       })
       socketInstance.on('connect_error', (error) => {
         console.error('Socket connection error:', error)
@@ -986,13 +1156,37 @@ const resolvedOtherRole = useMemo(() => {
         }
       })
       socketInstance.on('receive-message', (message) => {
+        console.log('🔔 [CHAT] Received message:', message)
         if (message && message.text && message._id) {
-          setMessages((prev) => {
-            if (prev.some((m) => m._id === message._id)) return prev
-            return [...prev, message]
+          console.log('🔔 [CHAT] Adding message to chat:', {
+            id: message._id,
+            text: message.text.substring(0, 50) + '...',
+            sender: message.sender,
+            isFromCurrentUser: message.sender === profile._id
           })
-          scrollToBottom()
-          if (message.sender !== profile._id) markMessagesAsRead(conversationId)
+          
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === message._id)) {
+              console.log('🔔 [CHAT] Message already exists, skipping')
+              return prev
+            }
+            const newMessages = [...prev, message]
+            console.log('🔔 [CHAT] Message added. Total messages:', newMessages.length)
+            return newMessages
+          })
+          
+          // Auto-scroll to new message
+          setTimeout(() => scrollToBottom(), 100)
+          
+          // Mark as read if it's not from current user
+          if (message.sender !== profile._id) {
+            console.log('🔔 [CHAT] Marking message as read (from other user)')
+            markMessagesAsRead(conversationId)
+          } else {
+            console.log('🔔 [CHAT] Message from current user, not marking as read')
+          }
+        } else {
+          console.warn('🔔 [CHAT] Invalid message received:', message)
         }
       })
       socketInstance.on('messages-marked-read', () => {
@@ -1047,18 +1241,43 @@ const resolvedOtherRole = useMemo(() => {
   const fetchMessages = async (convId = null) => {
     try {
       const convIdToUse = convId || conversationId
-      if (!convIdToUse) { setLoading(false); return }
+      if (!convIdToUse) { 
+        console.log('🔔 [CHAT] No conversation ID provided for fetchMessages')
+        setLoading(false); 
+        return 
+      }
+      
+      console.log('🔔 [CHAT] Fetching messages for conversation:', convIdToUse)
       const response = await fetch(`${API_URL}/message/get-all-messages/${convIdToUse}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await response.json()
+      
       if (data.success) {
-        setMessages(data.messages)
+        console.log('🔔 [CHAT] Messages fetched successfully:', {
+          totalMessages: data.messages?.length || 0,
+          conversationId: convIdToUse
+        })
+        
+        // Log first few messages for debugging
+        if (data.messages && data.messages.length > 0) {
+          console.log('🔔 [CHAT] Sample messages:', data.messages.slice(0, 3).map(m => ({
+            id: m._id,
+            text: m.text?.substring(0, 30) + '...',
+            sender: m.sender,
+            createdAt: m.createdAt
+          })))
+        }
+        
+        setMessages(data.messages || [])
         setLoading(false)
-        setTimeout(() => scrollToBottom(), 200)
+        setTimeout(() => scrollToBottom(), 300)
+      } else {
+        console.error('🔔 [CHAT] Failed to fetch messages:', data)
+        setLoading(false)
       }
     } catch (error) {
-      console.error('Error fetching messages:', error)
+      console.error('🔔 [CHAT] Error fetching messages:', error)
       setLoading(false)
     }
   }
@@ -1122,11 +1341,20 @@ const resolvedOtherRole = useMemo(() => {
     }
   }
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (flatListRef.current && messages.length > 0) {
-      setTimeout(() => flatListRef.current.scrollToEnd({ animated: true }), 100)
+      try {
+        // Use a longer timeout to ensure the FlatList is fully rendered
+        setTimeout(() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: true })
+          }
+        }, 200)
+      } catch (error) {
+        console.warn('Error scrolling to bottom:', error)
+      }
     }
-  }
+  }, [messages.length])
 
   const getSellerPhone = useCallback(async () => {
     const phone = otherUser?.phoneNumber || otherUser?.phone
@@ -1250,7 +1478,14 @@ const resolvedOtherRole = useMemo(() => {
                   </View>
                 )}
               </View>
-              <Text style={styles.userName}>{otherParticipantLabel}</Text>
+              <View style={styles.userInfoContainer}>
+                <Text style={styles.userName}>{otherParticipantLabel}</Text>
+                {messageRole && (
+                  <Text style={[styles.userRoleBadge, { color: messageRole === 'seller' ? sellerColor : buyerColor }]}>
+                    {messageRole === 'seller' ? 'Seller' : 'Buyer'}
+                  </Text>
+                )}
+              </View>
             </View>
           )}
           <View style={[styles.messageBubble, bubbleShapeStyles]}>
@@ -1350,6 +1585,17 @@ const resolvedOtherRole = useMemo(() => {
         keyboardVerticalOffset={0}
       >
         <View style={{ flex: 1 }}>
+          {/* Debug Panel - Console logging only */}
+          {__DEV__ && (() => {
+            console.log('🔔 [CHAT DEBUG] Chat Debug Info:');
+            console.log('🔔 [CHAT DEBUG] Connected:', isConnected ? '✅' : '❌');
+            console.log('🔔 [CHAT DEBUG] Messages:', messages.length);
+            console.log('🔔 [CHAT DEBUG] Room:', conversationId || 'None');
+            console.log('🔔 [CHAT DEBUG] User:', profile?._id || 'None');
+            console.log('🔔 [CHAT DEBUG] Last Message:', messages.length > 0 ? messages[messages.length - 1]?.text?.substring(0, 30) + '...' : 'None');
+            return null;
+          })()}
+          
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -1363,8 +1609,16 @@ const resolvedOtherRole = useMemo(() => {
                 paddingBottom: scaleSize(16)
               }
             ]}
-            onContentSizeChange={() => { if (messages.length > 0) scrollToBottom() }}
-            onLayout={() => { if (messages.length > 0) scrollToBottom() }}
+            onContentSizeChange={() => { 
+              if (messages.length > 0) {
+                setTimeout(() => scrollToBottom(), 100)
+              }
+            }}
+            onLayout={() => { 
+              if (messages.length > 0) {
+                setTimeout(() => scrollToBottom(), 100)
+              }
+            }}
             showsVerticalScrollIndicator={false}
             maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 10 }}
             removeClippedSubviews={false}
@@ -1418,7 +1672,11 @@ const resolvedOtherRole = useMemo(() => {
                   maxLength={1000}
                   editable={!sending && isConnected && !chatDisabled}
                   textAlignVertical='top'
-                  onFocus={() => setTimeout(() => scrollToBottom(), 300)}
+                  onFocus={() => setTimeout(() => {
+              if (flatListRef.current) {
+                scrollToBottom()
+              }
+            }, 300)}
                 />
                 <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
                   <TouchableOpacity

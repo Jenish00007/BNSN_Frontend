@@ -103,7 +103,7 @@ import ForceUpdateModal from '../components/ForceUpdateModal/ForceUpdateModal'
 import { isVersionLower } from '../utils/version'
 import ProfilePage from '../screens/Profile/Profile'
 import Subscription from '../screens/Subscription/Subscription'
-import SubscriptionPaymentScreen from '../screens/PaymentScreen'
+import SubscriptionPayment from '../screens/SubscriptionPayment/SubscriptionPayment'
 import BuyContacts from '../screens/BuyContacts/BuyContacts'
 
 const NavigationStack = createStackNavigator()
@@ -237,7 +237,7 @@ function NoDrawer() {
       <NavigationStack.Screen name='Subscription' component={Subscription} />
       <NavigationStack.Screen
         name='SubscriptionPayment'
-        component={SubscriptionPaymentScreen}
+        component={SubscriptionPayment}
         options={{ headerShown: false }}
       />
       <NavigationStack.Screen name='BuyContacts' component={BuyContacts} />

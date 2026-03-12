@@ -78,7 +78,7 @@ const ContactViewsIndicator = () => {
       <View style={ciStyles.row}>
         <MaterialIcons name='phone' size={16} color={barColor} />
         <Text style={[ciStyles.label, { color: barColor }]}>
-          {remaining} of {limit} contacts left
+          {remaining} of {remaining >limit ? remaining : limit} contacts left
         </Text>
       </View>
 

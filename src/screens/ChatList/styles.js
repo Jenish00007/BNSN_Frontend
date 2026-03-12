@@ -62,6 +62,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
   },
+  contextText: {
+    color: '#888',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
   roleFilterContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
