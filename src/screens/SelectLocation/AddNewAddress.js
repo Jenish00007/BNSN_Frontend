@@ -47,8 +47,8 @@ import CustomOtherIcon from '../../assets/SVG/imageComponents/CustomOtherIcon'
 import CustomApartmentIcon from '../../assets/SVG/imageComponents/CustomApartmentIcon'
 import { useAppBranding } from '../../utils/translationHelper'
 
-const LATITUDE = 13.0827  // Chennai coordinates
-const LONGITUDE = 80.2707  // Chennai coordinates
+const LATITUDE = 13.0827 // Chennai coordinates
+const LONGITUDE = 80.2707 // Chennai coordinates
 const LATITUDE_DELTA = 0.2
 const LONGITUDE_DELTA = 0.2
 const { width, height } = Dimensions.get('window')
@@ -58,56 +58,67 @@ export default function AddNewAddress(props) {
   const { token } = useContext(AuthContext)
   const branding = useAppBranding()
   const { getAddress } = useGeocoding()
-  
+
   // Extract route params first
-  const { 
-    longitude, 
-    latitude, 
-    id, 
-    city, 
-    address, 
-    streetAddress, 
-    district, 
-    pincode, 
-    state, 
-    addressType: editAddressType, 
-    addressLabel: editAddressLabel 
+  const {
+    longitude,
+    latitude,
+    id,
+    city,
+    address,
+    streetAddress,
+    district,
+    pincode,
+    state,
+    addressType: editAddressType,
+    addressLabel: editAddressLabel
   } = props.route.params || {}
-  
+
   const [searchModalVisible, setSearchModalVisible] = useState(false)
   const [saveAddressModalVisible, setSaveAddressModalVisible] = useState(false)
   const [addressLabel, setAddressLabel] = useState(editAddressLabel || 'Home')
   const [addressType, setAddressType] = useState(editAddressType || 'home')
   const [saving, setSaving] = useState(false)
-  
+
   // Resizable form height state (45% default for map, 55% for form)
   const [mapHeight, setMapHeight] = useState(height * 0.45)
   const [formHeight, setFormHeight] = useState(height * 0.55)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  
+
   // Check if we're in edit mode
   const isEditMode = id != null
 
   // Initialize coordinates - handle edit mode with proper fallbacks
   const initialCoordinates = {
-    latitude: (latitude != null && latitude !== undefined && latitude !== null) ? latitude : LATITUDE,
-    longitude: (longitude != null && longitude !== undefined && longitude !== null) ? longitude : LONGITUDE
+    latitude:
+      latitude != null && latitude !== undefined && latitude !== null
+        ? latitude
+        : LATITUDE,
+    longitude:
+      longitude != null && longitude !== undefined && longitude !== null
+        ? longitude
+        : LONGITUDE
   }
-  
+
   console.log('Initial coordinates setup:', {
     isEditMode,
     latitude,
     longitude,
     initialCoordinates,
-    hasValidLatitude: latitude != null && latitude !== undefined && latitude !== null,
-    hasValidLongitude: longitude != null && longitude !== undefined && longitude !== null
+    hasValidLatitude:
+      latitude != null && latitude !== undefined && latitude !== null,
+    hasValidLongitude:
+      longitude != null && longitude !== undefined && longitude !== null
   })
 
   // Try to get stored coordinates from AsyncStorage as fallback for edit mode
   const [storedCoordinates, setStoredCoordinates] = useState(null)
-  
+
   useEffect(() => {
-    if (isEditMode && (!latitude || !longitude || latitude === null || longitude === null)) {
+    if (
+      isEditMode &&
+      (!latitude || !longitude || latitude === null || longitude === null)
+    ) {
       // Try to get coordinates from AsyncStorage for this address
       const getStoredCoordinates = async () => {
         try {
@@ -117,14 +128,14 @@ export default function AddNewAddress(props) {
             const coords = JSON.parse(stored)
             console.log('Found stored coordinates for address:', coords)
             setStoredCoordinates(coords)
-            
+
             // Update both coordinate states with stored values
             setCoordinates({
               latitude: coords.latitude,
               longitude: coords.longitude
             })
-            
-            setSelectedValue(prev => ({
+
+            setSelectedValue((prev) => ({
               ...prev,
               latitude: coords.latitude,
               longitude: coords.longitude
@@ -179,39 +190,43 @@ export default function AddNewAddress(props) {
       const { coords, error } = await getCurrentLocation()
       if (!error && coords) {
         console.log('Current location obtained:', coords)
-        
+
         // Update coordinates state
         setCoordinates({
           latitude: coords.latitude,
           longitude: coords.longitude
         })
-        
+
         // Update selectedValue with new coordinates
-        setSelectedValue(prev => ({
+        setSelectedValue((prev) => ({
           ...prev,
           latitude: coords.latitude,
           longitude: coords.longitude
         }))
-        
+
         // Trigger geocoding for the new coordinates
         await onRegionChangeComplete({
           latitude: coords.latitude,
           longitude: coords.longitude
         })
-        
+
         // Animate map to new location
         if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            latitudeDelta: LATITUDE_DELTA,
-            longitudeDelta: LONGITUDE_DELTA
-          }, 1000)
+          mapRef.current.animateToRegion(
+            {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              latitudeDelta: LATITUDE_DELTA,
+              longitudeDelta: LONGITUDE_DELTA
+            },
+            1000
+          )
         }
       } else {
         console.error('Error getting current location:', error)
-        FlashMessage({ 
-          message: 'Unable to get current location. Please check your GPS settings.',
+        FlashMessage({
+          message:
+            'Unable to get current location. Please check your GPS settings.',
           type: 'danger'
         })
       }
@@ -227,7 +242,9 @@ export default function AddNewAddress(props) {
   useLayoutEffect(() => {
     navigation.setOptions(
       screenOptions({
-        title: isEditMode ? t('editAddress') || 'Edit Address' : t('addAddress') || 'Add Address',
+        title: isEditMode
+          ? t('editAddress') || 'Edit Address'
+          : t('addAddress') || 'Add Address',
         fontColor: currentTheme.newFontcolor,
         backColor: currentTheme.newheaderBG,
         iconColor: currentTheme.newIconColor,
@@ -240,25 +257,38 @@ export default function AddNewAddress(props) {
   // Effect to handle initial setup
   useEffect(() => {
     // If we have coordinates in edit mode, update the map
-    if (latitude != null && longitude != null && latitude !== null && longitude !== null && mapRef.current) {
+    if (
+      latitude != null &&
+      longitude != null &&
+      latitude !== null &&
+      longitude !== null &&
+      mapRef.current
+    ) {
       setTimeout(() => {
-        mapRef.current.animateToRegion({
-          latitude: latitude,
-          longitude: longitude,
-          latitudeDelta: LATITUDE_DELTA,
-          longitudeDelta: LONGITUDE_DELTA
-        }, 1000)
+        mapRef.current.animateToRegion(
+          {
+            latitude: latitude,
+            longitude: longitude,
+            latitudeDelta: LATITUDE_DELTA,
+            longitudeDelta: LONGITUDE_DELTA
+          },
+          1000
+        )
       }, 500)
     }
   }, [])
 
   const onRegionChangeComplete = useCallback(async (coordinates) => {
     // Validate coordinates before attempting geocoding
-    if (!coordinates || coordinates.latitude == null || coordinates.longitude == null) {
+    if (
+      !coordinates ||
+      coordinates.latitude == null ||
+      coordinates.longitude == null
+    ) {
       console.warn('Invalid coordinates for geocoding:', coordinates)
       return
     }
-    
+
     try {
       console.log('Attempting geocoding for coordinates:', coordinates)
       const response = await getAddress(
@@ -266,9 +296,9 @@ export default function AddNewAddress(props) {
         coordinates.longitude
       )
       console.log('Geocoding response:', response)
-      
+
       // Update coordinates and address, but DO NOT update city from geocoding
-      setSelectedValue(prev => ({
+      setSelectedValue((prev) => ({
         ...prev,
         address: response.formattedAddress || 'Location not found',
         latitude: coordinates.latitude,
@@ -276,7 +306,7 @@ export default function AddNewAddress(props) {
         // Note: We intentionally do NOT update city from geocoding
         // city: response.city || '' // REMOVED - city will be manually entered by user
       }))
-      
+
       // Update coordinates state to keep them in sync
       setCoordinates({
         latitude: coordinates.latitude,
@@ -284,38 +314,43 @@ export default function AddNewAddress(props) {
       })
     } catch (error) {
       console.error('Geocoding failed:', error.message || error)
-      
+
       // Check if it's a JSON parse error
       if (error.message && error.message.includes('JSON')) {
         console.error('JSON Parse Error - API response may be invalid:', error)
-        FlashMessage({ 
-          message: 'Location service temporarily unavailable. Please try again.',
+        FlashMessage({
+          message:
+            'Location service temporarily unavailable. Please try again.',
           type: 'warning'
         })
       }
-      
+
       // Fallback to coordinate display
-      if (coordinates && coordinates.latitude != null && coordinates.longitude != null) {
-        setSelectedValue(prev => ({
+      if (
+        coordinates &&
+        coordinates.latitude != null &&
+        coordinates.longitude != null
+      ) {
+        setSelectedValue((prev) => ({
           ...prev,
           address: `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude
         }))
-        
+
         // Update coordinates state to keep them in sync
         setCoordinates({
           latitude: coordinates.latitude,
           longitude: coordinates.longitude
         })
       } else {
-        setSelectedValue(prev => ({
+        setSelectedValue((prev) => ({
           ...prev,
           address: 'Location coordinates not available',
           latitude: LATITUDE,
           longitude: LONGITUDE
         }))
-        
+
         // Update coordinates state to keep them in sync
         setCoordinates({
           latitude: LATITUDE,
@@ -327,23 +362,29 @@ export default function AddNewAddress(props) {
 
   // Handle keyboard show/hide
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (event) => {
-      const keyboardHeight = event.endCoordinates.height
-      setKeyboardHeight(keyboardHeight)
-      
-      // Adjust form height when keyboard is shown
-      if (formHeight < height * 0.7) {
-        setFormHeight(height * 0.7)
-        setMapHeight(height * 0.3)
-      }
-    })
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      (event) => {
+        const keyboardHeight = event.endCoordinates.height
+        setKeyboardHeight(keyboardHeight)
 
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0)
-      // Reset to default when keyboard is hidden
-      setFormHeight(height * 0.55)
-      setMapHeight(height * 0.45)
-    })
+        // Adjust form height when keyboard is shown
+        if (formHeight < height * 0.7) {
+          setFormHeight(height * 0.7)
+          setMapHeight(height * 0.3)
+        }
+      }
+    )
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0)
+        // Reset to default when keyboard is hidden
+        setFormHeight(height * 0.55)
+        setMapHeight(height * 0.45)
+      }
+    )
 
     return () => {
       keyboardDidShowListener.remove()
@@ -353,7 +394,7 @@ export default function AddNewAddress(props) {
 
   const handleAddressTypeSelect = (type) => {
     setAddressType(type)
-    switch(type) {
+    switch (type) {
       case 'home':
         setAddressLabel('Home')
         break
@@ -367,7 +408,12 @@ export default function AddNewAddress(props) {
   }
 
   const openSaveAddressModal = () => {
-    if (!selectedValue.address || !selectedValue.city || !selectedValue.streetAddress || !selectedValue.pincode) {
+    if (
+      !selectedValue.address ||
+      !selectedValue.city ||
+      !selectedValue.streetAddress ||
+      !selectedValue.pincode
+    ) {
       Alert.alert(
         'Incomplete Information',
         'Please fill all required fields (marked with *)',
@@ -385,7 +431,7 @@ export default function AddNewAddress(props) {
     }
 
     setSaving(true)
-    
+
     try {
       const completeAddress = [
         selectedValue.streetAddress,
@@ -393,7 +439,9 @@ export default function AddNewAddress(props) {
         selectedValue.city,
         selectedValue.state,
         selectedValue.pincode
-      ].filter(Boolean).join(', ')
+      ]
+        .filter(Boolean)
+        .join(', ')
 
       // Debug coordinates before saving
       console.log('Coordinates before saving:', {
@@ -405,9 +453,11 @@ export default function AddNewAddress(props) {
       })
 
       // Ensure coordinates are never null - use fallback values
-      const finalLatitude = selectedValue.latitude || coordinates.latitude || LATITUDE
-      const finalLongitude = selectedValue.longitude || coordinates.longitude || LONGITUDE
-      
+      const finalLatitude =
+        selectedValue.latitude || coordinates.latitude || LATITUDE
+      const finalLongitude =
+        selectedValue.longitude || coordinates.longitude || LONGITUDE
+
       console.log('Final coordinates to save:', {
         finalLatitude,
         finalLongitude,
@@ -451,7 +501,7 @@ export default function AddNewAddress(props) {
 
       if (response.ok) {
         const result = await response.json()
-        
+
         // Store coordinates in AsyncStorage as backup since backend might not store them
         try {
           const storedKey = `address_coords_${result.address?._id || id}`
@@ -463,13 +513,17 @@ export default function AddNewAddress(props) {
           await AsyncStorage.setItem(storedKey, JSON.stringify(coordsToStore))
           console.log('Stored coordinates in AsyncStorage:', coordsToStore)
         } catch (storageError) {
-          console.log('Failed to store coordinates in AsyncStorage:', storageError)
+          console.log(
+            'Failed to store coordinates in AsyncStorage:',
+            storageError
+          )
         }
-        
+
         const locationData = {
           label: addressLabel,
           addressType: addressType,
-          deliveryAddress: completeAddress || selectedValue.city || selectedValue.address,
+          deliveryAddress:
+            completeAddress || selectedValue.city || selectedValue.address,
           latitude: selectedValue.latitude,
           longitude: selectedValue.longitude,
           city: selectedValue.city,
@@ -478,12 +532,12 @@ export default function AddNewAddress(props) {
           pincode: selectedValue.pincode,
           state: selectedValue.state
         }
-        
+
         setLocation(locationData)
         setSaveAddressModalVisible(false)
-        
+
         navigation.navigate('Menu')
-        
+
         FlashMessage({ message: 'Address saved successfully', type: 'success' })
       } else {
         const errorData = await response.json().catch(() => ({}))
@@ -499,7 +553,12 @@ export default function AddNewAddress(props) {
   }
 
   const fitMapToCoordinates = useCallback((location) => {
-    if (mapRef.current && location && location.latitude != null && location.longitude != null) {
+    if (
+      mapRef.current &&
+      location &&
+      location.latitude != null &&
+      location.longitude != null
+    ) {
       mapRef.current.fitToCoordinates([
         {
           latitude: location.latitude,
@@ -510,7 +569,7 @@ export default function AddNewAddress(props) {
   }, [])
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={containerStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
@@ -531,11 +590,20 @@ export default function AddNewAddress(props) {
           />
           <View style={containerStyles.markerContainer}>
             <View style={containerStyles.markerPin}>
-              <MaterialIcons name="location-pin" size={40} color={branding.primaryColor} />
-              <View style={[containerStyles.markerPulse, { borderColor: branding.primaryColor }]} />
+              <MaterialIcons
+                name='location-pin'
+                size={40}
+                color={branding.primaryColor}
+              />
+              <View
+                style={[
+                  containerStyles.markerPulse,
+                  { borderColor: branding.primaryColor }
+                ]}
+              />
             </View>
           </View>
-          
+
           {/* Search Button on Map */}
           <TouchableOpacity
             style={[
@@ -544,41 +612,59 @@ export default function AddNewAddress(props) {
             ]}
             onPress={() => setSearchModalVisible(true)}
           >
-            <Feather name="search" size={20} color={currentTheme.buttonText} />
-            <TextDefault textColor={currentTheme.buttonText} H6 style={{ marginLeft: 8 }}>
+            <Feather name='search' size={20} color={currentTheme.buttonText} />
+            <TextDefault
+              textColor={currentTheme.buttonText}
+              H6
+              style={{ marginLeft: 8 }}
+            >
               {t('searchLocation') || 'Search Location'}
             </TextDefault>
           </TouchableOpacity>
         </View>
 
         {/* Simple Divider */}
-        <View style={[
-          containerStyles.simpleDivider,
-          { backgroundColor: currentTheme.newIconColor }
-        ]} />
-        
+        <View
+          style={[
+            containerStyles.simpleDivider,
+            { backgroundColor: currentTheme.newIconColor }
+          ]}
+        />
+
         {/* Form Section - Dynamic Height */}
         <View style={[containerStyles.formCard, { height: formHeight }]}>
           {/* Card Header with Resize Controls */}
-          <View style={[
-            containerStyles.cardHeader,
-            { backgroundColor: currentTheme.newheaderBG }
-          ]}>
+          <View
+            style={[
+              containerStyles.cardHeader,
+              { backgroundColor: currentTheme.newheaderBG }
+            ]}
+          >
             <View style={containerStyles.headerContent}>
               <View style={containerStyles.headerLeft}>
-                <MaterialIcons name="location-on" size={24} color={branding.primaryColor} />
+                <MaterialIcons
+                  name='location-on'
+                  size={24}
+                  color={branding.primaryColor}
+                />
                 <TextDefault
                   textColor={currentTheme.newFontcolor}
                   H4
                   bolder
                   style={{ marginLeft: 10 }}
                 >
-                  {isEditMode ? (t('editAddress') || 'Edit Address') : (t('addAddress') || 'Add Address')}
+                  {isEditMode
+                    ? t('editAddress') || 'Edit Address'
+                    : t('addAddress') || 'Add Address'}
                 </TextDefault>
               </View>
               {isEditMode && (
                 <View style={containerStyles.editIndicator}>
-                  <Feather name="edit-2" size={16} color={branding.primaryColor} />
+                  <Feather
+                    name='edit-2'
+                    size={16}
+                    color={branding.primaryColor}
+                  />
                   <TextDefault
                     textColor={branding.primaryColor}
                     H7
@@ -589,7 +675,7 @@ export default function AddNewAddress(props) {
                 </View>
               )}
             </View>
-            
+
             {/* Resize Dropdown Button */}
             <TouchableOpacity
               style={[
@@ -598,337 +684,450 @@ export default function AddNewAddress(props) {
               ]}
               onPress={resizeForm}
             >
-              <Feather name="maximize-2" size={16} color={currentTheme.buttonText} />
+              <Feather
+                name='maximize-2'
+                size={16}
+                color={currentTheme.buttonText}
+              />
             </TouchableOpacity>
           </View>
-          
+
           {/* Form Content */}
-          <ScrollView 
+          <ScrollView
             style={formStyles.scrollView}
             contentContainerStyle={formStyles.contentContainer}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps='handled'
             nestedScrollEnabled={true}
             automaticallyAdjustContentInsets={false}
             contentInset={{ bottom: 0 }}
             contentOffset={{ x: 0, y: 0 }}
           >
-          {/* Address Selection Section */}
-          <View style={formStyles.section}>
-            <View style={formStyles.sectionHeader}>
-              <Feather name="map-pin" size={18} color={currentTheme.newIconColor} />
-              <TextDefault
-                textColor={currentTheme.newFontcolor}
-                H5
-                bolder
-                style={formStyles.sectionTitle}
-              >
-                {t('selectedLocation') || 'Selected Location'}
-              </TextDefault>
-            </View>
-            
-            <TouchableOpacity 
-              onPress={() => setSearchModalVisible(true)}
-              style={[
-                formStyles.locationCard,
-                { borderColor: currentTheme.newIconColor, backgroundColor: currentTheme.newheaderBG }
-              ]}
-            >
-              <View style={formStyles.locationContent}>
-                <Feather name="map-pin" size={16} color={branding.primaryColor} />
-                <View style={formStyles.locationTextContainer}>
-                  <TextDefault
-                    textColor={currentTheme.newFontcolor}
-                    H6
-                    numberOfLines={2}
-                    style={{ flex: 1 }}
-                  >
-                    {selectedValue.address || t('selectAddress') || 'Select an address'}
-                  </TextDefault>
-                  <Feather
-                    name="chevron-right"
-                    size={18}
-                    color={currentTheme.newIconColor}
-                  />
-                </View>
-              </View>
-              <View style={formStyles.coordinatesRow}>
-                <TextDefault
-                  textColor={currentTheme.fontSecondColor}
-                  H7
-                  style={formStyles.coordinateText}
-                >
-                  Lat: {selectedValue.latitude?.toFixed(6)}
-                </TextDefault>
-                <TextDefault
-                  textColor={currentTheme.fontSecondColor}
-                  H7
-                  style={formStyles.coordinateText}
-                >
-                  Lng: {selectedValue.longitude?.toFixed(6)}
-                </TextDefault>
-              </View>
-            </TouchableOpacity>
-          {/* Address Details Form */}
-          <View style={formStyles.section}>
-            <View style={formStyles.sectionHeader}>
-              <Feather name="edit-3" size={18} color={currentTheme.newIconColor} />
-              <TextDefault
-                textColor={currentTheme.newFontcolor}
-                H5
-                bolder
-                style={formStyles.sectionTitle}
-              >
-                {t('addressDetails') || 'Address Details'}
-              </TextDefault>
-            </View>
-
-            {/* Street Address */}
-            <View style={formStyles.inputGroup}>
-              <View style={formStyles.inputHeader}>
-                <TextDefault
-                  textColor={currentTheme.newFontcolor}
-                  H6
-                  bolder
-                >
-                  {t('streetAddress') || 'Street Address'}
-                </TextDefault>
-                <Text style={{ color: '#FF4444', marginLeft: 4 }}>*</Text>
-              </View>
-              <View style={[
-                formStyles.inputContainer,
-                { borderColor: currentTheme.newIconColor, backgroundColor: currentTheme.newheaderBG }
-              ]}>
-                <TextInput
-                  style={[
-                    formStyles.textInput,
-                    { color: currentTheme.newFontcolor }
-                  ]}
-                  placeholder="House number, building name, street"
-                  placeholderTextColor={currentTheme.fontSecondColor}
-                  value={selectedValue.streetAddress}
-                  onChangeText={(text) => setSelectedValue(prev => ({ ...prev, streetAddress: text }))}
-                  multiline={true}
-                  numberOfLines={2}
-                />
-                <Feather
-                  name="home"
-                  size={18}
-                  color={currentTheme.newIconColor}
-                  style={formStyles.inputIcon}
-                />
-              </View>
-            </View>
-
-            {/* District and City Row */}
-            <View style={formStyles.row}>
-              {/* District */}
-              <View style={[formStyles.inputGroup, formStyles.flex]}>
-                <View style={formStyles.inputHeader}>
-                  <TextDefault
-                    textColor={currentTheme.newFontcolor}
-                    H6
-                    bolder
-                  >
-                    {t('district') || 'District'}
-                  </TextDefault>
-                </View>
-                <View style={[
-                  formStyles.inputContainer,
-                  { borderColor: currentTheme.newIconColor, backgroundColor: currentTheme.newheaderBG }
-                ]}>
-                  <TextInput
-                    style={[
-                      formStyles.textInput,
-                      { color: currentTheme.newFontcolor }
-                    ]}
-                    placeholder="District"
-                    placeholderTextColor={currentTheme.fontSecondColor}
-                    value={selectedValue.district}
-                    onChangeText={(text) => setSelectedValue(prev => ({ ...prev, district: text }))}
-                  />
-                  <Feather
-                    name="map"
-                    size={16}
-                    color={currentTheme.newIconColor}
-                    style={formStyles.inputIcon}
-                  />
-                </View>
-              </View>
-
-              {/* City - Manually editable (required) */}
-              <View style={[formStyles.inputGroup, formStyles.flex, { marginLeft: 10 }]}>
-                <View style={formStyles.inputHeader}>
-                  <TextDefault
-                    textColor={currentTheme.newFontcolor}
-                    H6
-                    bolder
-                  >
-                    {t('city') || 'City'}
-                  </TextDefault>
-                  <Text style={{ color: '#FF4444', marginLeft: 4 }}>*</Text>
-                </View>
-                <View style={[
-                  formStyles.inputContainer,
-                  { borderColor: currentTheme.newIconColor, backgroundColor: currentTheme.newheaderBG }
-                ]}>
-                  <TextInput
-                    style={[
-                      formStyles.textInput,
-                      { color: currentTheme.newFontcolor }
-                    ]}
-                    placeholder="Enter city name"
-                    placeholderTextColor={currentTheme.fontSecondColor}
-                    value={selectedValue.city}
-                    onChangeText={(text) => setSelectedValue(prev => ({ ...prev, city: text }))}
-                  />
-                  <Feather
-                    name="map-pin"
-                    size={16}
-                    color={currentTheme.newIconColor}
-                    style={formStyles.inputIcon}
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* State and Pincode Row */}
-            <View style={formStyles.row}>
-              {/* State */}
-              <View style={[formStyles.inputGroup, formStyles.flex]}>
-                <View style={formStyles.inputHeader}>
-                  <TextDefault
-                    textColor={currentTheme.newFontcolor}
-                    H6
-                    bolder
-                  >
-                    {t('state') || 'State'}
-                  </TextDefault>
-                </View>
-                <View style={[
-                  formStyles.inputContainer,
-                  { borderColor: currentTheme.newIconColor, backgroundColor: currentTheme.newheaderBG }
-                ]}>
-                  <TextInput
-                    style={[
-                      formStyles.textInput,
-                      { color: currentTheme.newFontcolor }
-                    ]}
-                    placeholder="State"
-                    placeholderTextColor={currentTheme.fontSecondColor}
-                    value={selectedValue.state}
-                    onChangeText={(text) => setSelectedValue(prev => ({ ...prev, state: text }))}
-                  />
-                  <Feather
-                    name="map"
-                    size={16}
-                    color={currentTheme.newIconColor}
-                    style={formStyles.inputIcon}
-                  />
-                </View>
-              </View>
-
-              {/* Pincode */}
-              <View style={[formStyles.inputGroup, formStyles.flex, { marginLeft: 10 }]}>
-                <View style={formStyles.inputHeader}>
-                  <TextDefault
-                    textColor={currentTheme.newFontcolor}
-                    H6
-                    bolder
-                  >
-                    {t('pincode') || 'Pincode'}
-                  </TextDefault>
-                  <Text style={{ color: '#FF4444', marginLeft: 4 }}>*</Text>
-                </View>
-                <View style={[
-                  formStyles.inputContainer,
-                  { borderColor: currentTheme.newIconColor, backgroundColor: currentTheme.newheaderBG }
-                ]}>
-                  <TextInput
-                    style={[
-                      formStyles.textInput,
-                      { color: currentTheme.newFontcolor }
-                    ]}
-                    placeholder="Pincode"
-                    placeholderTextColor={currentTheme.fontSecondColor}
-                    value={selectedValue.pincode}
-                    onChangeText={(text) => setSelectedValue(prev => ({ ...prev, pincode: text }))}
-                    keyboardType="numeric"
-                    maxLength={6}
-                  />
-                  <Feather
-                    name="hash"
-                    size={16}
-                    color={currentTheme.newIconColor}
-                    style={formStyles.inputIcon}
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Address Type Selection */}
+            {/* Address Selection Section */}
             <View style={formStyles.section}>
               <View style={formStyles.sectionHeader}>
-                <Feather name="tag" size={18} color={currentTheme.newIconColor} />
+                <Feather
+                  name='map-pin'
+                  size={18}
+                  color={currentTheme.newIconColor}
+                />
                 <TextDefault
                   textColor={currentTheme.newFontcolor}
                   H5
                   bolder
                   style={formStyles.sectionTitle}
                 >
-                  {t('addressType') || 'Address Type'}
+                  {t('selectedLocation') || 'Selected Location'}
                 </TextDefault>
               </View>
-              
-              <View style={formStyles.addressTypeContainer}>
-                {[
-                  { type: 'home', label: t('home') || 'Home', icon: CustomHomeIcon },
-                  { type: 'work', label: t('work') || 'Work', icon: CustomWorkIcon },
-                  { type: 'other', label: t('other') || 'Other', icon: CustomOtherIcon }
-                ].map(({ type, label, icon }) => (
-                  <TouchableOpacity
-                    key={type}
+
+              <TouchableOpacity
+                onPress={() => setSearchModalVisible(true)}
+                style={[
+                  formStyles.locationCard,
+                  {
+                    borderColor: currentTheme.newIconColor,
+                    backgroundColor: currentTheme.newheaderBG
+                  }
+                ]}
+              >
+                <View style={formStyles.locationContent}>
+                  <Feather
+                    name='map-pin'
+                    size={16}
+                    color={branding.primaryColor}
+                  />
+                  <View style={formStyles.locationTextContainer}>
+                    <TextDefault
+                      textColor={currentTheme.newFontcolor}
+                      H6
+                      numberOfLines={2}
+                      style={{ flex: 1 }}
+                    >
+                      {selectedValue.address ||
+                        t('selectAddress') ||
+                        'Select an address'}
+                    </TextDefault>
+                    <Feather
+                      name='chevron-right'
+                      size={18}
+                      color={currentTheme.newIconColor}
+                    />
+                  </View>
+                </View>
+                <View style={formStyles.coordinatesRow}>
+                  <TextDefault
+                    textColor={currentTheme.fontSecondColor}
+                    H7
+                    style={formStyles.coordinateText}
+                  >
+                    Lat: {selectedValue.latitude?.toFixed(6)}
+                  </TextDefault>
+                  <TextDefault
+                    textColor={currentTheme.fontSecondColor}
+                    H7
+                    style={formStyles.coordinateText}
+                  >
+                    Lng: {selectedValue.longitude?.toFixed(6)}
+                  </TextDefault>
+                </View>
+              </TouchableOpacity>
+              {/* Address Details Form */}
+              <View style={formStyles.section}>
+                <View style={formStyles.sectionHeader}>
+                  <Feather
+                    name='edit-3'
+                    size={18}
+                    color={currentTheme.newIconColor}
+                  />
+                  <TextDefault
+                    textColor={currentTheme.newFontcolor}
+                    H5
+                    bolder
+                    style={formStyles.sectionTitle}
+                  >
+                    {t('addressDetails') || 'Address Details'}
+                  </TextDefault>
+                </View>
+
+                {/* Street Address */}
+                <View style={formStyles.inputGroup}>
+                  <View style={formStyles.inputHeader}>
+                    <TextDefault
+                      textColor={currentTheme.newFontcolor}
+                      H6
+                      bolder
+                    >
+                      {t('streetAddress') || 'Street Address'}
+                    </TextDefault>
+                    <Text style={{ color: '#FF4444', marginLeft: 4 }}>*</Text>
+                  </View>
+                  <View
                     style={[
-                      formStyles.addressTypeButton,
+                      formStyles.inputContainer,
                       {
-                        borderColor: addressType === type ? branding.primaryColor : currentTheme.newIconColor,
-                        backgroundColor: addressType === type ? branding.primaryColor + '20' : currentTheme.newheaderBG
+                        borderColor: currentTheme.newIconColor,
+                        backgroundColor: currentTheme.newheaderBG
                       }
                     ]}
-                    onPress={() => handleAddressTypeSelect(type)}
                   >
-                    {React.createElement(icon, {
-                      width: 24,
-                      height: 24,
-                      fill: addressType === type ? branding.primaryColor : currentTheme.newIconColor
-                    })}
-                    <TextDefault
-                      textColor={addressType === type ? branding.primaryColor : currentTheme.newFontcolor}
-                      H6
-                      style={formStyles.addressTypeLabel}
+                    <TextInput
+                      style={[
+                        formStyles.textInput,
+                        { color: currentTheme.newFontcolor }
+                      ]}
+                      placeholder='House number, building name, street'
+                      placeholderTextColor={currentTheme.fontSecondColor}
+                      value={selectedValue.streetAddress}
+                      onChangeText={(text) =>
+                        setSelectedValue((prev) => ({
+                          ...prev,
+                          streetAddress: text
+                        }))
+                      }
+                      multiline={true}
+                      numberOfLines={2}
+                    />
+                    <Feather
+                      name='home'
+                      size={18}
+                      color={currentTheme.newIconColor}
+                      style={formStyles.inputIcon}
+                    />
+                  </View>
+                </View>
+
+                {/* District and City Row */}
+                <View style={formStyles.row}>
+                  {/* District */}
+                  <View style={[formStyles.inputGroup, formStyles.flex]}>
+                    <View style={formStyles.inputHeader}>
+                      <TextDefault
+                        textColor={currentTheme.newFontcolor}
+                        H6
+                        bolder
+                      >
+                        {t('district') || 'District'}
+                      </TextDefault>
+                    </View>
+                    <View
+                      style={[
+                        formStyles.inputContainer,
+                        {
+                          borderColor: currentTheme.newIconColor,
+                          backgroundColor: currentTheme.newheaderBG
+                        }
+                      ]}
                     >
-                      {label}
+                      <TextInput
+                        style={[
+                          formStyles.textInput,
+                          { color: currentTheme.newFontcolor }
+                        ]}
+                        placeholder='District'
+                        placeholderTextColor={currentTheme.fontSecondColor}
+                        value={selectedValue.district}
+                        onChangeText={(text) =>
+                          setSelectedValue((prev) => ({
+                            ...prev,
+                            district: text
+                          }))
+                        }
+                      />
+                      <Feather
+                        name='map'
+                        size={16}
+                        color={currentTheme.newIconColor}
+                        style={formStyles.inputIcon}
+                      />
+                    </View>
+                  </View>
+
+                  {/* City - Manually editable (required) */}
+                  <View
+                    style={[
+                      formStyles.inputGroup,
+                      formStyles.flex,
+                      { marginLeft: 10 }
+                    ]}
+                  >
+                    <View style={formStyles.inputHeader}>
+                      <TextDefault
+                        textColor={currentTheme.newFontcolor}
+                        H6
+                        bolder
+                      >
+                        {t('city') || 'City'}
+                      </TextDefault>
+                      <Text style={{ color: '#FF4444', marginLeft: 4 }}>*</Text>
+                    </View>
+                    <View
+                      style={[
+                        formStyles.inputContainer,
+                        {
+                          borderColor: currentTheme.newIconColor,
+                          backgroundColor: currentTheme.newheaderBG
+                        }
+                      ]}
+                    >
+                      <TextInput
+                        style={[
+                          formStyles.textInput,
+                          { color: currentTheme.newFontcolor }
+                        ]}
+                        placeholder='Enter city name'
+                        placeholderTextColor={currentTheme.fontSecondColor}
+                        value={selectedValue.city}
+                        onChangeText={(text) =>
+                          setSelectedValue((prev) => ({ ...prev, city: text }))
+                        }
+                      />
+                      <Feather
+                        name='map-pin'
+                        size={16}
+                        color={currentTheme.newIconColor}
+                        style={formStyles.inputIcon}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* State and Pincode Row */}
+                <View style={formStyles.row}>
+                  {/* State */}
+                  <View style={[formStyles.inputGroup, formStyles.flex]}>
+                    <View style={formStyles.inputHeader}>
+                      <TextDefault
+                        textColor={currentTheme.newFontcolor}
+                        H6
+                        bolder
+                      >
+                        {t('state') || 'State'}
+                      </TextDefault>
+                    </View>
+                    <View
+                      style={[
+                        formStyles.inputContainer,
+                        {
+                          borderColor: currentTheme.newIconColor,
+                          backgroundColor: currentTheme.newheaderBG
+                        }
+                      ]}
+                    >
+                      <TextInput
+                        style={[
+                          formStyles.textInput,
+                          { color: currentTheme.newFontcolor }
+                        ]}
+                        placeholder='State'
+                        placeholderTextColor={currentTheme.fontSecondColor}
+                        value={selectedValue.state}
+                        onChangeText={(text) =>
+                          setSelectedValue((prev) => ({ ...prev, state: text }))
+                        }
+                      />
+                      <Feather
+                        name='map'
+                        size={16}
+                        color={currentTheme.newIconColor}
+                        style={formStyles.inputIcon}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Pincode */}
+                  <View
+                    style={[
+                      formStyles.inputGroup,
+                      formStyles.flex,
+                      { marginLeft: 10 }
+                    ]}
+                  >
+                    <View style={formStyles.inputHeader}>
+                      <TextDefault
+                        textColor={currentTheme.newFontcolor}
+                        H6
+                        bolder
+                      >
+                        {t('pincode') || 'Pincode'}
+                      </TextDefault>
+                      <Text style={{ color: '#FF4444', marginLeft: 4 }}>*</Text>
+                    </View>
+                    <View
+                      style={[
+                        formStyles.inputContainer,
+                        {
+                          borderColor: currentTheme.newIconColor,
+                          backgroundColor: currentTheme.newheaderBG
+                        }
+                      ]}
+                    >
+                      <TextInput
+                        style={[
+                          formStyles.textInput,
+                          { color: currentTheme.newFontcolor }
+                        ]}
+                        placeholder='Pincode'
+                        placeholderTextColor={currentTheme.fontSecondColor}
+                        value={selectedValue.pincode}
+                        onChangeText={(text) =>
+                          setSelectedValue((prev) => ({
+                            ...prev,
+                            pincode: text
+                          }))
+                        }
+                        keyboardType='numeric'
+                        maxLength={6}
+                      />
+                      <Feather
+                        name='hash'
+                        size={16}
+                        color={currentTheme.newIconColor}
+                        style={formStyles.inputIcon}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Address Type Selection */}
+                <View style={formStyles.section}>
+                  <View style={formStyles.sectionHeader}>
+                    <Feather
+                      name='tag'
+                      size={18}
+                      color={currentTheme.newIconColor}
+                    />
+                    <TextDefault
+                      textColor={currentTheme.newFontcolor}
+                      H5
+                      bolder
+                      style={formStyles.sectionTitle}
+                    >
+                      {t('addressType') || 'Address Type'}
                     </TextDefault>
-                  </TouchableOpacity>
-                ))}
+                  </View>
+
+                  <View style={formStyles.addressTypeContainer}>
+                    {[
+                      {
+                        type: 'home',
+                        label: t('home') || 'Home',
+                        icon: CustomHomeIcon
+                      },
+                      {
+                        type: 'work',
+                        label: t('work') || 'Work',
+                        icon: CustomWorkIcon
+                      },
+                      {
+                        type: 'other',
+                        label: t('other') || 'Other',
+                        icon: CustomOtherIcon
+                      }
+                    ].map(({ type, label, icon }) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          formStyles.addressTypeButton,
+                          {
+                            borderColor:
+                              addressType === type
+                                ? branding.primaryColor
+                                : currentTheme.newIconColor,
+                            backgroundColor:
+                              addressType === type
+                                ? branding.primaryColor + '20'
+                                : currentTheme.newheaderBG
+                          }
+                        ]}
+                        onPress={() => handleAddressTypeSelect(type)}
+                      >
+                        {React.createElement(icon, {
+                          width: 24,
+                          height: 24,
+                          fill:
+                            addressType === type
+                              ? branding.primaryColor
+                              : currentTheme.newIconColor
+                        })}
+                        <TextDefault
+                          textColor={
+                            addressType === type
+                              ? branding.primaryColor
+                              : currentTheme.newFontcolor
+                          }
+                          H6
+                          style={formStyles.addressTypeLabel}
+                        >
+                          {label}
+                        </TextDefault>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
-          </View>
 
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[
-              formStyles.saveButton,
-              { backgroundColor: branding.primaryColor }
-            ]}
-            onPress={openSaveAddressModal}
-            disabled={!selectedValue.address || !selectedValue.city || !selectedValue.streetAddress || !selectedValue.pincode}
-          >
-            <TextDefault textColor={currentTheme.buttonText} H5 bolder>
-              {isEditMode ? (t('updateAddress') || 'Update Address') : (t('saveAddress') || 'Save Address')}
-            </TextDefault>
-          </TouchableOpacity>
+            {/* Save Button */}
+            <TouchableOpacity
+              style={[
+                formStyles.saveButton,
+                { backgroundColor: branding.primaryColor }
+              ]}
+              onPress={openSaveAddressModal}
+              disabled={
+                !selectedValue.address ||
+                !selectedValue.city ||
+                !selectedValue.streetAddress ||
+                !selectedValue.pincode
+              }
+            >
+              <TextDefault textColor={currentTheme.buttonText} H5 bolder>
+                {isEditMode
+                  ? t('updateAddress') || 'Update Address'
+                  : t('saveAddress') || 'Save Address'}
+              </TextDefault>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
@@ -951,36 +1150,40 @@ export default function AddNewAddress(props) {
 
         {/* Save Address Confirmation Modal */}
         <Modal
-          animationType="slide"
+          animationType='slide'
           transparent={true}
           visible={saveAddressModalVisible}
           onRequestClose={() => setSaveAddressModalVisible(false)}
         >
           <View style={modalStyles.modalOverlay}>
-            <View style={[
-              modalStyles.modalContent,
-              { backgroundColor: currentTheme.newheaderBG }
-            ]}>
+            <View
+              style={[
+                modalStyles.modalContent,
+                { backgroundColor: currentTheme.newheaderBG }
+              ]}
+            >
               <View style={modalStyles.modalHeader}>
                 <TextDefault textColor={currentTheme.newFontcolor} H4 bolder>
                   {t('confirmSaveAddress') || 'Confirm Save Address'}
                 </TextDefault>
               </View>
-              
+
               <View style={modalStyles.modalBody}>
                 <TextDefault textColor={currentTheme.newFontcolor} H6>
-                  {t('saveAddressConfirmation') || 'Are you sure you want to save this address?'}
+                  {t('saveAddressConfirmation') ||
+                    'Are you sure you want to save this address?'}
                 </TextDefault>
                 <View style={modalStyles.addressPreview}>
                   <TextDefault textColor={currentTheme.fontSecondColor} H6>
                     {selectedValue.streetAddress}
                   </TextDefault>
                   <TextDefault textColor={currentTheme.fontSecondColor} H6>
-                    {selectedValue.city}, {selectedValue.state} {selectedValue.pincode}
+                    {selectedValue.city}, {selectedValue.state}{' '}
+                    {selectedValue.pincode}
                   </TextDefault>
                 </View>
               </View>
-              
+
               <View style={modalStyles.modalActions}>
                 <TouchableOpacity
                   style={[
@@ -993,7 +1196,7 @@ export default function AddNewAddress(props) {
                     {t('cancel') || 'Cancel'}
                   </TextDefault>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={[
                     modalStyles.confirmButton,
@@ -1115,7 +1318,8 @@ const containerStyles = StyleSheet.create({
 const formStyles = StyleSheet.create({
   scrollView: {
     flex: 1,
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
+    marginBottom: 60
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -1211,7 +1415,7 @@ const formStyles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 0,
-    marginBottom: 20,
+    marginBottom: 20
   }
 })
 
