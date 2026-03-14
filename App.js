@@ -167,6 +167,7 @@ import ThemeContext from './src/ui/ThemeContext/ThemeContext'
 import { ConfigurationProvider } from './src/context/Configuration'
 import { UserProvider } from './src/context/User'
 import { AuthProvider } from './src/context/Auth'
+import PushTokenSync from './src/components/PushTokenSync/PushTokenSync'
 import { theme as Theme } from './src/utils/themeColors'
 import 'expo-dev-client'
 import useEnvVars, { isProduction } from './environment'
@@ -189,17 +190,17 @@ LogBox.ignoreAllLogs() // Ignore all log notifications
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
-    const notificationType = notification?.request?.content?.data?.type;
-    
+    const notificationType = notification?.request?.content?.data?.type
+
     // Always play sound for chat messages
-    const shouldPlaySound = notificationType !== 'REVIEW_ORDER';
-    
+    const shouldPlaySound = notificationType !== 'REVIEW_ORDER'
+
     return {
       shouldShowAlert: true,
       shouldPlaySound: shouldPlaySound,
       shouldSetBadge: true
     }
-  },
+  }
 })
 
 export default function App() {
@@ -561,7 +562,7 @@ export default function App() {
   useEffect(() => {
     requestTrackingPermissions()
     getFCMToken()
-    
+
     // Initialize Firebase messaging handlers
     try {
       initializeMessaging()
@@ -624,11 +625,11 @@ export default function App() {
       Notifications.addNotificationReceivedListener((notification) => {
         const notificationType = notification?.request?.content?.data?.type
         const notificationData = notification?.request?.content?.data
-        
+
         // Handle chat notifications
         if (notificationType === 'chat') {
           console.log('Chat notification received:', notificationData)
-          
+
           // Navigate to chat screen if app is in foreground
           if (notificationData?.conversationId) {
             // Use the navigation ref to navigate
@@ -637,13 +638,15 @@ export default function App() {
               navigationRef.navigate('Chat', {
                 conversationId: notificationData.conversationId,
                 // Pass other relevant data if needed
-                groupTitle: notificationData.senderName ? `Chat with ${notificationData.senderName}` : 'New Message',
+                groupTitle: notificationData.senderName
+                  ? `Chat with ${notificationData.senderName}`
+                  : 'New Message',
                 forceNavigate: true // Force navigation even if already in chat
               })
             }
           }
         }
-        
+
         // Handle review order notifications (existing logic)
         if (notificationType === NOTIFICATION_TYPES.REVIEW_ORDER) {
           const id = notificationData?._id
@@ -656,25 +659,28 @@ export default function App() {
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const notificationType = response?.notification?.request?.content?.data?.type
+        const notificationType =
+          response?.notification?.request?.content?.data?.type
         const notificationData = response?.notification?.request?.content?.data
-        
+
         // Handle chat notifications when user taps on notification
         if (notificationType === 'chat') {
           console.log('Chat notification response received:', notificationData)
-          
+
           if (notificationData?.conversationId) {
             const { navigationRef } = require('./src/routes/navigationService')
             if (navigationRef.isReady()) {
               navigationRef.navigate('Chat', {
                 conversationId: notificationData.conversationId,
-                groupTitle: notificationData.senderName ? `Chat with ${notificationData.senderName}` : 'New Message',
+                groupTitle: notificationData.senderName
+                  ? `Chat with ${notificationData.senderName}`
+                  : 'New Message',
                 forceNavigate: true
               })
             }
           }
         }
-        
+
         // Handle review order notifications (existing logic)
         if (notificationType === NOTIFICATION_TYPES.REVIEW_ORDER) {
           const id = notificationData?._id
@@ -766,6 +772,7 @@ export default function App() {
           <LocationContext.Provider value={{ location, setLocation }}>
             <ConfigurationProvider>
               <AuthProvider>
+                <PushTokenSync />
                 <UserProvider>
                   <SubscriptionProvider>
                     <OrdersProvider>
@@ -833,7 +840,7 @@ async function registerForPushNotificationsAsync() {
       enableVibrate: true, // Enable vibration
       playSound: true // Ensure sound plays
     })
-    
+
     // Create a separate channel for chat messages with sound
     await Notifications.setNotificationChannelAsync('chat_messages', {
       name: 'Chat Messages',

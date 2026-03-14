@@ -48,13 +48,21 @@ const clamp = (val, min, max) => Math.min(Math.max(val, min), max)
 // Scale font size relative to a 375-pt base width
 const scaleFontSize = (size) => {
   const scale = SCREEN_W / 375
-  return clamp(Math.round(PixelRatio.roundToNearestPixel(size * scale)), size * 0.85, size * 1.2)
+  return clamp(
+    Math.round(PixelRatio.roundToNearestPixel(size * scale)),
+    size * 0.85,
+    size * 1.2
+  )
 }
 
 // Scale a spacing/layout value relative to a 375-pt base width
 const scaleSize = (size) => {
   const scale = SCREEN_W / 375
-  return clamp(Math.round(PixelRatio.roundToNearestPixel(size * scale)), size * 0.8, size * 1.3)
+  return clamp(
+    Math.round(PixelRatio.roundToNearestPixel(size * scale)),
+    size * 0.8,
+    size * 1.3
+  )
 }
 
 const isSmallScreen = SCREEN_W < 360
@@ -131,7 +139,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: scaleSize(10),
     justifyContent: 'center',
-    minWidth: 0  // allow text truncation
+    minWidth: 0 // allow text truncation
   },
   productHeaderCategory: {
     fontSize: scaleFontSize(11),
@@ -589,43 +597,76 @@ const styles = StyleSheet.create({
 const normalizeRoleValue = (value) => {
   if (!value) return null
   const normalized = value.toString().trim().toLowerCase()
-  if (['seller', 'vendor', 'shop', 'store', 'merchant'].some((k) => normalized.includes(k))) return 'seller'
-  if (['buyer', 'user', 'customer', 'client'].some((k) => normalized.includes(k))) return 'buyer'
+  if (
+    ['seller', 'vendor', 'shop', 'store', 'merchant'].some((k) =>
+      normalized.includes(k)
+    )
+  )
+    return 'seller'
+  if (
+    ['buyer', 'user', 'customer', 'client'].some((k) => normalized.includes(k))
+  )
+    return 'buyer'
   return null
 }
 
 const deriveUserRole = (entity) => {
   if (!entity) return null
-  
+
   // Check if it's a Shop (seller) by looking for shop-specific fields
-  if (entity.businessHours !== undefined || entity.availableBalance !== undefined || entity.featured !== undefined) {
+  if (
+    entity.businessHours !== undefined ||
+    entity.availableBalance !== undefined ||
+    entity.featured !== undefined
+  ) {
     return 'seller'
   }
-  
+
   // Check if it's a User (buyer) by looking for user-specific fields
-  if (entity.contactViews !== undefined || entity.contactCredits !== undefined || entity.viewedContacts !== undefined) {
+  if (
+    entity.contactViews !== undefined ||
+    entity.contactCredits !== undefined ||
+    entity.viewedContacts !== undefined
+  ) {
     return 'buyer'
   }
-  
+
   // Check explicit role fields
-  if (typeof entity.isSeller === 'boolean') return entity.isSeller ? 'seller' : 'buyer'
-  if (typeof entity.isBuyer === 'boolean') return entity.isBuyer ? 'buyer' : 'seller'
-  
+  if (typeof entity.isSeller === 'boolean')
+    return entity.isSeller ? 'seller' : 'buyer'
+  if (typeof entity.isBuyer === 'boolean')
+    return entity.isBuyer ? 'buyer' : 'seller'
+
   // Check ID-based relationships
-  if (entity.shopId || entity.shop_id || entity.storeId || entity.store_id || entity.sellerId || entity.seller_id) return 'seller'
+  if (
+    entity.shopId ||
+    entity.shop_id ||
+    entity.storeId ||
+    entity.store_id ||
+    entity.sellerId ||
+    entity.seller_id
+  )
+    return 'seller'
   if (entity.customerId || entity.customer_id) return 'buyer'
-  
+
   // Check role string values
-  const candidates = [entity.role, entity.userType, entity.accountType, entity.type, entity.accountRole, entity.profileType]
-  for (const f of candidates) { 
-    const n = normalizeRoleValue(f); 
-    if (n) return n 
+  const candidates = [
+    entity.role,
+    entity.userType,
+    entity.accountType,
+    entity.type,
+    entity.accountRole,
+    entity.profileType
+  ]
+  for (const f of candidates) {
+    const n = normalizeRoleValue(f)
+    if (n) return n
   }
-  
+
   // Check address patterns (less reliable but fallback)
   if (entity.address && !Array.isArray(entity.addresses)) return 'seller'
   if (Array.isArray(entity.addresses)) return 'buyer'
-  
+
   return null
 }
 
@@ -662,53 +703,65 @@ const Chat = ({ navigation }) => {
   const [isConnected, setIsConnected] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [conversationId, setConversationId] = useState(initialConversationId)
-  
+
   // Create conversation if none exists
   const createConversationIfNeeded = async () => {
     if (!conversationId && productId && otherUser) {
       console.log('🔔 [CHAT] No conversation exists, creating new one...')
       console.log('🔔 [CHAT] Product ID:', productId)
-      console.log('🔔 [CHAT] Product name:', productDetails?.name || initialProduct?.name)
+      console.log(
+        '🔔 [CHAT] Product name:',
+        productDetails?.name || initialProduct?.name
+      )
       console.log('🔔 [CHAT] Other user:', otherUser.name)
       console.log('🔔 [CHAT] Current user:', profile.name)
-      
+
       try {
         const token = await AsyncStorage.getItem('token')
         if (!token) {
           console.error('🔔 [CHAT] No auth token found')
           return null
         }
-        
+
         const conversationData = {
           groupTitle: displayName || otherUser.name || 'Conversation',
           userId: profile._id,
           sellerId: otherUser._id,
           productId: productId
         }
-        
-        console.log('🔔 [CHAT] Creating conversation with data:', conversationData)
-        
-        const response = await fetch(`${API_URL}/conversation/create-new-conversation`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(conversationData)
-        })
-        
+
+        console.log(
+          '🔔 [CHAT] Creating conversation with data:',
+          conversationData
+        )
+
+        const response = await fetch(
+          `${API_URL}/conversation/create-new-conversation`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(conversationData)
+          }
+        )
+
         const data = await response.json()
         console.log('🔔 [CHAT] Conversation creation response:', data)
-        
+
         if (data.success && data.conversation) {
-          console.log('🔔 [CHAT] New conversation created:', data.conversation._id)
+          console.log(
+            '🔔 [CHAT] New conversation created:',
+            data.conversation._id
+          )
           setConversationId(data.conversation._id)
-          
+
           // Update route params to reflect the new conversation
           navigation.setParams({
             conversationId: data.conversation._id
           })
-          
+
           // Emit event to refresh ChatList
           if (navigation.emit) {
             navigation.emit('conversationCreated', {
@@ -717,7 +770,7 @@ const Chat = ({ navigation }) => {
               otherUser: otherUser
             })
           }
-          
+
           // Alternative: Force ChatList refresh by navigating back and forth
           // This ensures the ChatList will refetch conversations
           try {
@@ -727,11 +780,14 @@ const Chat = ({ navigation }) => {
           } catch (error) {
             console.log('🔔 [CHAT] Could not refresh ChatList:', error.message)
           }
-          
+
           return data.conversation._id
         } else {
           console.error('🔔 [CHAT] Failed to create conversation:', data)
-          console.error('🔔 [CHAT] Error details:', data.message || 'Unknown error')
+          console.error(
+            '🔔 [CHAT] Error details:',
+            data.message || 'Unknown error'
+          )
           return null
         }
       } catch (error) {
@@ -742,25 +798,35 @@ const Chat = ({ navigation }) => {
     }
     return conversationId
   }
-  
+
   // Log conversation ID for debugging
   useEffect(() => {
     console.log('🔔 [CHAT] Conversation ID from params:', initialConversationId)
     console.log('🔔 [CHAT] Current conversation ID state:', conversationId)
     console.log('🔔 [CHAT] Route params:', route.params)
-    
+
     // Validate conversation ID format
     if (initialConversationId) {
-      console.log('🔔 [CHAT] Conversation ID length:', initialConversationId.length)
-      console.log('🔔 [CHAT] Conversation ID format check:', /^[0-9a-f]{24}$/.test(initialConversationId) ? 'Valid' : 'Invalid')
+      console.log(
+        '🔔 [CHAT] Conversation ID length:',
+        initialConversationId.length
+      )
+      console.log(
+        '🔔 [CHAT] Conversation ID format check:',
+        /^[0-9a-f]{24}$/.test(initialConversationId) ? 'Valid' : 'Invalid'
+      )
     } else {
-      console.log('🔔 [CHAT] No initial conversation ID - will create if needed')
+      console.log(
+        '🔔 [CHAT] No initial conversation ID - will create if needed'
+      )
     }
   }, [initialConversationId, conversationId, route.params])
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [chatDisabled, setChatDisabled] = useState(Boolean(initialChatDisabled))
   const [typingTimeout, setTypingTimeout] = useState(null)
-  const [chatDisabledReason, setChatDisabledReason] = useState(initialChatDisabledReason || '')
+  const [chatDisabledReason, setChatDisabledReason] = useState(
+    initialChatDisabledReason || ''
+  )
   const [productDetails, setProductDetails] = useState(initialProduct || null)
   const [eliteModalVisible, setEliteModalVisible] = useState(false)
   const [activeTab, setActiveTab] = useState('chat')
@@ -776,99 +842,113 @@ const Chat = ({ navigation }) => {
 
   const { token } = useContext(AuthContext)
   const { formetedProfileData: profile } = useContext(UserContext)
-  const { canViewContact, addViewedContact, hasUnlimitedContacts } = useSubscription()
+  const {
+    canViewContact,
+    addViewedContact,
+    hasViewedContact,
+    hasUnlimitedContacts
+  } = useSubscription()
   const branding = useAppBranding()
 
   const displayName =
-    initialDisplayName || otherUser?.displayName || otherUser?.name ||
-    groupTitle || shopName || 'Chat'
+    initialDisplayName ||
+    otherUser?.displayName ||
+    otherUser?.name ||
+    groupTitle ||
+    shopName ||
+    'Chat'
 
   const detectedSelfRole = useMemo(() => {
     // First prioritize role passed from ChatList
     if (initialCurrentUserRole) {
       return initialCurrentUserRole
     }
-    
+
     // Check if current user is the shop owner
     if (shopId && profile?._id === shopId) {
       return 'seller'
     }
-    
+
     // Check if current user is a buyer (not shop owner)
     if (shopId && profile?._id !== shopId) {
       return 'buyer'
     }
-    
+
     // Fallback to role detection from profile
     const directRole = deriveUserRole(profile)
     if (directRole) return directRole
-    
+
     return null
   }, [profile, shopId, initialCurrentUserRole])
 
-const detectedOtherRole = useMemo(() => {
-  // First prioritize role passed from ChatList
-  if (initialOtherUserRole) {
-    return initialOtherUserRole
-  }
-  
-  // If we have shopId, the other person is the shop owner (seller)
-  if (shopId) {
-    return 'seller'
-  }
-  
-  // Check direct role from other user data
-  const directRole = deriveUserRole(otherUser)
-  if (directRole) return directRole
-  
-  // If we know self role, infer opposite
-  if (detectedSelfRole) { 
-    const opp = getOppositeRole(detectedSelfRole); 
-    if (opp) return opp 
-  }
-  
-  return null
-}, [otherUser, shopId, detectedSelfRole, initialOtherUserRole])
+  const detectedOtherRole = useMemo(() => {
+    // First prioritize role passed from ChatList
+    if (initialOtherUserRole) {
+      return initialOtherUserRole
+    }
 
-const resolvedSelfRole = useMemo(() => {
-  // Use detected role if available
-  if (detectedSelfRole) return detectedSelfRole
-  
-  // If other person is seller, we must be buyer
-  if (detectedOtherRole === 'seller') return 'buyer'
-  
-  // If other person is buyer, we must be seller
-  if (detectedOtherRole === 'buyer') return 'seller'
-  
-  // Default fallback: if shopId exists and we're not the owner, we're buyer
-  if (shopId && profile?._id !== shopId) return 'buyer'
-  
-  // Last resort
-  return 'buyer'
-}, [detectedSelfRole, detectedOtherRole, shopId, profile])
+    // If we have shopId, the other person is the shop owner (seller)
+    if (shopId) {
+      return 'seller'
+    }
 
-const resolvedOtherRole = useMemo(() => {
-  // Use detected role if available
-  if (detectedOtherRole) return detectedOtherRole
-  
-  // If shopId exists, other person is seller
-  if (shopId) return 'seller'
-  
-  // If we know self role, infer opposite
-  if (resolvedSelfRole) { 
-    const opp = getOppositeRole(resolvedSelfRole); 
-    if (opp) return opp 
-  }
-  
-  return null
-}, [detectedOtherRole, shopId, resolvedSelfRole])
+    // Check direct role from other user data
+    const directRole = deriveUserRole(otherUser)
+    if (directRole) return directRole
+
+    // If we know self role, infer opposite
+    if (detectedSelfRole) {
+      const opp = getOppositeRole(detectedSelfRole)
+      if (opp) return opp
+    }
+
+    return null
+  }, [otherUser, shopId, detectedSelfRole, initialOtherUserRole])
+
+  const resolvedSelfRole = useMemo(() => {
+    // Use detected role if available
+    if (detectedSelfRole) return detectedSelfRole
+
+    // If other person is seller, we must be buyer
+    if (detectedOtherRole === 'seller') return 'buyer'
+
+    // If other person is buyer, we must be seller
+    if (detectedOtherRole === 'buyer') return 'seller'
+
+    // Default fallback: if shopId exists and we're not the owner, we're buyer
+    if (shopId && profile?._id !== shopId) return 'buyer'
+
+    // Last resort
+    return 'buyer'
+  }, [detectedSelfRole, detectedOtherRole, shopId, profile])
+
+  const resolvedOtherRole = useMemo(() => {
+    // Use detected role if available
+    if (detectedOtherRole) return detectedOtherRole
+
+    // If shopId exists, other person is seller
+    if (shopId) return 'seller'
+
+    // If we know self role, infer opposite
+    if (resolvedSelfRole) {
+      const opp = getOppositeRole(resolvedSelfRole)
+      if (opp) return opp
+    }
+
+    return null
+  }, [detectedOtherRole, shopId, resolvedSelfRole])
 
   const productForHeader = productDetails || initialProduct
-  const hasProductHeader = Boolean(productForHeader && (productForHeader.name || productForHeader._id))
+  const hasProductHeader = Boolean(
+    productForHeader && (productForHeader.name || productForHeader._id)
+  )
 
   // ── Fetch product details ──
   useEffect(() => {
-    const hasFullProduct = productDetails?.price != null || productDetails?.discountPrice != null || productDetails?.image
+    const hasFullProduct =
+      productDetails?.price != null ||
+      productDetails?.discountPrice != null ||
+      productDetails?.image
     if (productId && !hasFullProduct) {
       let cancelled = false
       const fetchProduct = async () => {
@@ -885,12 +965,14 @@ const resolvedOtherRole = useMemo(() => {
         }
       }
       fetchProduct()
-      return () => { cancelled = true }
+      return () => {
+        cancelled = true
+      }
     }
   }, [productId])
 
-  const SOCKET_URL = 'https://7ark.in'
-
+  // Replace with your PC's IP address on the same Wi‑Fi network
+  const SOCKET_URL = ' https://7ark.in'
   // ── Socket init ──
   useEffect(() => {
     if (!socketInitializedRef.current) {
@@ -913,11 +995,20 @@ const resolvedOtherRole = useMemo(() => {
 
   // ── Conversation switch ──
   useEffect(() => {
-    if (socket && isConnected && initialConversationId && initialConversationId !== conversationId) {
+    if (
+      socket &&
+      isConnected &&
+      initialConversationId &&
+      initialConversationId !== conversationId
+    ) {
       setMessages([])
       setLoading(true)
-      if (conversationId) socket.emit('leave-chat-room', { userId: profile._id, conversationId })
-      socket.emit('join-chat-room', { userId: profile._id, conversationId: initialConversationId })
+      if (conversationId)
+        socket.emit('leave-chat-room', { userId: profile._id, conversationId })
+      socket.emit('join-chat-room', {
+        userId: profile._id,
+        conversationId: initialConversationId
+      })
       fetchMessages(initialConversationId)
       setConversationId(initialConversationId)
     }
@@ -930,29 +1021,52 @@ const resolvedOtherRole = useMemo(() => {
       if (socket && isConnected && shopId && !conversationId) {
         handlingShopIdRef.current = true
         try {
-          const response = await fetch(`${API_URL}/conversation/create-new-conversation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ groupTitle: shopName || 'Chat', userId: profile._id, sellerId: shopId, productId: productId || null })
-          })
+          const response = await fetch(
+            `${API_URL}/conversation/create-new-conversation`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                groupTitle: shopName || 'Chat',
+                userId: profile._id,
+                sellerId: shopId,
+                productId: productId || null
+              })
+            }
+          )
           const data = await response.json()
           if (response.ok && data.success && data.conversation) {
             const newId = data.conversation._id
             setMessages([])
             setLoading(true)
-            socket.emit('join-chat-room', { userId: profile._id, conversationId: newId })
+            socket.emit('join-chat-room', {
+              userId: profile._id,
+              conversationId: newId
+            })
             fetchMessages(newId)
             setConversationId(newId)
-            navigation.setParams({ conversationId: newId, groupTitle: shopName || 'Chat', displayName: shopName || 'Chat' })
+            navigation.setParams({
+              conversationId: newId,
+              groupTitle: shopName || 'Chat',
+              displayName: shopName || 'Chat'
+            })
           } else {
-            const msg = data?.message || 'Unable to start a chat for this listing at the moment.'
+            const msg =
+              data?.message ||
+              'Unable to start a chat for this listing at the moment.'
             Alert.alert('Chat unavailable', msg)
             setChatDisabled(true)
             setChatDisabledReason(msg)
           }
         } catch (error) {
           console.error('Error creating conversation:', error)
-          Alert.alert('Chat unavailable', 'Unable to start a conversation for this listing.')
+          Alert.alert(
+            'Chat unavailable',
+            'Unable to start a conversation for this listing.'
+          )
         } finally {
           handlingShopIdRef.current = false
         }
@@ -985,8 +1099,13 @@ const resolvedOtherRole = useMemo(() => {
         setKeyboardHeight(e.endCoordinates.height)
         setTimeout(() => scrollToBottom(), 100)
       })
-      const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
-      return () => { showSub.remove(); hideSub.remove() }
+      const hideSub = Keyboard.addListener('keyboardDidHide', () =>
+        setKeyboardHeight(0)
+      )
+      return () => {
+        showSub.remove()
+        hideSub.remove()
+      }
     }
   }, [scrollToBottom])
 
@@ -1000,10 +1119,12 @@ const resolvedOtherRole = useMemo(() => {
       }
       return null
     }
-    
+
     const roleContext = getRoleContextText()
-    const headerTitle = roleContext ? `${displayName} (${roleContext})` : (displayName || 'Chat')
-    
+    const headerTitle = roleContext
+      ? `${displayName} (${roleContext})`
+      : displayName || 'Chat'
+
     navigation.setOptions({
       title: headerTitle,
       headerStyle: {
@@ -1017,11 +1138,20 @@ const resolvedOtherRole = useMemo(() => {
       headerTintColor: '#fff',
       headerTitleStyle: { fontWeight: '700', fontSize: scaleFontSize(16) },
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: scaleSize(8) }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginRight: scaleSize(8)
+          }}
+        >
           {resolvedSelfRole === 'buyer' && shopId && (
             <TouchableOpacity
               onPress={handleCallPress}
-              disabled={fetchingSellerPhone || (!canViewContact() && !hasUnlimitedContacts)}
+              disabled={
+                fetchingSellerPhone ||
+                (!canViewContact() && !hasUnlimitedContacts)
+              }
               style={{ padding: scaleSize(8), marginRight: scaleSize(4) }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
@@ -1032,16 +1162,35 @@ const resolvedOtherRole = useMemo(() => {
                   <MaterialIcons
                     name='phone'
                     size={scaleSize(24)}
-                    color={!canViewContact() && !hasUnlimitedContacts ? '#ccc' : '#fff'}
+                    color={
+                      !canViewContact() && !hasUnlimitedContacts
+                        ? '#ccc'
+                        : '#fff'
+                    }
                   />
                   {!hasUnlimitedContacts && !canViewContact() && (
-                    <View style={{
-                      position: 'absolute', right: -4, top: -4,
-                      backgroundColor: 'rgba(255,255,255,0.9)',
-                      borderRadius: 8, width: 16, height: 16,
-                      justifyContent: 'center', alignItems: 'center'
-                    }}>
-                      <Text style={{ fontSize: 10, color: branding.primaryColor, fontWeight: '700' }}>?</Text>
+                    <View
+                      style={{
+                        position: 'absolute',
+                        right: -4,
+                        top: -4,
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        borderRadius: 8,
+                        width: 16,
+                        height: 16,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: branding.primaryColor,
+                          fontWeight: '700'
+                        }}
+                      >
+                        ?
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -1060,35 +1209,61 @@ const resolvedOtherRole = useMemo(() => {
               }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <MaterialIcons
-                name='store'
-                size={scaleSize(24)}
-                color='#fff'
-              />
+              <MaterialIcons name='store' size={scaleSize(24)} color='#fff' />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={{ padding: scaleSize(8) }} onPress={() => {}}>
+          <TouchableOpacity
+            style={{ padding: scaleSize(8) }}
+            onPress={() => {}}
+          >
             <MaterialIcons name='more-vert' size={scaleSize(24)} color='#fff' />
           </TouchableOpacity>
         </View>
       )
     })
-  }, [navigation, displayName, branding, resolvedSelfRole, shopId, handleCallPress, hasUnlimitedContacts, canViewContact, fetchingSellerPhone])
+  }, [
+    navigation,
+    displayName,
+    branding,
+    resolvedSelfRole,
+    shopId,
+    handleCallPress,
+    hasUnlimitedContacts,
+    canViewContact,
+    fetchingSellerPhone
+  ])
 
   // ── Animations ──
   const animateSendButton = () => {
     Animated.sequence([
-      Animated.timing(sendButtonScale, { toValue: 0.9, duration: 100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      Animated.timing(sendButtonScale, { toValue: 1, duration: 100, easing: Easing.inOut(Easing.quad), useNativeDriver: true })
+      Animated.timing(sendButtonScale, {
+        toValue: 0.9,
+        duration: 100,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true
+      }),
+      Animated.timing(sendButtonScale, {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true
+      })
     ]).start()
   }
 
   const markMessagesAsRead = (convId) => {
     const now = Date.now()
-    if (socket && convId &&
-      (lastMarkedReadRef.current.conversationId !== convId || now - lastMarkedReadRef.current.timestamp > 1000)) {
+    if (
+      socket &&
+      convId &&
+      (lastMarkedReadRef.current.conversationId !== convId ||
+        now - lastMarkedReadRef.current.timestamp > 1000)
+    ) {
       lastMarkedReadRef.current = { conversationId: convId, timestamp: now }
-      socket.emit('mark-as-read', { userId: profile._id, conversationId: convId })
+      socket.emit('mark-as-read', {
+        userId: profile._id,
+        conversationId: convId
+      })
     }
   }
 
@@ -1113,29 +1288,31 @@ const resolvedOtherRole = useMemo(() => {
       socketInstance.on('connect', () => {
         console.log('🔔 [CHAT] Socket connected, ID:', socketInstance.id)
         setIsConnected(true)
-        
+
         // Try to create conversation if needed, then join
         const joinOrCreateConversation = async () => {
           const convId = await createConversationIfNeeded()
-          
+
           if (convId) {
             console.log('🔔 [CHAT] Joining conversation room:', convId)
             console.log('🔔 [CHAT] User ID:', profile._id)
-            
-            socketInstance.emit('join-chat-room', { 
-              userId: profile._id, 
-              conversationId: convId 
+
+            socketInstance.emit('join-chat-room', {
+              userId: profile._id,
+              conversationId: convId
             })
-            
+
             fetchMessages(convId)
             markMessagesAsRead(convId)
           } else {
-            console.error('🔔 [CHAT] No conversation ID available for joining room')
+            console.error(
+              '🔔 [CHAT] No conversation ID available for joining room'
+            )
             Alert.alert('Error', 'Unable to create or join conversation')
             navigation.goBack()
           }
         }
-        
+
         joinOrCreateConversation()
       })
       socketInstance.on('connect_error', (error) => {
@@ -1151,7 +1328,10 @@ const resolvedOtherRole = useMemo(() => {
       socketInstance.on('reconnect', () => {
         setIsConnected(true)
         if (conversationId) {
-          socketInstance.emit('join-chat-room', { userId: profile._id, conversationId })
+          socketInstance.emit('join-chat-room', {
+            userId: profile._id,
+            conversationId
+          })
           fetchMessages(conversationId)
         }
       })
@@ -1164,26 +1344,31 @@ const resolvedOtherRole = useMemo(() => {
             sender: message.sender,
             isFromCurrentUser: message.sender === profile._id
           })
-          
+
           setMessages((prev) => {
             if (prev.some((m) => m._id === message._id)) {
               console.log('🔔 [CHAT] Message already exists, skipping')
               return prev
             }
             const newMessages = [...prev, message]
-            console.log('🔔 [CHAT] Message added. Total messages:', newMessages.length)
+            console.log(
+              '🔔 [CHAT] Message added. Total messages:',
+              newMessages.length
+            )
             return newMessages
           })
-          
+
           // Auto-scroll to new message
           setTimeout(() => scrollToBottom(), 100)
-          
+
           // Mark as read if it's not from current user
           if (message.sender !== profile._id) {
             console.log('🔔 [CHAT] Marking message as read (from other user)')
             markMessagesAsRead(conversationId)
           } else {
-            console.log('🔔 [CHAT] Message from current user, not marking as read')
+            console.log(
+              '🔔 [CHAT] Message from current user, not marking as read'
+            )
           }
         } else {
           console.warn('🔔 [CHAT] Invalid message received:', message)
@@ -1199,9 +1384,16 @@ const resolvedOtherRole = useMemo(() => {
         if (data.userId !== profile._id) hideTypingIndicator()
       })
       socketInstance.on('chat-disabled', (payload) => {
-        if (payload?.conversationId && conversationId && payload.conversationId !== conversationId) return
+        if (
+          payload?.conversationId &&
+          conversationId &&
+          payload.conversationId !== conversationId
+        )
+          return
         setChatDisabled(true)
-        setChatDisabledReason(payload?.reason || 'This conversation is no longer active.')
+        setChatDisabledReason(
+          payload?.reason || 'This conversation is no longer active.'
+        )
       })
     } catch (error) {
       console.error('Initialization error:', error)
@@ -1212,14 +1404,24 @@ const resolvedOtherRole = useMemo(() => {
 
   const showTypingIndicator = () => {
     setIsTyping(true)
-    Animated.timing(typingOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start()
+    Animated.timing(typingOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true
+    }).start()
   }
   const hideTypingIndicator = () => {
-    Animated.timing(typingOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setIsTyping(false))
+    Animated.timing(typingOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true
+    }).start(() => setIsTyping(false))
   }
 
   useEffect(() => {
-    return () => { if (typingTimeout) clearTimeout(typingTimeout) }
+    return () => {
+      if (typingTimeout) clearTimeout(typingTimeout)
+    }
   }, [typingTimeout])
 
   const handleTyping = (text) => {
@@ -1241,34 +1443,40 @@ const resolvedOtherRole = useMemo(() => {
   const fetchMessages = async (convId = null) => {
     try {
       const convIdToUse = convId || conversationId
-      if (!convIdToUse) { 
+      if (!convIdToUse) {
         console.log('🔔 [CHAT] No conversation ID provided for fetchMessages')
-        setLoading(false); 
-        return 
+        setLoading(false)
+        return
       }
-      
+
       console.log('🔔 [CHAT] Fetching messages for conversation:', convIdToUse)
-      const response = await fetch(`${API_URL}/message/get-all-messages/${convIdToUse}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const response = await fetch(
+        `${API_URL}/message/get-all-messages/${convIdToUse}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
       const data = await response.json()
-      
+
       if (data.success) {
         console.log('🔔 [CHAT] Messages fetched successfully:', {
           totalMessages: data.messages?.length || 0,
           conversationId: convIdToUse
         })
-        
+
         // Log first few messages for debugging
         if (data.messages && data.messages.length > 0) {
-          console.log('🔔 [CHAT] Sample messages:', data.messages.slice(0, 3).map(m => ({
-            id: m._id,
-            text: m.text?.substring(0, 30) + '...',
-            sender: m.sender,
-            createdAt: m.createdAt
-          })))
+          console.log(
+            '🔔 [CHAT] Sample messages:',
+            data.messages.slice(0, 3).map((m) => ({
+              id: m._id,
+              text: m.text?.substring(0, 30) + '...',
+              sender: m.sender,
+              createdAt: m.createdAt
+            }))
+          )
         }
-        
+
         setMessages(data.messages || [])
         setLoading(false)
         setTimeout(() => scrollToBottom(), 300)
@@ -1284,7 +1492,10 @@ const resolvedOtherRole = useMemo(() => {
 
   const sendMessage = async () => {
     if (chatDisabled) {
-      Alert.alert('Chat disabled', chatDisabledReason || 'This conversation is no longer available.')
+      Alert.alert(
+        'Chat disabled',
+        chatDisabledReason || 'This conversation is no longer available.'
+      )
       return
     }
     if (!inputText.trim() || sending || !isConnected) return
@@ -1297,7 +1508,11 @@ const resolvedOtherRole = useMemo(() => {
     }
     try {
       if (socket) {
-        socket.emit('send-message', { conversationId, sender: profile._id, text: messageText })
+        socket.emit('send-message', {
+          conversationId,
+          sender: profile._id,
+          text: messageText
+        })
       } else {
         const formData = new FormData()
         formData.append('conversationId', conversationId)
@@ -1309,7 +1524,10 @@ const resolvedOtherRole = useMemo(() => {
           body: formData
         })
         const data = await response.json()
-        if (!response.ok) throw new Error(data?.message || 'Unable to send message for this conversation.')
+        if (!response.ok)
+          throw new Error(
+            data?.message || 'Unable to send message for this conversation.'
+          )
         if (data.success) {
           await updateLastMessage(messageText, data.message._id)
           await fetchMessages()
@@ -1319,8 +1537,13 @@ const resolvedOtherRole = useMemo(() => {
     } catch (error) {
       console.error('Error sending message:', error)
       setSending(false)
-      const message = error?.message || 'Failed to send message. This chat may no longer be active.'
-      if (message.toLowerCase().includes('no longer active') || message.toLowerCase().includes('sold')) {
+      const message =
+        error?.message ||
+        'Failed to send message. This chat may no longer be active.'
+      if (
+        message.toLowerCase().includes('no longer active') ||
+        message.toLowerCase().includes('sold')
+      ) {
         setChatDisabled(true)
         setChatDisabledReason(message)
       }
@@ -1331,11 +1554,17 @@ const resolvedOtherRole = useMemo(() => {
 
   const updateLastMessage = async (text, messageId) => {
     try {
-      await fetch(`${API_URL}/conversation/update-last-message/${conversationId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ lastMessage: text, lastMessageId: messageId })
-      })
+      await fetch(
+        `${API_URL}/conversation/update-last-message/${conversationId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ lastMessage: text, lastMessageId: messageId })
+        }
+      )
     } catch (error) {
       console.error('Error updating last message:', error)
     }
@@ -1365,7 +1594,8 @@ const resolvedOtherRole = useMemo(() => {
         headers: { 'Content-Type': 'application/json' }
       })
       const data = await res.json()
-      if (data.success && data.shop) return data.shop.phoneNumber || data.shop.phone || null
+      if (data.success && data.shop)
+        return data.shop.phoneNumber || data.shop.phone || null
     } catch (err) {
       console.error('Error fetching seller phone:', err)
     }
@@ -1375,15 +1605,28 @@ const resolvedOtherRole = useMemo(() => {
   const handleCallPress = useCallback(async () => {
     if (chatDisabled) return
     const contactId = shopId || otherUser?._id
-    if (!hasUnlimitedContacts && !canViewContact()) { setEliteModalVisible(true); return }
+    if (!hasUnlimitedContacts && !canViewContact()) {
+      setEliteModalVisible(true)
+      return
+    }
     setFetchingSellerPhone(true)
     try {
       const phone = await getSellerPhone()
       if (phone) {
-        if (!hasUnlimitedContacts && contactId) addViewedContact(contactId)
+        // Only reduce contact credit if this seller's contact hasn't been viewed yet
+        if (
+          !hasUnlimitedContacts &&
+          contactId &&
+          !hasViewedContact(contactId)
+        ) {
+          await addViewedContact(contactId)
+        }
         await Linking.openURL(`tel:${phone}`)
       } else {
-        Alert.alert('Phone unavailable', 'Seller phone number is not available right now.')
+        Alert.alert(
+          'Phone unavailable',
+          'Seller phone number is not available right now.'
+        )
       }
     } catch (err) {
       console.error('Call error:', err)
@@ -1391,7 +1634,16 @@ const resolvedOtherRole = useMemo(() => {
     } finally {
       setFetchingSellerPhone(false)
     }
-  }, [hasUnlimitedContacts, canViewContact, chatDisabled, getSellerPhone, addViewedContact, shopId, otherUser])
+  }, [
+    hasUnlimitedContacts,
+    canViewContact,
+    hasViewedContact,
+    chatDisabled,
+    getSellerPhone,
+    addViewedContact,
+    shopId,
+    otherUser
+  ])
 
   const handleSendOffer = useCallback(() => {
     if (chatDisabled || !offerAmount || sending || !isConnected) return
@@ -1399,8 +1651,17 @@ const resolvedOtherRole = useMemo(() => {
     setInputText('')
     setOfferAmount(null)
     setActiveTab('chat')
-    if (socket) socket.emit('send-message', { conversationId, sender: profile._id, text })
-  }, [chatDisabled, offerAmount, sending, isConnected, socket, conversationId, profile._id])
+    if (socket)
+      socket.emit('send-message', { conversationId, sender: profile._id, text })
+  }, [
+    chatDisabled,
+    offerAmount,
+    sending,
+    isConnected,
+    socket,
+    conversationId,
+    profile._id
+  ])
 
   const formatMessageTime = (timestamp) => {
     const d = new Date(timestamp)
@@ -1418,62 +1679,123 @@ const resolvedOtherRole = useMemo(() => {
     if (d.toDateString() === today.toDateString()) return 'Today'
     if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
     return d.toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric',
+      month: 'short',
+      day: 'numeric',
       year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
     })
   }
 
   const renderDateHeader = ({ item, index }) => {
-    if (index === 0) return (
-      <View style={styles.dateHeader}><Text style={styles.dateText}>{formatDate(item.createdAt)}</Text></View>
-    )
+    if (index === 0)
+      return (
+        <View style={styles.dateHeader}>
+          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+        </View>
+      )
     const prev = messages[index - 1]
-    if (new Date(item.createdAt).toDateString() !== new Date(prev.createdAt).toDateString()) {
-      return <View style={styles.dateHeader}><Text style={styles.dateText}>{formatDate(item.createdAt)}</Text></View>
+    if (
+      new Date(item.createdAt).toDateString() !==
+      new Date(prev.createdAt).toDateString()
+    ) {
+      return (
+        <View style={styles.dateHeader}>
+          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+        </View>
+      )
     }
     return null
   }
 
   const getAvatarColor = (name) => {
-    const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8','#F7DC6F','#BB8FCE','#85C1E9']
+    const colors = [
+      '#FF6B6B',
+      '#4ECDC4',
+      '#45B7D1',
+      '#96CEB4',
+      '#FFEAA7',
+      '#DDA0DD',
+      '#98D8C8',
+      '#F7DC6F',
+      '#BB8FCE',
+      '#85C1E9'
+    ]
     return colors[name ? name.charCodeAt(0) % colors.length : 0]
   }
 
   const renderMessage = ({ item, index }) => {
     const isMyMessage = item.sender === profile._id
-    const isFirstInGroup = index === 0 || messages[index - 1].sender !== item.sender
-    const isLastInGroup = index === messages.length - 1 || messages[index + 1].sender !== item.sender
-    const messageRole = isMyMessage ? resolvedSelfRole : (resolvedOtherRole || getOppositeRole(resolvedSelfRole) || 'seller')
+    const isFirstInGroup =
+      index === 0 || messages[index - 1].sender !== item.sender
+    const isLastInGroup =
+      index === messages.length - 1 ||
+      messages[index + 1].sender !== item.sender
+    const messageRole = isMyMessage
+      ? resolvedSelfRole
+      : resolvedOtherRole || getOppositeRole(resolvedSelfRole) || 'seller'
     const otherParticipantLabel = displayName || otherUser?.name || 'User'
     const sellerColor = branding.primaryColor || '#007AFF'
     const buyerColor = branding.accentColor || '#E2E8F0'
     const bubbleBg = messageRole === 'seller' ? sellerColor : buyerColor
-    const msgColor = messageRole === 'seller' ? '#fff' : (branding.textColor || '#1e293b')
-    const metaColor = messageRole === 'seller' ? '#fff' : (branding.textColor || '#1e293b')
+    const msgColor =
+      messageRole === 'seller' ? '#fff' : branding.textColor || '#1e293b'
+    const metaColor =
+      messageRole === 'seller' ? '#fff' : branding.textColor || '#1e293b'
     const metaOpacity = messageRole === 'seller' ? 0.8 : 0.6
     const bubbleShapeStyles = isMyMessage
-      ? { backgroundColor: bubbleBg, borderBottomRightRadius: isLastInGroup ? 20 : 4, borderBottomLeftRadius: 20 }
-      : { backgroundColor: bubbleBg, borderBottomLeftRadius: isLastInGroup ? 20 : 4, borderBottomRightRadius: 20 }
-    const readIconColor = messageRole === 'seller' ? 'rgba(255,255,255,0.9)' : (branding.primaryColor || '#1e293b')
+      ? {
+          backgroundColor: bubbleBg,
+          borderBottomRightRadius: isLastInGroup ? 20 : 4,
+          borderBottomLeftRadius: 20
+        }
+      : {
+          backgroundColor: bubbleBg,
+          borderBottomLeftRadius: isLastInGroup ? 20 : 4,
+          borderBottomRightRadius: 20
+        }
+    const readIconColor =
+      messageRole === 'seller'
+        ? 'rgba(255,255,255,0.9)'
+        : branding.primaryColor || '#1e293b'
 
     return (
       <>
         {renderDateHeader({ item, index })}
-        <Animated.View style={[
-          styles.messageContainer,
-          isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer,
-          isFirstInGroup && styles.firstInGroup,
-          isLastInGroup && styles.lastInGroup
-        ]}>
+        <Animated.View
+          style={[
+            styles.messageContainer,
+            isMyMessage
+              ? styles.myMessageContainer
+              : styles.otherMessageContainer,
+            isFirstInGroup && styles.firstInGroup,
+            isLastInGroup && styles.lastInGroup
+          ]}
+        >
           {!isMyMessage && isFirstInGroup && (
             <View style={styles.messageHeader}>
               <View style={styles.avatarContainer}>
                 {otherUser?.avatar || otherUser?.profilePicture ? (
-                  <Image source={{ uri: otherUser?.avatar || otherUser?.profilePicture }} style={styles.userAvatar} />
+                  <Image
+                    source={{
+                      uri: otherUser?.avatar || otherUser?.profilePicture
+                    }}
+                    style={styles.userAvatar}
+                  />
                 ) : (
-                  <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: getAvatarColor(displayName || otherUser?.name) }]}>
+                  <View
+                    style={[
+                      styles.userAvatar,
+                      styles.avatarPlaceholder,
+                      {
+                        backgroundColor: getAvatarColor(
+                          displayName || otherUser?.name
+                        )
+                      }
+                    ]}
+                  >
                     <Text style={styles.avatarText}>
-                      {(displayName || otherUser?.name || 'U').charAt(0).toUpperCase()}
+                      {(displayName || otherUser?.name || 'U')
+                        .charAt(0)
+                        .toUpperCase()}
                     </Text>
                   </View>
                 )}
@@ -1481,7 +1803,15 @@ const resolvedOtherRole = useMemo(() => {
               <View style={styles.userInfoContainer}>
                 <Text style={styles.userName}>{otherParticipantLabel}</Text>
                 {messageRole && (
-                  <Text style={[styles.userRoleBadge, { color: messageRole === 'seller' ? sellerColor : buyerColor }]}>
+                  <Text
+                    style={[
+                      styles.userRoleBadge,
+                      {
+                        color:
+                          messageRole === 'seller' ? sellerColor : buyerColor
+                      }
+                    ]}
+                  >
                     {messageRole === 'seller' ? 'Seller' : 'Buyer'}
                   </Text>
                 )}
@@ -1489,13 +1819,30 @@ const resolvedOtherRole = useMemo(() => {
             </View>
           )}
           <View style={[styles.messageBubble, bubbleShapeStyles]}>
-            <TextDefault style={[styles.messageText, { color: msgColor }]}>{item.text}</TextDefault>
-            <View style={[styles.messageFooter, !isMyMessage && { justifyContent: 'flex-start' }]}>
-              <TextDefault style={[styles.messageTime, { color: metaColor, opacity: metaOpacity }]}>
+            <TextDefault style={[styles.messageText, { color: msgColor }]}>
+              {item.text}
+            </TextDefault>
+            <View
+              style={[
+                styles.messageFooter,
+                !isMyMessage && { justifyContent: 'flex-start' }
+              ]}
+            >
+              <TextDefault
+                style={[
+                  styles.messageTime,
+                  { color: metaColor, opacity: metaOpacity }
+                ]}
+              >
                 {formatMessageTime(item.createdAt)}
               </TextDefault>
               {isMyMessage && (
-                <MaterialIcons name={item.read ? 'done-all' : 'done'} size={scaleSize(14)} color={readIconColor} style={styles.readIndicator} />
+                <MaterialIcons
+                  name={item.read ? 'done-all' : 'done'}
+                  size={scaleSize(14)}
+                  color={readIconColor}
+                  style={styles.readIndicator}
+                />
               )}
             </View>
           </View>
@@ -1517,7 +1864,10 @@ const resolvedOtherRole = useMemo(() => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <StatusBar barStyle='light-content' backgroundColor={branding.primaryColor} />
+      <StatusBar
+        barStyle='light-content'
+        backgroundColor={branding.primaryColor}
+      />
 
       {!isConnected && (
         <View style={styles.connectionStatus}>
@@ -1527,32 +1877,57 @@ const resolvedOtherRole = useMemo(() => {
 
       {chatDisabled && (
         <View style={styles.chatDisabledBanner}>
-          <MaterialIcons name='info' size={scaleSize(18)} color='#B91C1C' style={{ marginRight: scaleSize(8) }} />
-          <Text style={styles.chatDisabledText}>{chatDisabledReason || 'This conversation is no longer active.'}</Text>
+          <MaterialIcons
+            name='info'
+            size={scaleSize(18)}
+            color='#B91C1C'
+            style={{ marginRight: scaleSize(8) }}
+          />
+          <Text style={styles.chatDisabledText}>
+            {chatDisabledReason || 'This conversation is no longer active.'}
+          </Text>
         </View>
       )}
 
       {/* Product header strip */}
       {hasProductHeader && productForHeader && (
-        <View style={[styles.productHeaderStrip, { borderBottomColor: branding.borderColor || '#e2e8f0' }]}>
+        <View
+          style={[
+            styles.productHeaderStrip,
+            { borderBottomColor: branding.borderColor || '#e2e8f0' }
+          ]}
+        >
           <Image
             source={{
-              uri: productForHeader.image ||
+              uri:
+                productForHeader.image ||
                 (productForHeader.images && productForHeader.images[0]) ||
-                (productForHeader.images && productForHeader.images[0]?.url) || ''
+                (productForHeader.images && productForHeader.images[0]?.url) ||
+                ''
             }}
             style={styles.productHeaderImage}
             defaultSource={require('../../assets/images/placeholder.png')}
           />
           <View style={styles.productHeaderTextWrap}>
             <Text style={styles.productHeaderCategory} numberOfLines={1}>
-              {productForHeader.category?.name || productForHeader.category || 'Listing'}
+              {productForHeader.category?.name ||
+                productForHeader.category ||
+                'Listing'}
             </Text>
             <TextDefault style={styles.productHeaderTitle} numberOfLines={2}>
               {productForHeader.name || 'Product'}
             </TextDefault>
-            <Text style={[styles.productHeaderPrice, { color: branding.primaryColor }]}>
-              ₹{productForHeader.price ?? productForHeader.discountPrice ?? productForHeader.askingPrice ?? '—'}
+            <Text
+              style={[
+                styles.productHeaderPrice,
+                { color: branding.primaryColor }
+              ]}
+            >
+              ₹
+              {productForHeader.price ??
+                productForHeader.discountPrice ??
+                productForHeader.askingPrice ??
+                '—'}
             </Text>
           </View>
         </View>
@@ -1561,20 +1936,38 @@ const resolvedOtherRole = useMemo(() => {
       {/* CTA Banner */}
       {resolvedSelfRole === 'buyer' && shopId && !chatDisabled && (
         <View style={[styles.ctaBanner, { backgroundColor: '#FEF3C7' }]}>
-          <MaterialIcons name='flash-on' size={scaleSize(18)} color='#B45309' style={{ marginRight: scaleSize(6) }} />
+          <MaterialIcons
+            name='flash-on'
+            size={scaleSize(18)}
+            color='#B45309'
+            style={{ marginRight: scaleSize(6) }}
+          />
           <TouchableOpacity
             style={{ flex: 1, justifyContent: 'center' }}
-            onPress={() => !hasUnlimitedContacts && !canViewContact() ? setEliteModalVisible(true) : null}
+            onPress={() =>
+              !hasUnlimitedContacts && !canViewContact()
+                ? setEliteModalVisible(true)
+                : null
+            }
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.ctaBannerText}>Call owners directly to buy</Text>
+            <Text style={styles.ctaBannerText}>
+              Call owners directly to buy
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('Subscription')}
-            style={{ justifyContent: 'center', paddingHorizontal: scaleSize(4) }}
+            style={{
+              justifyContent: 'center',
+              paddingHorizontal: scaleSize(4)
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={[styles.ctaBannerButton, { color: branding.primaryColor }]}>Gold Membership</Text>
+            <Text
+              style={[styles.ctaBannerButton, { color: branding.primaryColor }]}
+            >
+              Gold Membership
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1586,16 +1979,26 @@ const resolvedOtherRole = useMemo(() => {
       >
         <View style={{ flex: 1 }}>
           {/* Debug Panel - Console logging only */}
-          {__DEV__ && (() => {
-            console.log('🔔 [CHAT DEBUG] Chat Debug Info:');
-            console.log('🔔 [CHAT DEBUG] Connected:', isConnected ? '✅' : '❌');
-            console.log('🔔 [CHAT DEBUG] Messages:', messages.length);
-            console.log('🔔 [CHAT DEBUG] Room:', conversationId || 'None');
-            console.log('🔔 [CHAT DEBUG] User:', profile?._id || 'None');
-            console.log('🔔 [CHAT DEBUG] Last Message:', messages.length > 0 ? messages[messages.length - 1]?.text?.substring(0, 30) + '...' : 'None');
-            return null;
-          })()}
-          
+          {__DEV__ &&
+            (() => {
+              console.log('🔔 [CHAT DEBUG] Chat Debug Info:')
+              console.log(
+                '🔔 [CHAT DEBUG] Connected:',
+                isConnected ? '✅' : '❌'
+              )
+              console.log('🔔 [CHAT DEBUG] Messages:', messages.length)
+              console.log('🔔 [CHAT DEBUG] Room:', conversationId || 'None')
+              console.log('🔔 [CHAT DEBUG] User:', profile?._id || 'None')
+              console.log(
+                '🔔 [CHAT DEBUG] Last Message:',
+                messages.length > 0
+                  ? messages[messages.length - 1]?.text?.substring(0, 30) +
+                      '...'
+                  : 'None'
+              )
+              return null
+            })()}
+
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -1609,50 +2012,91 @@ const resolvedOtherRole = useMemo(() => {
                 paddingBottom: scaleSize(16)
               }
             ]}
-            onContentSizeChange={() => { 
+            onContentSizeChange={() => {
               if (messages.length > 0) {
                 setTimeout(() => scrollToBottom(), 100)
               }
             }}
-            onLayout={() => { 
+            onLayout={() => {
               if (messages.length > 0) {
                 setTimeout(() => scrollToBottom(), 100)
               }
             }}
             showsVerticalScrollIndicator={false}
-            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 10 }}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              autoscrollToTopThreshold: 10
+            }}
             removeClippedSubviews={false}
             keyboardShouldPersistTaps='handled'
             keyboardDismissMode='interactive'
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
-                <MaterialIcons name='chat-bubble-outline' size={scaleSize(64)} color='#cbd5e0' />
-                <TextDefault style={styles.emptyText}>No messages yet</TextDefault>
-                <TextDefault style={styles.emptySubText}>Start the conversation!</TextDefault>
+                <MaterialIcons
+                  name='chat-bubble-outline'
+                  size={scaleSize(64)}
+                  color='#cbd5e0'
+                />
+                <TextDefault style={styles.emptyText}>
+                  No messages yet
+                </TextDefault>
+                <TextDefault style={styles.emptySubText}>
+                  Start the conversation!
+                </TextDefault>
               </View>
             )}
           />
 
           {isTyping && (
-            <Animated.View style={[styles.typingIndicator, { opacity: typingOpacity }]}>
-              <TextDefault style={styles.typingText}>{otherUser?.name || 'User'} is typing...</TextDefault>
+            <Animated.View
+              style={[styles.typingIndicator, { opacity: typingOpacity }]}
+            >
+              <TextDefault style={styles.typingText}>
+                {otherUser?.name || 'User'} is typing...
+              </TextDefault>
             </Animated.View>
           )}
 
           {/* Tabs */}
           {hasProductHeader && resolvedSelfRole === 'buyer' && (
-            <View style={[styles.tabRow, { borderTopColor: branding.borderColor || '#e2e8f0' }]}>
+            <View
+              style={[
+                styles.tabRow,
+                { borderTopColor: branding.borderColor || '#e2e8f0' }
+              ]}
+            >
               {[
                 { key: 'chat', label: 'CHAT', icon: 'chat-bubble-outline' },
                 { key: 'make_offer', label: 'MAKE OFFER', icon: 'handshake' }
               ].map(({ key, label, icon }) => (
                 <TouchableOpacity
                   key={key}
-                  style={[styles.tab, activeTab === key && { borderBottomColor: branding.primaryColor }]}
+                  style={[
+                    styles.tab,
+                    activeTab === key && {
+                      borderBottomColor: branding.primaryColor
+                    }
+                  ]}
                   onPress={() => setActiveTab(key)}
                 >
-                  <MaterialIcons name={icon} size={scaleSize(18)} color={activeTab === key ? branding.primaryColor : '#64748b'} />
-                  <Text style={[styles.tabText, activeTab === key && { color: branding.primaryColor, fontWeight: '700' }]}>{label}</Text>
+                  <MaterialIcons
+                    name={icon}
+                    size={scaleSize(18)}
+                    color={
+                      activeTab === key ? branding.primaryColor : '#64748b'
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === key && {
+                        color: branding.primaryColor,
+                        fontWeight: '700'
+                      }
+                    ]}
+                  >
+                    {label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -1660,7 +2104,12 @@ const resolvedOtherRole = useMemo(() => {
 
           {/* Input / Offer area */}
           {activeTab !== 'make_offer' ? (
-            <View style={[styles.inputContainer, { borderTopColor: branding.borderColor || '#f0f0f0' }]}>
+            <View
+              style={[
+                styles.inputContainer,
+                { borderTopColor: branding.borderColor || '#f0f0f0' }
+              ]}
+            >
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
@@ -1672,44 +2121,87 @@ const resolvedOtherRole = useMemo(() => {
                   maxLength={1000}
                   editable={!sending && isConnected && !chatDisabled}
                   textAlignVertical='top'
-                  onFocus={() => setTimeout(() => {
-              if (flatListRef.current) {
-                scrollToBottom()
-              }
-            }, 300)}
+                  onFocus={() =>
+                    setTimeout(() => {
+                      if (flatListRef.current) {
+                        scrollToBottom()
+                      }
+                    }, 300)
+                  }
                 />
-                <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
+                <Animated.View
+                  style={{ transform: [{ scale: sendButtonScale }] }}
+                >
                   <TouchableOpacity
                     style={[
                       styles.sendButton,
                       { backgroundColor: branding.primaryColor },
-                      (!inputText.trim() || sending || !isConnected || chatDisabled) && styles.sendButtonDisabled
+                      (!inputText.trim() ||
+                        sending ||
+                        !isConnected ||
+                        chatDisabled) &&
+                        styles.sendButtonDisabled
                     ]}
                     onPress={sendMessage}
-                    disabled={!inputText.trim() || sending || !isConnected || chatDisabled}
+                    disabled={
+                      !inputText.trim() ||
+                      sending ||
+                      !isConnected ||
+                      chatDisabled
+                    }
                   >
-                    {sending
-                      ? <ActivityIndicator size='small' color='#fff' />
-                      : <MaterialIcons name='send' size={scaleSize(20)} color='#fff' />}
+                    {sending ? (
+                      <ActivityIndicator size='small' color='#fff' />
+                    ) : (
+                      <MaterialIcons
+                        name='send'
+                        size={scaleSize(20)}
+                        color='#fff'
+                      />
+                    )}
                   </TouchableOpacity>
                 </Animated.View>
               </View>
             </View>
           ) : (
-            <View style={[styles.makeOfferContainer, { borderTopColor: branding.borderColor || '#e2e8f0' }]}>
+            <View
+              style={[
+                styles.makeOfferContainer,
+                { borderTopColor: branding.borderColor || '#e2e8f0' }
+              ]}
+            >
               <TouchableOpacity
-                style={[styles.makeOfferButton, { backgroundColor: branding.primaryColor }]}
+                style={[
+                  styles.makeOfferButton,
+                  { backgroundColor: branding.primaryColor }
+                ]}
                 onPress={handleSendOffer}
-                disabled={!offerAmount || sending || !isConnected || chatDisabled}
+                disabled={
+                  !offerAmount || sending || !isConnected || chatDisabled
+                }
               >
-                <MaterialIcons name='handshake' size={scaleSize(22)} color='#fff' style={{ marginRight: scaleSize(8) }} />
+                <MaterialIcons
+                  name='handshake'
+                  size={scaleSize(22)}
+                  color='#fff'
+                  style={{ marginRight: scaleSize(8) }}
+                />
                 <Text style={styles.makeOfferButtonText}>MAKE OFFER</Text>
               </TouchableOpacity>
               {productForHeader && (
                 <>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestedPricesScroll}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.suggestedPricesScroll}
+                  >
                     {(() => {
-                      const base = Number(productForHeader.price ?? productForHeader.discountPrice ?? productForHeader.askingPrice ?? 0)
+                      const base = Number(
+                        productForHeader.price ??
+                          productForHeader.discountPrice ??
+                          productForHeader.askingPrice ??
+                          0
+                      )
                       if (!base) return []
                       return [1, 0.95, 0.9, 0.85, 0.8].map((r) => base * r)
                     })().map((p, i) => {
@@ -1717,25 +2209,52 @@ const resolvedOtherRole = useMemo(() => {
                       return (
                         <TouchableOpacity
                           key={i}
-                          style={[styles.priceChip, offerAmount === amount && { backgroundColor: branding.primaryColor }]}
+                          style={[
+                            styles.priceChip,
+                            offerAmount === amount && {
+                              backgroundColor: branding.primaryColor
+                            }
+                          ]}
                           onPress={() => setOfferAmount(amount)}
                         >
-                          <Text style={[styles.priceChipText, offerAmount === amount && { color: '#fff' }]}>₹{amount}</Text>
+                          <Text
+                            style={[
+                              styles.priceChipText,
+                              offerAmount === amount && { color: '#fff' }
+                            ]}
+                          >
+                            ₹{amount}
+                          </Text>
                         </TouchableOpacity>
                       )
                     })}
                   </ScrollView>
-                  <Text style={styles.currentOfferLabel}>{offerAmount != null ? `₹${offerAmount}` : 'Select an amount'}</Text>
+                  <Text style={styles.currentOfferLabel}>
+                    {offerAmount != null
+                      ? `₹${offerAmount}`
+                      : 'Select an amount'}
+                  </Text>
                   {offerAmount != null && (
                     <View style={styles.feedbackBanner}>
-                      <MaterialIcons name='thumb-up' size={scaleSize(18)} color={branding.primaryColor} />
-                      <Text style={styles.feedbackBannerText}>Very good offer! High chances of seller's response.</Text>
+                      <MaterialIcons
+                        name='thumb-up'
+                        size={scaleSize(18)}
+                        color={branding.primaryColor}
+                      />
+                      <Text style={styles.feedbackBannerText}>
+                        Very good offer! High chances of seller's response.
+                      </Text>
                     </View>
                   )}
                   <TouchableOpacity
-                    style={[styles.sendOfferButton, { backgroundColor: branding.primaryColor }]}
+                    style={[
+                      styles.sendOfferButton,
+                      { backgroundColor: branding.primaryColor }
+                    ]}
                     onPress={handleSendOffer}
-                    disabled={!offerAmount || sending || !isConnected || chatDisabled}
+                    disabled={
+                      !offerAmount || sending || !isConnected || chatDisabled
+                    }
                   >
                     <Text style={styles.sendOfferButtonText}>Send</Text>
                   </TouchableOpacity>
@@ -1747,42 +2266,102 @@ const resolvedOtherRole = useMemo(() => {
       </KeyboardAvoidingView>
 
       {/* Elite modal */}
-      <Modal visible={eliteModalVisible} transparent animationType='fade' onRequestClose={() => setEliteModalVisible(false)}>
-        <TouchableOpacity activeOpacity={1} style={styles.modalOverlay} onPress={() => setEliteModalVisible(false)}>
+      <Modal
+        visible={eliteModalVisible}
+        transparent
+        animationType='fade'
+        onRequestClose={() => setEliteModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.modalOverlay}
+          onPress={() => setEliteModalVisible(false)}
+        >
           <View style={styles.eliteModalContent}>
-            <TouchableOpacity style={styles.eliteModalClose} onPress={() => setEliteModalVisible(false)}>
-              <MaterialIcons name='close' size={scaleSize(28)} color='#1e293b' />
+            <TouchableOpacity
+              style={styles.eliteModalClose}
+              onPress={() => setEliteModalVisible(false)}
+            >
+              <MaterialIcons
+                name='close'
+                size={scaleSize(28)}
+                color='#1e293b'
+              />
             </TouchableOpacity>
             <View style={styles.eliteLogoWrap}>
-              <MaterialIcons name='workspace-premium' size={scaleSize(48)} color='#fff' />
+              <MaterialIcons
+                name='workspace-premium'
+                size={scaleSize(48)}
+                color='#fff'
+              />
               <Text style={styles.eliteLogoText}>ELITE BUYER</Text>
             </View>
-            <Text style={styles.eliteModalTitle}>Want to unlock contact instantly?</Text>
-            <Text style={styles.eliteModalSubtitle}>Become an Elite Buyer to call owners directly.</Text>
+            <Text style={styles.eliteModalTitle}>
+              Want to unlock contact instantly?
+            </Text>
+            <Text style={styles.eliteModalSubtitle}>
+              Become an Elite Buyer to call owners directly.
+            </Text>
             <View style={styles.elitePackageRow}>
               <Text style={styles.elitePackageLabel}>10 Contacts</Text>
-              <View style={styles.eliteSavingsBadge}><Text style={styles.eliteSavingsText}>50% Savings</Text></View>
+              <View style={styles.eliteSavingsBadge}>
+                <Text style={styles.eliteSavingsText}>50% Savings</Text>
+              </View>
             </View>
             <View style={styles.elitePriceRow}>
               <Text style={styles.elitePriceOld}>₹198</Text>
-              <Text style={[styles.elitePriceNew, { color: branding.primaryColor }]}>₹99</Text>
+              <Text
+                style={[styles.elitePriceNew, { color: branding.primaryColor }]}
+              >
+                ₹99
+              </Text>
               <Text style={styles.elitePricePer}>₹10/Contact</Text>
             </View>
-            <Text style={styles.elitePackageNote}>Package applicable for Mobiles category in Chennai for 7 days.</Text>
+            <Text style={styles.elitePackageNote}>
+              Package applicable for Mobiles category in Chennai for 7 days.
+            </Text>
             <TouchableOpacity
-              style={[styles.elitePayButton, { backgroundColor: branding.primaryColor }]}
-              onPress={() => { setEliteModalVisible(false); navigation.navigate('Subscription') }}
+              style={[
+                styles.elitePayButton,
+                { backgroundColor: branding.primaryColor }
+              ]}
+              onPress={() => {
+                setEliteModalVisible(false)
+                navigation.navigate('Subscription')
+              }}
             >
               <Text style={styles.elitePayButtonText}>Go Elite Unlimited</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.eliteBuyCreditsButton, { borderColor: branding.primaryColor }]}
-              onPress={() => { setEliteModalVisible(false); navigation.navigate('BuyContacts') }}
+              style={[
+                styles.eliteBuyCreditsButton,
+                { borderColor: branding.primaryColor }
+              ]}
+              onPress={() => {
+                setEliteModalVisible(false)
+                navigation.navigate('BuyContacts')
+              }}
             >
-              <Text style={[styles.eliteBuyCreditsButtonText, { color: branding.primaryColor }]}>Buy 7 Contacts - ₹49</Text>
+              <Text
+                style={[
+                  styles.eliteBuyCreditsButtonText,
+                  { color: branding.primaryColor }
+                ]}
+              >
+                Buy 7 Contacts - ₹49
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Subscription')}>
-              <Text style={[styles.eliteExploreLink, { color: branding.primaryColor }]}>Explore business packages &gt;</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Subscription')}
+            >
+              <Text
+                style={[
+                  styles.eliteExploreLink,
+                  { color: branding.primaryColor }
+                ]}
+              >
+                Explore business packages &gt;
+              </Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

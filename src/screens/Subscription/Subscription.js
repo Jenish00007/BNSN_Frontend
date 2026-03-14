@@ -21,15 +21,14 @@ import { theme } from '../../utils/themeColors'
 
 const { width } = Dimensions.get('window')
 
-/* ── Design tokens (matching BuyContacts) ── */
-const GOLD        = '#C9A84C'
-const GOLD_LIGHT  = '#E8CC7A'
-const DARK_BG     = '#0F0F0F'
-const CARD_BG     = '#1A1A1A'
+const GOLD = '#C9A84C'
+const GOLD_LIGHT = '#E8CC7A'
+const DARK_BG = '#0F0F0F'
+const CARD_BG = '#1A1A1A'
 const CARD_BORDER = '#2A2A2A'
-const TEXT_PRIMARY   = '#F5F0E8'
+const TEXT_PRIMARY = '#F5F0E8'
 const TEXT_SECONDARY = '#8A8070'
-const GREEN       = '#23C55E'
+const GREEN = '#23C55E'
 
 const features = [
   {
@@ -44,23 +43,9 @@ const features = [
     title: '7 Contact Credits',
     description: 'Get 7 seller contact numbers with your subscription',
     tag: null
-  },
-  {
-    icon: 'workspace-premium',
-    title: 'Elite Badge',
-    description: 'Stand out as a serious buyer',
-    tag: 'New',
-    tagVariant: 'green'
-  },
-  {
-    icon: 'verified',
-    title: 'Verified Sellers',
-    description: 'Access exclusive verified seller profiles',
-    tag: null
   }
 ]
 
-/* ── Animated Feature Row ── */
 const FeatureRow = ({ feature, index }) => {
   const opacity = useRef(new Animated.Value(0)).current
   const translateY = useRef(new Animated.Value(16)).current
@@ -93,8 +78,15 @@ const FeatureRow = ({ feature, index }) => {
           <View style={s.featureTitleRow}>
             <Text style={s.featureTitle}>{feature.title}</Text>
             {feature.tag && (
-              <View style={[s.tag, feature.tagVariant === 'green' && s.tagGreen]}>
-                <Text style={[s.tagText, feature.tagVariant === 'green' && s.tagTextGreen]}>
+              <View
+                style={[s.tag, feature.tagVariant === 'green' && s.tagGreen]}
+              >
+                <Text
+                  style={[
+                    s.tagText,
+                    feature.tagVariant === 'green' && s.tagTextGreen
+                  ]}
+                >
                   {feature.tag}
                 </Text>
               </View>
@@ -104,28 +96,39 @@ const FeatureRow = ({ feature, index }) => {
         </View>
 
         <View style={s.checkCircle}>
-          <MaterialIcons name="check" size={13} color={DARK_BG} />
+          <MaterialIcons name='check' size={13} color={DARK_BG} />
         </View>
       </View>
     </Animated.View>
   )
 }
 
-/* ── Main Screen ── */
 const Subscription = () => {
   const navigation = useNavigation()
-  const { activateUnlimitedContacts, subscriptionLoading, hasUnlimitedContacts } = useSubscription()
+  const {
+    activateUnlimitedContacts,
+    subscriptionLoading,
+    hasUnlimitedContacts
+  } = useSubscription()
   const { primaryColor } = useAppBranding()
   const themeContext = useContext(ThemeContext)
 
   const headerAnim = useRef(new Animated.Value(0)).current
-  const heroAnim   = useRef(new Animated.Value(0)).current
-  const ctaScale   = useRef(new Animated.Value(1)).current
+  const heroAnim = useRef(new Animated.Value(0)).current
+  const ctaScale = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
     Animated.stagger(100, [
-      Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(heroAnim,   { toValue: 1, duration: 550, useNativeDriver: true })
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true
+      }),
+      Animated.timing(heroAnim, {
+        toValue: 1,
+        duration: 550,
+        useNativeDriver: true
+      })
     ]).start()
   }, [])
 
@@ -138,14 +141,16 @@ const Subscription = () => {
     })
   }
 
-  const onCtaPressIn  = () => Animated.spring(ctaScale, { toValue: 0.97, useNativeDriver: true }).start()
-  const onCtaPressOut = () => Animated.spring(ctaScale, { toValue: 1,    useNativeDriver: true }).start()
+  const onCtaPressIn = () =>
+    Animated.spring(ctaScale, { toValue: 0.97, useNativeDriver: true }).start()
+  const onCtaPressOut = () =>
+    Animated.spring(ctaScale, { toValue: 1, useNativeDriver: true }).start()
 
   if (subscriptionLoading) {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color={GOLD} />
+          <ActivityIndicator size='large' color={GOLD} />
           <Text style={s.loadingText}>Loading…</Text>
         </View>
       </SafeAreaView>
@@ -154,64 +159,81 @@ const Subscription = () => {
 
   return (
     <SafeAreaView style={s.container}>
-      <StatusBar barStyle="light-content" backgroundColor={DARK_BG} />
+      <StatusBar barStyle='light-content' backgroundColor={DARK_BG} />
 
-      {/* ── Header ── */}
+      {/* Header */}
       <Animated.View
         style={[
           s.header,
           {
             opacity: headerAnim,
-            transform: [{ translateY: headerAnim.interpolate({ inputRange: [0,1], outputRange: [-10, 0] }) }]
+            transform: [
+              {
+                translateY: headerAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-10, 0]
+                })
+              }
+            ]
           }
         ]}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
-          <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={s.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name='chevron-back' size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Gold Membership</Text>
         <View style={{ width: 36 }} />
       </Animated.View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
-        {/* ── Hero ── */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+      >
+        {/* Hero */}
         <Animated.View
           style={[
             s.hero,
             {
               opacity: heroAnim,
-              transform: [{ translateY: heroAnim.interpolate({ inputRange: [0,1], outputRange: [24, 0] }) }]
+              transform: [
+                {
+                  translateY: heroAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [24, 0]
+                  })
+                }
+              ]
             }
           ]}
         >
-          {/* Crown icon */}
           <View style={s.crownRing}>
-            <MaterialIcons name="workspace-premium" size={36} color={GOLD} />
+            <MaterialIcons name='workspace-premium' size={36} color={GOLD} />
           </View>
 
           <Text style={s.heroTitle}>Gold Membership</Text>
           <Text style={s.heroSub}>
-            Unlock direct seller calls, 7 contact credits &amp; close deals faster.
+            Unlock direct seller calls, 7 contact credits &amp; close deals
+            faster.
           </Text>
 
-          {/* Price chip */}
           <View style={s.priceChip}>
             <Text style={s.priceAmount}>₹49</Text>
             <Text style={s.pricePer}> / 7 days</Text>
           </View>
         </Animated.View>
 
-        {/* ── Value pills ── */}
+        {/* Value pills — only 1 pill now */}
         <View style={s.valueRow}>
-          {['7 Contact Credits', 'High-Intent', 'Cancel Anytime'].map((v, i) => (
-            <View key={i} style={s.valuePill}>
-              <Text style={s.valuePillText}>{v}</Text>
-            </View>
-          ))}
+          <View style={s.valuePill}>
+            <Text style={s.valuePillText}>7 Contact Credits</Text>
+          </View>
         </View>
 
-        {/* ── Features ── */}
+        {/* Features */}
         <Text style={s.sectionLabel}>What's included</Text>
 
         <View style={s.featuresContainer}>
@@ -220,12 +242,12 @@ const Subscription = () => {
           ))}
         </View>
 
-        {/* ── Trust strip ── */}
+        {/* Trust strip */}
         <View style={s.trustStrip}>
           {[
-            { icon: 'lock',          label: 'Secure Payment'     },
-            { icon: 'flash-on',      label: 'Instant Activation' },
-            { icon: 'support-agent', label: '24/7 Support'       }
+            { icon: 'lock', label: 'Secure Payment' },
+            { icon: 'flash-on', label: 'Instant Activation' },
+            { icon: 'support-agent', label: '24/7 Support' }
           ].map((item, i) => (
             <View key={i} style={s.trustItem}>
               <MaterialIcons name={item.icon} size={18} color={GOLD} />
@@ -234,8 +256,10 @@ const Subscription = () => {
           ))}
         </View>
 
-        {/* ── CTA ── */}
-        <Animated.View style={[s.ctaWrapper, { transform: [{ scale: ctaScale }] }]}>
+        {/* CTA */}
+        <Animated.View
+          style={[s.ctaWrapper, { transform: [{ scale: ctaScale }] }]}
+        >
           <TouchableOpacity
             style={[s.ctaButton, hasUnlimitedContacts && s.ctaButtonActive]}
             onPress={handlePurchase}
@@ -245,18 +269,24 @@ const Subscription = () => {
             activeOpacity={1}
           >
             <Text style={s.ctaText}>
-              {hasUnlimitedContacts ? '✓  You are a Gold Member' : 'Unlock Gold Membership  –  ₹49'}
+              {hasUnlimitedContacts
+                ? '✓  You are a Gold Member'
+                : 'Unlock Gold Membership  –  ₹49'}
             </Text>
             {!hasUnlimitedContacts && (
-              <MaterialIcons name="arrow-forward" size={18} color={DARK_BG} style={{ marginLeft: 8 }} />
+              <MaterialIcons
+                name='arrow-forward'
+                size={18}
+                color={DARK_BG}
+                style={{ marginLeft: 8 }}
+              />
             )}
           </TouchableOpacity>
         </Animated.View>
 
         <Text style={s.termsText}>
           By subscribing, you agree to our{' '}
-          <Text style={s.termsLink}>Terms of Service</Text>
-          {' '}and{' '}
+          <Text style={s.termsLink}>Terms of Service</Text> and{' '}
           <Text style={s.termsLink}>Privacy Policy</Text>.
         </Text>
       </ScrollView>
@@ -269,8 +299,6 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: DARK_BG
   },
-
-  /* ── Loading ── */
   loadingWrap: {
     flex: 1,
     alignItems: 'center',
@@ -281,8 +309,6 @@ const s = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontSize: 14
   },
-
-  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -308,10 +334,7 @@ const s = StyleSheet.create({
     color: TEXT_PRIMARY,
     letterSpacing: 0.4
   },
-
   scroll: { paddingBottom: 48 },
-
-  /* ── Hero ── */
   hero: {
     alignItems: 'center',
     paddingHorizontal: 32,
@@ -377,8 +400,6 @@ const s = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 3
   },
-
-  /* ── Value pills ── */
   valueRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -403,8 +424,6 @@ const s = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3
   },
-
-  /* ── Features ── */
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -488,8 +507,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 10
   },
-
-  /* ── Trust strip ── */
   trustStrip: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -511,8 +528,6 @@ const s = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: 0.2
   },
-
-  /* ── CTA ── */
   ctaWrapper: {
     marginHorizontal: 16,
     marginTop: 24
@@ -540,8 +555,6 @@ const s = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3
   },
-
-  /* ── Terms ── */
   termsText: {
     fontSize: 11,
     color: TEXT_SECONDARY + 'AA',

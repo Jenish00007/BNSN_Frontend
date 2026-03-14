@@ -20,7 +20,11 @@ import { useAppBranding } from '../../utils/translationHelper'
 import AuthContext from '../../context/Auth'
 import UserContext from '../../context/User'
 import DynamicCategoryForm from './AdByCAtegory'
-import { CATEGORY_FORMS, getCategoryForm, getLocationFields } from '../../configs/categoryForms'
+import {
+  CATEGORY_FORMS,
+  getCategoryForm,
+  getLocationFields
+} from '../../configs/categoryForms'
 
 const { width, height } = Dimensions.get('window')
 
@@ -81,7 +85,7 @@ const CreateAd = () => {
     if (selectedCategoryKey && CATEGORY_FORMS[selectedCategoryKey]) {
       const categoryConfig = CATEGORY_FORMS[selectedCategoryKey]
       const initialFormData = {}
-      
+
       // Initialize all fields from category form
       categoryConfig.fields.forEach((field) => {
         if (field.type === 'checkbox') {
@@ -90,13 +94,13 @@ const CreateAd = () => {
           initialFormData[field.key] = ''
         }
       })
-      
+
       // Initialize location fields
       const locationFields = getLocationFields(selectedCategoryKey)
       locationFields.forEach((field) => {
         initialFormData[field.key] = ''
       })
-      
+
       setCategoryFormData(initialFormData)
     }
   }, [selectedCategoryKey])
@@ -236,7 +240,10 @@ const CreateAd = () => {
 
       // Check if response is OK and has JSON content type
       if (!response.ok) {
-        console.error('Error checking free post availability: Response not OK', response.status)
+        console.error(
+          'Error checking free post availability: Response not OK',
+          response.status
+        )
         return {
           canPostForFree: false,
           postCost: 0,
@@ -247,7 +254,9 @@ const CreateAd = () => {
 
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Error checking free post availability: Response is not JSON')
+        console.error(
+          'Error checking free post availability: Response is not JSON'
+        )
         return {
           canPostForFree: false,
           postCost: 0,
@@ -257,7 +266,7 @@ const CreateAd = () => {
       }
 
       const result = await response.json()
-      
+
       if (result.success) {
         return {
           canPostForFree: result.canPostForFree,
@@ -266,7 +275,7 @@ const CreateAd = () => {
           freePostsLimit: result.freePostsLimit || 0
         }
       }
-      
+
       return {
         canPostForFree: false,
         postCost: 0,
@@ -286,7 +295,6 @@ const CreateAd = () => {
     }
   }
 
-
   const validateForm = () => {
     if (!selectedCategoryKey || !CATEGORY_FORMS[selectedCategoryKey]) {
       Alert.alert('Error', 'Please select a category')
@@ -295,12 +303,12 @@ const CreateAd = () => {
 
     const categoryConfig = CATEGORY_FORMS[selectedCategoryKey]
     const locationFields = getLocationFields(selectedCategoryKey)
-    
+
     // Check required fields from category form
     const requiredFields = [...categoryConfig.fields, ...locationFields].filter(
       (field) => field.required
     )
-    
+
     const missingFields = requiredFields.filter((field) => {
       const value = categoryFormData[field.key]
       if (field.type === 'checkbox') {
@@ -362,13 +370,13 @@ const CreateAd = () => {
       const formDataToSend = new FormData()
 
       // Add images
-      console.log('Adding images to form data:', selectedImages.length);
+      console.log('Adding images to form data:', selectedImages.length)
       selectedImages.forEach((image, index) => {
         console.log(`Image ${index}:`, {
           uri: image.uri,
           type: image.type,
           name: image.name
-        });
+        })
         formDataToSend.append('images', {
           uri: image.uri,
           type: image.type,
@@ -384,43 +392,43 @@ const CreateAd = () => {
         if (value === null || value === undefined || value === '') {
           return ''
         }
-        
+
         if (Array.isArray(value)) {
           // For arrays, take the first element or join with space
           const result = value[0] || value.join(' ')
           console.log(`Converting array ${key} to string:`, result)
           return result.toString()
         }
-        
+
         // For non-arrays, convert to string
         let result = value.toString()
-        
+
         // Normalize unit field to lowercase for enum validation
         if (key === 'unit') {
           result = result.toLowerCase()
           // Map common variations to valid enum values
           const unitMapping = {
-            'kg': 'kg',
-            'kilogram': 'kg',
-            'kilograms': 'kg',
-            'g': 'g',
-            'gram': 'g',
-            'grams': 'g',
-            'pcs': 'pcs',
-            'pieces': 'pcs',
-            'piece': 'pcs',
-            'ml': 'ml',
-            'milliliter': 'ml',
-            'milliliters': 'ml',
-            'ltr': 'ltr',
-            'liter': 'ltr',
-            'liters': 'ltr',
-            'pack': 'pack',
-            'package': 'pack'
+            kg: 'kg',
+            kilogram: 'kg',
+            kilograms: 'kg',
+            g: 'g',
+            gram: 'g',
+            grams: 'g',
+            pcs: 'pcs',
+            pieces: 'pcs',
+            piece: 'pcs',
+            ml: 'ml',
+            milliliter: 'ml',
+            milliliters: 'ml',
+            ltr: 'ltr',
+            liter: 'ltr',
+            liters: 'ltr',
+            pack: 'pack',
+            package: 'pack'
           }
           result = unitMapping[result] || result
         }
-        
+
         console.log(`Converting ${key} to string:`, result)
         return result
       }
@@ -437,10 +445,10 @@ const CreateAd = () => {
       formDataToSend.append('category', selectedCategoryId)
       formDataToSend.append('categoryName', selectedCategoryName)
       formDataToSend.append('categoryKey', selectedCategoryKey)
-      
-      // Add all processed form data
+
+      // Add all processed form data (exclude priceType — appended separately to avoid duplicates)
       Object.entries(processedFormData).forEach(([key, value]) => {
-        if (value) {
+        if (value && key !== 'priceType') {
           formDataToSend.append(key, value)
         }
       })
@@ -448,40 +456,40 @@ const CreateAd = () => {
       // Map category-specific name field to generic name field
       const getNameFromCategoryData = () => {
         const nameFieldMapping = {
-          'animalName': processedFormData.animalName,
-          'birdName': processedFormData.birdName,
-          'treeName': processedFormData.treeName,
-          'paddyRiceName': processedFormData.paddyRiceName,
-          'vegetableName': processedFormData.vegetableName,
-          'seedName': processedFormData.seedName,
-          'fruitName': processedFormData.fruitName,
-          'machineryName': processedFormData.machineryName,
-          'electronicsName': processedFormData.electronicsName,
-          'mobileName': processedFormData.mobileName,
-          'furnitureName': processedFormData.furnitureName,
-          'fashionName': processedFormData.fashionName,
-          'jobTitle': processedFormData.jobTitle,
-          'petName': processedFormData.petName,
-          'instrumentName': processedFormData.instrumentName,
-          'equipmentName': processedFormData.equipmentName,
-          'fishName': processedFormData.fishName,
-          'vehicleName': processedFormData.vehicleName,
-          'serviceName': processedFormData.serviceName,
-          'serviceTitle': processedFormData.serviceTitle,
-          'scrapName': processedFormData.scrapName,
-          'scrapTypeName': processedFormData.scrapTypeName,
-          'sportsItemName': processedFormData.sportsItemName,
-          'bookCategory': processedFormData.bookCategory,
-          'bookTitle': processedFormData.bookTitle
+          animalName: processedFormData.animalName,
+          birdName: processedFormData.birdName,
+          treeName: processedFormData.treeName,
+          paddyRiceName: processedFormData.paddyRiceName,
+          vegetableName: processedFormData.vegetableName,
+          seedName: processedFormData.seedName,
+          fruitName: processedFormData.fruitName,
+          machineryName: processedFormData.machineryName,
+          electronicsName: processedFormData.electronicsName,
+          mobileName: processedFormData.mobileName,
+          furnitureName: processedFormData.furnitureName,
+          fashionName: processedFormData.fashionName,
+          jobTitle: processedFormData.jobTitle,
+          petName: processedFormData.petName,
+          instrumentName: processedFormData.instrumentName,
+          equipmentName: processedFormData.equipmentName,
+          fishName: processedFormData.fishName,
+          vehicleName: processedFormData.vehicleName,
+          serviceName: processedFormData.serviceName,
+          serviceTitle: processedFormData.serviceTitle,
+          scrapName: processedFormData.scrapName,
+          scrapTypeName: processedFormData.scrapTypeName,
+          sportsItemName: processedFormData.sportsItemName,
+          bookCategory: processedFormData.bookCategory,
+          bookTitle: processedFormData.bookTitle
         }
-        
+
         // Find the first available name field from the mapping
         for (const [field, value] of Object.entries(nameFieldMapping)) {
           if (value && value.toString().trim() !== '') {
             return value.toString().trim()
           }
         }
-        
+
         // Fallback to generic name field or create one from category
         return processedFormData.name || `${selectedCategoryName} Product`
       }
@@ -505,15 +513,24 @@ const CreateAd = () => {
 
       // Add price fields
       if (processedFormData.price) {
-        formDataToSend.append('discountPrice', processedFormData.price.toString())
+        formDataToSend.append(
+          'discountPrice',
+          processedFormData.price.toString()
+        )
       }
       if (processedFormData.priceType) {
-        formDataToSend.append('priceType', processedFormData.priceType.toString())
+        formDataToSend.append(
+          'priceType',
+          processedFormData.priceType.toString()
+        )
       }
 
       // Add subcategory only if it exists and has a value
       if (categoryFormData.subcategory) {
-        const subcategoryValue = convertToString('subcategory', categoryFormData.subcategory)
+        const subcategoryValue = convertToString(
+          'subcategory',
+          categoryFormData.subcategory
+        )
         if (subcategoryValue) {
           formDataToSend.append('subcategory', subcategoryValue)
         }
@@ -660,7 +677,6 @@ const CreateAd = () => {
     </Modal>
   )
 
-
   if (loading && !localSellerData) {
     return (
       <View
@@ -737,8 +753,6 @@ const CreateAd = () => {
               <Icon name='arrow-forward-ios' size={16} color='#999' />
             </TouchableOpacity>
           </View>
-          
-         
         </View>
 
         {/* Show Dynamic Category Form */}
@@ -760,7 +774,8 @@ const CreateAd = () => {
                 Select a category above to continue posting your ad
               </Text>
               <Text style={[styles.promptSubtext, { color: '#666' }]}>
-                Different categories have different form fields tailored for that type of item
+                Different categories have different form fields tailored for
+                that type of item
               </Text>
             </View>
           </View>
@@ -779,7 +794,7 @@ const CreateAd = () => {
           if (selectedCategory) {
             // Reset selected images when category changes
             setSelectedImages([])
-            
+
             setSelectedCategoryId(categoryId)
             setSelectedCategoryName(selectedCategory.name)
             const categoryKey = getCategoryKeyFromName(selectedCategory.name)
@@ -1055,4 +1070,3 @@ const styles = StyleSheet.create({
 })
 
 export default CreateAd
-

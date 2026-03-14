@@ -141,7 +141,8 @@ export const useLogin = () => {
       const fcmToken = await getFCMPushToken()
 
       const locationPayload =
-        currentLocation?.latitude !== undefined && currentLocation?.longitude !== undefined
+        currentLocation?.latitude !== undefined &&
+        currentLocation?.longitude !== undefined
           ? {
               latitude: currentLocation.latitude,
               longitude: currentLocation.longitude,
@@ -185,6 +186,11 @@ export const useLogin = () => {
           // Store user data if available
           if (data.user) {
             await AsyncStorage.setItem('userData', JSON.stringify(data.user))
+          }
+
+          // Sync FCM token to backend for push notifications (e.g. chat)
+          if (fcmToken) {
+            sendPushTokenToBackend(fcmToken, data.token)
           }
 
           // Show success message

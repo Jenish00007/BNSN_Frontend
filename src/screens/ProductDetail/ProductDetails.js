@@ -101,6 +101,8 @@ const ProductDetail = () => {
   const [userDetailsError, setUserDetailsError] = useState(null)
   const isMountedRef = useRef(true)
   const [contactViewed, setContactViewed] = useState(false)
+  const [phoneRevealedForContactId, setPhoneRevealedForContactId] =
+    useState(null)
 
   // Get the current color scheme (system preference)
   const colorScheme = useColorScheme()
@@ -587,6 +589,14 @@ const ProductDetail = () => {
     setReviews(product?.reviews || [])
   }
 
+  const handleViewPhoneNumber = useCallback(
+    async (contactId) => {
+      const ok = await addViewedContact(contactId)
+      if (ok) setPhoneRevealedForContactId(contactId)
+    },
+    [addViewedContact]
+  )
+
   const renderContactRow = (
     icon,
     label,
@@ -596,24 +606,28 @@ const ProductDetail = () => {
   ) => {
     if (!value) return null
 
-    // Always hide phone number by default, show only when user has views left
+    // Phone: only reduce credit when user explicitly clicks "View phone number"
     let displayValue = value
     let showUpgradeButton = false
+    let showViewPhoneButton = false
     let alreadyViewed = false
+    let userHasRevealed = false
 
     if (isPhone && contactId) {
       alreadyViewed = hasViewedContact(contactId)
+      userHasRevealed = phoneRevealedForContactId === contactId
 
       if (!canViewContact() && !alreadyViewed) {
         // User has used all free contacts and hasn't viewed this contact - hide number and show upgrade
         displayValue = formatPhoneNumber(value, true)
         showUpgradeButton = true
-      } else {
-        // User has free contacts or has already viewed this contact - show full number
-        if (!alreadyViewed && canViewContact()) {
-          addViewedContact(contactId)
-        }
+      } else if (alreadyViewed || userHasRevealed) {
+        // Already viewed or user clicked to reveal - show full number (no credit reduction)
         displayValue = value
+      } else {
+        // User has credits but hasn't clicked yet - show masked + "View phone number" button
+        displayValue = formatPhoneNumber(value, true)
+        showViewPhoneButton = true
       }
     }
 
@@ -637,12 +651,36 @@ const ProductDetail = () => {
                 styles.contactInfoValue,
                 {
                   color: branding.textColor,
-                  opacity: showUpgradeButton ? 0.6 : 0.85
+                  opacity: showUpgradeButton || showViewPhoneButton ? 0.6 : 0.85
                 }
               ]}
             >
               {displayValue}
             </Text>
+            {showViewPhoneButton && (
+              <TouchableOpacity
+                style={[
+                  styles.viewPhoneButton,
+                  { borderColor: branding.primaryColor }
+                ]}
+                onPress={() => handleViewPhoneNumber(contactId)}
+              >
+                <MaterialIcons
+                  name='phone'
+                  size={14}
+                  color={branding.primaryColor}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.viewPhoneButtonText,
+                    { color: branding.primaryColor }
+                  ]}
+                >
+                  View phone number
+                </Text>
+              </TouchableOpacity>
+            )}
             {showUpgradeButton && (
               <View style={styles.upgradeButtonsContainer}>
                 <TouchableOpacity
@@ -673,11 +711,14 @@ const ProductDetail = () => {
                 </TouchableOpacity>
               </View>
             )}
-            {isPhone && !showUpgradeButton && alreadyViewed && (
-              <Text style={[styles.viewedText, { color: '#4CAF50' }]}>
-                ✓ Already viewed
-              </Text>
-            )}
+            {isPhone &&
+              !showUpgradeButton &&
+              !showViewPhoneButton &&
+              (alreadyViewed || userHasRevealed) && (
+                <Text style={[styles.viewedText, { color: '#4CAF50' }]}>
+                  ✓ Already viewed
+                </Text>
+              )}
             {isPhone &&
               !showUpgradeButton &&
               !alreadyViewed &&
@@ -1193,6 +1234,13 @@ const ProductDetail = () => {
                 {' '}
                 ₹{product?.discountPrice}{' '}
               </Text>
+              {product?.priceType && (
+                <Text
+                  style={[styles.priceTypeBadge, { color: branding.textColor }]}
+                >
+                  ({product.priceType})
+                </Text>
+              )}
             </View>
           </View>
 

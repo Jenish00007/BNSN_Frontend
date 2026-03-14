@@ -105,8 +105,7 @@ function Menu() {
   const [busy, setBusy] = useState(false)
   const [savedAddresses, setSavedAddresses] = useState([])
   const [addressesLoading, setAddressesLoading] = useState(false)
-  const { isLoggedIn, profile, fetchCartItems } =
-    useContext(UserContext)
+  const { isLoggedIn, profile, fetchCartItems } = useContext(UserContext)
   const { token } = useContext(AuthContext)
   const { location, setLocation } = useContext(LocationContext)
   const [search, setSearch] = useState('')
@@ -283,7 +282,7 @@ function Menu() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <MaterialIcons
-                name="favorite-border"
+                name='favorite-border'
                 size={scale(22)}
                 color={textColor}
               />
@@ -299,7 +298,7 @@ function Menu() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <MaterialIcons
-                name="notifications-none"
+                name='notifications-none'
                 size={scale(22)}
                 color={textColor}
               />
@@ -314,7 +313,7 @@ function Menu() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <MaterialIcons
-                name="location-on"
+                name='location-on'
                 size={scale(22)}
                 color={textColor}
               />
@@ -507,7 +506,6 @@ function Menu() {
     const fetchAllData = async () => {
       // Create all fetch promises for parallel execution
       const fetchPromises = []
-
 
       // Banners
       fetchPromises.push(
@@ -875,21 +873,21 @@ function Menu() {
   // Fetch saved addresses
   const fetchSavedAddresses = useCallback(async () => {
     if (!token) return
-    
+
     setAddressesLoading(true)
     try {
       const response = await fetch(`${API_URL}/user/get-user-addresses`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'zoneId': '[3,1]',
+          Authorization: `Bearer ${token}`,
+          zoneId: '[3,1]',
           latitude: '23.793544663762145',
           longitude: '90.41166342794895',
-          'X-localization': 'en',
-        },
+          'X-localization': 'en'
+        }
       })
-      
+
       const data = await response.json()
       if (response.ok && data.addresses) {
         setSavedAddresses(data.addresses)
@@ -904,7 +902,6 @@ function Menu() {
     }
   }, [token])
 
-  
   // Header
   const modalHeader = () => (
     <View style={[styles().addNewAddressbtn]}>
@@ -953,7 +950,7 @@ function Menu() {
                   latitude: address.latitude,
                   longitude: address.longitude,
                   deliveryAddress: address.address,
-                  city: address.city || address.address,
+                  city: address.city || address.address
                 }
                 setLocation(locationData)
                 const modal = modalRef.current
@@ -1273,7 +1270,6 @@ function Menu() {
         >
           <View style={styles().flex}>
             <View style={styles().mainContentContainer}>
-
               {/* Search Bar Section */}
               <Search
                 setSearch={handleSearch}
@@ -1328,7 +1324,7 @@ function Menu() {
                       )
                     }
                     keyExtractor={(item, index) =>
-                      `search-${item?._id?.toString() || index}-${index}` 
+                      `search-${item?._id?.toString() || index}-${index}`
                     }
                     refreshControl={
                       <RefreshControl
@@ -1363,7 +1359,6 @@ function Menu() {
                   contentContainerStyle={{ paddingBottom: scale(70) }}
                   renderItem={({ item }) => {
                     switch (item.type) {
-
                       case 'categories':
                         return (
                           <>
@@ -1372,7 +1367,9 @@ function Menu() {
                                 Browse Categories
                               </TextDefault>
                               <TouchableOpacity
-                                onPress={() => navigation.navigate('AllCategories')}
+                                onPress={() =>
+                                  navigation.navigate('AllCategories')
+                                }
                                 style={styles().viewAllButton}
                               >
                                 <Text
@@ -1675,7 +1672,6 @@ function Menu() {
           />
         </View>
         <BottomTab screen='HOME' />
-
       </SafeAreaView>
     </>
   )
