@@ -29,6 +29,7 @@ const DynamicCategoryForm = ({
   branding
 }) => {
   const [showYearPicker, setShowYearPicker] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [modalData, setModalData] = useState({
     title: '',
@@ -48,6 +49,26 @@ const DynamicCategoryForm = ({
       )
     : null
   const locationFields = getLocationFields(categoryKey)
+
+  // Date validation function
+  const validateDateFormat = (dateString) => {
+    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/
+    if (!regex.test(dateString)) {
+      return false
+    }
+    
+    const [day, month, year] = dateString.split('/')
+    const date = new Date(year, month - 1, day)
+    
+    // Check if the date is valid
+    if (date.getFullYear() !== parseInt(year) ||
+        date.getMonth() !== parseInt(month - 1) ||
+        date.getDate() !== parseInt(day)) {
+      return false
+    }
+    
+    return true
+  }
 
   if (!categoryForm) {
     return (
@@ -305,6 +326,27 @@ const DynamicCategoryForm = ({
           </TouchableOpacity>
         )
 
+      case 'date':
+        return (
+          <TouchableOpacity
+            style={[
+              styles.selectionButton,
+              { borderColor: branding.borderColor, backgroundColor: 'white' }
+            ]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text
+              style={[
+                styles.selectionButtonText,
+                { color: formData[field.key] ? branding.textColor : '#999' }
+              ]}
+            >
+              {formData[field.key] || field.placeholder}
+            </Text>
+            <Icon name='calendar-today' size={24} color='#999' />
+          </TouchableOpacity>
+        )
+
       default:
         return null
     }
@@ -383,6 +425,119 @@ const DynamicCategoryForm = ({
     )
   }
 
+  const renderDatePicker = () => {
+    // Find date fields from category form
+    const dateFields = categoryForm.fields.filter((f) => f.type === 'date')
+    
+    if (dateFields.length === 0) return null
+    
+    const dateField = dateFields[0] // For now, handle first date field
+    const currentDate = new Date()
+    const maxDate = new Date()
+    maxDate.setFullYear(currentDate.getFullYear() + 10) // Allow dates up to 10 years in future
+    
+    return (
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType='slide'
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: branding.textColor }]}>
+                Select {dateField.label}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(false)}
+                style={styles.closeButton}
+              >
+                <Icon name='close' size={24} color={branding.textColor} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerContainer}>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => {
+                  const today = new Date()
+                  const formattedDate = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`
+                  setFormData((prev) => ({
+                    ...prev,
+                    [dateField.key]: formattedDate
+                  }))
+                  setShowDatePicker(false)
+                }}
+              >
+                <Text style={styles.datePickerButtonText}>Today</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => {
+                  const futureDate = new Date()
+                  futureDate.setFullYear(futureDate.getFullYear() + 1)
+                  const formattedDate = `${futureDate.getDate().toString().padStart(2, '0')}/${(futureDate.getMonth() + 1).toString().padStart(2, '0')}/${futureDate.getFullYear()}`
+                  setFormData((prev) => ({
+                    ...prev,
+                    [dateField.key]: formattedDate
+                  }))
+                  setShowDatePicker(false)
+                }}
+              >
+                <Text style={styles.datePickerButtonText}>1 Year Later</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.datePickerButton, { backgroundColor: '#f0f0f0' }]}
+                onPress={() => {
+                  Alert.alert(
+                    'Enter Custom Date',
+                    'Please enter date in DD/MM/YYYY format (e.g., 25/12/2024)',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'OK', 
+                        onPress: () => {
+                          // For now, we'll prompt for input with a default valid date
+                          Alert.prompt(
+                            'Enter Date',
+                            'Enter date in DD/MM/YYYY format:',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'OK',
+                                onPress: (inputDate) => {
+                                  if (inputDate && validateDateFormat(inputDate)) {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      [dateField.key]: inputDate
+                                    }))
+                                    setShowDatePicker(false)
+                                  } else if (inputDate) {
+                                    Alert.alert('Invalid Date', 'Please enter a valid date in DD/MM/YYYY format')
+                                  }
+                                }
+                              }
+                            ],
+                            'plain-text',
+                            formData[dateField.key] || ''
+                          )
+                        }
+                      }
+                    ]
+                  )
+                }}
+              >
+                <Text style={[styles.datePickerButtonText, { color: '#333' }]}>Custom Date</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    )
+  }
+
   // Add Submit Button at bottom
   const renderSubmitButton = () => (
     <TouchableOpacity
@@ -401,6 +556,21 @@ const DynamicCategoryForm = ({
           Alert.alert(
             'Missing Information',
             `Please fill in all required fields: ${missingFields.map((f) => f.label).join(', ')}`
+          )
+          return
+        }
+
+        // Validate date fields
+        const dateFields = categoryForm.fields.filter((field) => field.type === 'date')
+        const invalidDateFields = dateFields.filter((field) => {
+          const value = formData[field.key]
+          return value && !validateDateFormat(value)
+        })
+
+        if (invalidDateFields.length > 0) {
+          Alert.alert(
+            'Invalid Date Format',
+            `Please enter valid dates in DD/MM/YYYY format for: ${invalidDateFields.map((f) => f.label).join(', ')}`
           )
           return
         }
@@ -534,6 +704,9 @@ const DynamicCategoryForm = ({
 
       {/* Year Picker Modal */}
       {renderYearPicker()}
+
+      {/* Date Picker Modal */}
+      {renderDatePicker()}
     </View>
   )
 }
@@ -761,6 +934,21 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
     marginTop: 50
+  },
+  datePickerContainer: {
+    padding: 20,
+    gap: 10
+  },
+  datePickerButton: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center'
+  },
+  datePickerButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600'
   }
 })
 

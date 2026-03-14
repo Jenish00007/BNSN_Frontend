@@ -647,7 +647,7 @@ export const CATEGORY_FORMS = {
       {
         key: 'insuranceExpiryDate',
         label: 'Insurance Expiry Date',
-        type: 'text',
+        type: 'date',
         placeholder: 'DD/MM/YYYY',
         required: false
       },
@@ -766,7 +766,7 @@ export const CATEGORY_FORMS = {
       {
         key: 'insuranceExpiryDate',
         label: 'Insurance Expiry Date',
-        type: 'text',
+        type: 'date',
         placeholder: 'DD/MM/YYYY',
         required: false
       },

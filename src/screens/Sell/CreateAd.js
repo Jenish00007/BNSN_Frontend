@@ -362,11 +362,17 @@ const CreateAd = () => {
       const formDataToSend = new FormData()
 
       // Add images
+      console.log('Adding images to form data:', selectedImages.length);
       selectedImages.forEach((image, index) => {
+        console.log(`Image ${index}:`, {
+          uri: image.uri,
+          type: image.type,
+          name: image.name
+        });
         formDataToSend.append('images', {
           uri: image.uri,
-          type: 'image/jpeg',
-          name: `product-image-${index}.jpg`
+          type: image.type,
+          name: image.name
         })
       })
 
@@ -540,6 +546,7 @@ const CreateAd = () => {
         ])
       } else {
         const errorMsg = result.message || 'Failed to create product'
+        console.log('Backend error response:', result)
         Alert.alert('Error', errorMsg)
       }
     } catch (error) {
