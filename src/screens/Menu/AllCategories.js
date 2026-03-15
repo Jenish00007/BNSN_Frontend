@@ -10,6 +10,7 @@ import {
   Dimensions,
   SafeAreaView,
   Image,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -132,16 +133,18 @@ const AllCategories = () => {
   );
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { borderBottomColor: '#E5E5E5' }]}>
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}
       >
         <Icon name="arrow-back" size={24} color={textColor} />
       </TouchableOpacity>
-      <Text style={[styles.headerTitle, { color: textColor }]}>
-        All Categories
-      </Text>
+      <View style={styles.headerTitleContainer}>
+        <Text style={[styles.headerTitle, { color: textColor }]}>
+          All Categories
+        </Text>
+      </View>
       <View style={styles.placeholder} />
     </View>
   );
@@ -167,6 +170,10 @@ const AllCategories = () => {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: backgroundColor }]}>
+        <StatusBar 
+          barStyle={themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'} 
+          backgroundColor={backgroundColor} 
+        />
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={primaryColor} />
@@ -180,26 +187,33 @@ const AllCategories = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: backgroundColor }]}>
-      {renderHeader()}
-      <FlatList
-        data={categories}
-        numColumns={3}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-        renderItem={renderCategoryItem}
-        keyExtractor={(item) => item?._id?.toString() || Math.random().toString()}
-        ListEmptyComponent={renderEmptyComponent}
-        ListFooterComponent={renderFooter}
-        onEndReached={loadMoreCategories}
-        onEndReachedThreshold={0.1}
-        refreshControl={
-          <RefreshControl
-            colors={[primaryColor]}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
-        }
+      <StatusBar 
+        barStyle={themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'} 
+        backgroundColor={backgroundColor} 
       />
+      {renderHeader()}
+      <View style={{ flex: 1, paddingTop: 10 }}>
+        <FlatList
+          data={categories}
+          numColumns={4}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          columnWrapperStyle={styles.columnWrapper}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item?._id?.toString() || Math.random().toString()}
+          ListEmptyComponent={renderEmptyComponent}
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMoreCategories}
+          onEndReachedThreshold={0.1}
+          refreshControl={
+            <RefreshControl
+              colors={[primaryColor]}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+        />
+      </View>
     </SafeAreaView>
   );
 };
@@ -212,19 +226,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
   },
   backButton: {
     padding: 8,
+    zIndex: 1,
+  },
+  headerTitleContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
+    fontWeight: '700',
   },
   placeholder: {
     width: 40,
@@ -239,36 +258,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   listContainer: {
-    padding: 16,
+    padding: 10,
     paddingBottom: 20,
     flexGrow: 1,
   },
+  columnWrapper: {
+    justifyContent: 'flex-start',
+    marginBottom: 5,
+  },
   categoryItem: {
-    width: (width - 64) / 3, // 3 columns with padding
+    margin: scale(5),
+    width: (width - scale(40)) / 4,
     alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 8,
   },
   categoryIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     backgroundColor: '#F5F5F5',
+    padding: scale(8),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-    overflow: 'hidden',
+    width: scale(60),
+    height: scale(60),
   },
   categoryIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(16),
+    resizeMode: 'cover',
   },
   categoryName: {
-    fontSize: 12,
-    fontWeight: '500',
+    marginTop: scale(3),
+    fontSize: scale(11),
     textAlign: 'center',
-    lineHeight: 16,
+    fontWeight: '500',
+    lineHeight: scale(14),
+    height: scale(30), // Slightly more height for 2 lines
   },
   footerLoader: {
     paddingVertical: 20,

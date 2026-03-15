@@ -31,12 +31,9 @@ const SubCategory = ({ route }) => {
   const { category } = route.params;
   const menucategoryId = category._id;
   const branding = useAppBranding();
-  const [activeTab, setActiveTab] = useState('All');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [subcat, setSubcat] = useState([]);
-  const [subcatId, setSubcatId] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   
@@ -52,52 +49,13 @@ const SubCategory = ({ route }) => {
   const [search, setSearch] = useState('');
   const newheaderColor = branding.headerColor;
 
-  // Fetch subcategories
-  useEffect(() => {
-    const fetchSubcat = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `${API_URL}/categories/${menucategoryId}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              zoneId: '[1]',
-              moduleId: moduleId
-            }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const json = await response.json();
-        if (json.success && json.data && json.data.subcategories) {
-          setSubcat(json.data.subcategories);
-        } else {
-          console.log('No subcategories found');
-          setSubcat([]);
-        }
-      } catch (error) {
-        console.error('Error fetching subcategories:', error);
-        setError('Error fetching subcategories');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSubcat();
-  }, [moduleId, menucategoryId]);
-
-  // Fetch products based on subcategory or default category
+  // Fetch products based on category
   useEffect(() => {
     if (!isSearching) {
       resetPagination();
       fetchProducts(1, false);
     }
-  }, [subcatId, isSearching]);
+  }, [isSearching]);
 
   // Search effect
   useEffect(() => {
@@ -123,11 +81,10 @@ const SubCategory = ({ route }) => {
     }
     
     try {
-      const categoryId = subcatId || menucategoryId;
-      console.log('Fetching products for category:', categoryId, 'page:', page);
+      console.log('Fetching products for category:', menucategoryId, 'page:', page);
       
       const response = await fetch(
-        `${API_URL}/product/categories/items/${categoryId}?limit=10&offset=${page}&type=all`,
+        `${API_URL}/product/categories/items/${menucategoryId}?limit=10&offset=${page}&type=all`,
         {
           method: 'GET',
           headers: {
@@ -188,10 +145,9 @@ const SubCategory = ({ route }) => {
 
     setIsSearching(true);
     setLoading(true);
-    const categoryId = subcatId || menucategoryId;
 
     try {
-      const url = `${API_URL}/search/products?keyword=${encodeURIComponent(text)}&category_id=${categoryId}&sortBy=name&sortOrder=asc&page=1&limit=10`;
+      const url = `${API_URL}/search/products?keyword=${encodeURIComponent(text)}&category_id=${menucategoryId}&sortBy=name&sortOrder=asc&page=1&limit=10`;
       console.log('Search URL:', url);
 
       const response = await fetch(url, {
@@ -226,20 +182,6 @@ const SubCategory = ({ route }) => {
     }
   };
 
-  const getSubcategoryNames = () => {
-    const tabs = ['All'];
-    if (subcat && subcat.length > 0) {
-      subcat.forEach((subcategory) => {
-        if (subcategory.name && subcategory.isActive) {
-          tabs.push(subcategory.name);
-        }
-      });
-    }
-    return tabs;
-  };
-
-  const tabs = getSubcategoryNames();
-
   const loadMoreProducts = async () => {
     if (!loadingMore && hasMore && !isSearching) {
       const nextPage = currentPage + 1;
@@ -254,53 +196,9 @@ const SubCategory = ({ route }) => {
     setLoadingMore(false);
   };
 
-  const handleTabPress = (tab) => {
-    if (tab === 'All') {
-      setSubcatId(null);
-    } else {
-      const subcategory = subcat.find((item) => item.name === tab);
-      if (subcategory) {
-        setSubcatId(subcategory._id);
-      }
-    }
-    setActiveTab(tab);
-    resetPagination();
-    if (search.trim() !== '') {
-      setSearch('');
-      setIsSearching(false);
-    }
-  };
-
   const handleSearchChange = (text) => {
     setSearch(text);
   };
-
-  // Simple render functions
-  const renderTabItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles(branding).tab, 
-        activeTab === item && {
-          ...styles(branding).activeTab,
-          backgroundColor: branding.primaryColor
-        }
-      ]}
-      onPress={() => handleTabPress(item)}
-    >
-      <Text
-        style={[
-          styles(branding).tabText,
-          { color: branding.textColor },
-          activeTab === item && {
-            ...styles(branding).activeTabText,
-            color: branding.backgroundColor
-          }
-        ]}
-      >
-        {item}
-      </Text>
-    </TouchableOpacity>
-  );
 
   const renderProductItem = ({ item }) => (
     <View style={{ 
@@ -389,7 +287,7 @@ const SubCategory = ({ route }) => {
   return (
     <>
       <SafeAreaView
-        edges={['bottom', 'left', 'right']}
+        edges={['left', 'right']}
         style={[styles(branding).flex, { backgroundColor: branding.backgroundColor }]}>
         <View style={[styles(branding).flex, { backgroundColor: branding.backgroundColor }]}>
           <View style={styles(branding).flex}>
@@ -402,18 +300,6 @@ const SubCategory = ({ route }) => {
                   search={search}
                   newheaderColor={newheaderColor}
                   placeHolder="Search Items"
-                />
-              </View>
-
-              {/* Category Tabs */}
-              <View style={styles(branding).tabContainer}>
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  data={tabs}
-                  keyExtractor={(item) => item}
-                  renderItem={renderTabItem}
-                  contentContainerStyle={{ paddingHorizontal: 10 }}
                 />
               </View>
 

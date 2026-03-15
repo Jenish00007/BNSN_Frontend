@@ -200,21 +200,19 @@ const styles = (props = null, branding = null) =>
     sectionTitle: {
       fontSize: 18,
       fontWeight: 'bold',
-   
       marginVertical: 0,
-      paddingHorizontal: 15,
+      paddingHorizontal: 0, // Removed to align with sectionHeader padding
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 5,
-      marginVertical: 2,
+      paddingHorizontal: scale(15), // Matches FlatList padding
+      marginVertical: scale(10),
     },
     viewAllButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
       paddingVertical: 4,
     },
     viewAllText: {

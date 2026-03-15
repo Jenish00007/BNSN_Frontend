@@ -17,8 +17,8 @@ export const en = {
     'Age does not diminish the extreme disappointment of having a scoop of ice cream fall from the cone',
   getStarted: 'Get Started!',
   welcome:
-    "Welcome to Qauds, sometimes all you need is love. But a little food now and then doesn't hurt.",
-  welcomeScreen: 'Welcome to Qauds',
+    "Welcome to 7ARK, sometimes all you need is love. But a little food now and then doesn't hurt.",
+  welcomeScreen: 'Welcome to 7ARK',
   loginBtn: 'Login',
   registerBtn: 'Register',
   name: 'Name',

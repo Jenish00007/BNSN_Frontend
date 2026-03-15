@@ -582,7 +582,7 @@ function Main(props) {
 
   return (
     <>
-      <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles().flex]}>
+      <SafeAreaView edges={['left', 'right']} style={[styles().flex]}>
         <View
           style={[
             styles().flex,

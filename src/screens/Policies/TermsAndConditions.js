@@ -89,14 +89,14 @@ export default function TermsAndConditions() {
             1. Acceptance of Terms
           </Text>
           <Text style={styles.paragraph}>
-            By accessing and using {appName || 'BNSN'}, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+            By accessing and using {appName || '7ARK'}, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
           </Text>
 
           <Text style={styles.sectionTitle}>
             2. Use License
           </Text>
           <Text style={styles.paragraph}>
-            Permission is granted to temporarily download one copy of {appName || 'BNSN'} for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:{'\n'}
+            Permission is granted to temporarily download one copy of {appName || '7ARK'} for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:{'\n'}
             • Modify or copy the materials{'\n'}
             • Use the materials for any commercial purpose or for any public display{'\n'}
             • Attempt to reverse engineer any software contained on the platform{'\n'}
@@ -107,7 +107,7 @@ export default function TermsAndConditions() {
             3. User Responsibilities
           </Text>
           <Text style={styles.paragraph}>
-            As a user of {appName || 'BNSN'}, you agree to:{'\n'}
+            As a user of {appName || '7ARK'}, you agree to:{'\n'}
             • Provide accurate and truthful information{'\n'}
             • Not post illegal, harmful, or inappropriate content{'\n'}
             • Respect other users and their property{'\n'}
@@ -132,7 +132,7 @@ export default function TermsAndConditions() {
             5. Transaction Safety
           </Text>
           <Text style={styles.paragraph}>
-            {appName || 'BNSN'} provides a platform for users to connect, but we do not:{'\n'}
+            {appName || '7ARK'} provides a platform for users to connect, but we do not:{'\n'}
             • Guarantee the quality or authenticity of items{'\n'}
             • Handle payments or transactions directly{'\n'}
             • Provide insurance for transactions{'\n'}
@@ -144,7 +144,7 @@ export default function TermsAndConditions() {
             6. Limitation of Liability
           </Text>
           <Text style={styles.paragraph}>
-            In no event shall {appName || 'BNSN'} or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on {appName || 'BNSN'}, even if {appName || 'BNSN'} or an authorized representative has been notified orally or in writing of the possibility of such damage.
+            In no event shall {appName || '7ARK'} or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on {appName || '7ARK'}, even if {appName || '7ARK'} or an authorized representative has been notified orally or in writing of the possibility of such damage.
           </Text>
 
           <Text style={styles.sectionTitle}>
@@ -166,7 +166,7 @@ export default function TermsAndConditions() {
           </Text>
           <Text style={styles.paragraph}>
             If you have any questions about these Terms and Conditions, please contact us:{'\n'}
-            Email: {contactInfo?.email || 'support@7ark.com'}
+            Email: {contactInfo?.email || '7ark.ynm@gmail.com'}
           </Text>
         </View>
       </ScrollView>
