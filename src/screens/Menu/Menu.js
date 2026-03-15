@@ -165,6 +165,7 @@ function Menu() {
   const [searchResults, setSearchResults] = useState([])
   const [searchResultsWithDistance, setSearchResultsWithDistance] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [distanceFilterKm, setDistanceFilterKm] = useState(null)
   const [isDistanceComputing, setIsDistanceComputing] = useState(false)
   const searchTimeoutRef = useRef(null)
@@ -501,299 +502,313 @@ function Menu() {
     )
   }
 
-  // Optimized parallel data fetching useEffect
-  useEffect(() => {
-    const fetchAllData = async () => {
-      // Create all fetch promises for parallel execution
-      const fetchPromises = []
+  const fetchAllData = useCallback(async () => {
+    // Create all fetch promises for parallel execution
+    const fetchPromises = []
 
-      // Banners
-      fetchPromises.push(
-        fetch(`${API_URL}/admin-banner/all`, {
+    // Banners
+    fetchPromises.push(
+      fetch(`${API_URL}/admin-banner/all`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          zoneId: zoneId,
+          moduleId: moduleId
+        }
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            const json = await safeJsonParse(response)
+            if (json?.banners && json.banners.length > 0) {
+              setBanners(json.banners)
+            }
+          }
+        })
+        .catch((error) => console.error('Error fetching banners:', error))
+        .finally(() => setBannersLoading(false))
+    )
+
+    // Categories (only once)
+    fetchPromises.push(
+      fetch(`${API_URL}/categories`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          zoneId: zoneId,
+          moduleId: moduleId
+        }
+      })
+        .then(async (response) => {
+          const json = await response.json()
+          if (json?.data?.length > 0) {
+            setCategories(json.data)
+          } else {
+            setCategories([])
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching categories:', error)
+          setCategories([])
+        })
+        .finally(() => {
+          setCategoriesLoading(false)
+          categoriesFetchedRef.current = true
+        })
+    )
+
+    // Supermarkets
+    fetchPromises.push(
+      fetch(
+        'https://6ammart-admin.6amtech.com/api/v1/stores/latest?type=all',
+        {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             zoneId: zoneId,
             moduleId: moduleId
           }
-        })
-          .then(async (response) => {
-            if (response.ok) {
-              const json = await safeJsonParse(response)
-              if (json?.banners && json.banners.length > 0) {
-                setBanners(json.banners)
-              }
-            }
-          })
-          .catch((error) => console.error('Error fetching banners:', error))
-          .finally(() => setBannersLoading(false))
+        }
       )
-
-      // Categories (only once)
-      if (!categoriesFetchedRef.current) {
-        console.log(`${API_URL}/categories`)
-        fetchPromises.push(
-          fetch(`${API_URL}/categories`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              zoneId: zoneId,
-              moduleId: moduleId
-            }
-          })
-            .then(async (response) => {
-              const json = await response.json()
-              if (json?.data?.length > 0) {
-                setCategories(json.data)
-              } else {
-                setCategories([])
-              }
-            })
-            .catch((error) => {
-              console.error('Error fetching categories:', error)
-              setCategories([])
-            })
-            .finally(() => {
-              setCategoriesLoading(false)
-              categoriesFetchedRef.current = true
-            })
-        )
-      }
-
-      // Supermarkets
-      fetchPromises.push(
-        fetch(
-          'https://6ammart-admin.6amtech.com/api/v1/stores/latest?type=all',
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              zoneId: zoneId,
-              moduleId: moduleId
-            }
-          }
-        )
-          .then(async (response) => {
-            const json = await safeJsonResponse(response)
-            if (json?.stores && json.stores.length > 0) {
-              setSupermarkets(json.stores)
-            } else {
-              setSupermarkets([])
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching supermarkets:', error)
+        .then(async (response) => {
+          const json = await safeJsonResponse(response)
+          if (json?.stores && json.stores.length > 0) {
+            setSupermarkets(json.stores)
+          } else {
             setSupermarkets([])
-          })
-          .finally(() => setSupermarketsLoading(false))
-      )
-
-      // All products
-      fetchPromises.push(
-        fetch(
-          `${API_URL}/product/get-all-products?page=1&limit=${ITEMS_PER_PAGE}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            }
           }
-        )
-          .then(async (response) => {
-            const json = await response.json()
-            if (json?.products && json.products.length > 0) {
-              setAllproducts(json.products)
-              setHasMoreAllProducts(json.products.length === ITEMS_PER_PAGE)
-            } else {
-              setAllproducts([])
-              setHasMoreAllProducts(false)
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching all products:', error)
+        })
+        .catch((error) => {
+          console.error('Error fetching supermarkets:', error)
+          setSupermarkets([])
+        })
+        .finally(() => setSupermarketsLoading(false))
+    )
+
+    // All products
+    fetchPromises.push(
+      fetch(
+        `${API_URL}/product/get-all-products?page=1&limit=${ITEMS_PER_PAGE}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+        .then(async (response) => {
+          const json = await response.json()
+          if (json?.products && json.products.length > 0) {
+            setAllproducts(json.products)
+            setHasMoreAllProducts(json.products.length === ITEMS_PER_PAGE)
+          } else {
             setAllproducts([])
             setHasMoreAllProducts(false)
-          })
-          .finally(() => setAllProductsLoading(false))
-      )
-
-      // Latest items
-      fetchPromises.push(
-        fetch(`${API_URL}/user-products/latest`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
           }
         })
-          .then(async (response) => {
-            const json = await response.json()
-            if (json?.products && json.products.length > 0) {
-              setLatestItem(json.products)
-            }
-          })
-          .catch((error) =>
-            console.error('Error fetching latest items:', error)
-          )
-          .finally(() => setNearbyMarketsLoading(false))
-      )
+        .catch((error) => {
+          console.error('Error fetching all products:', error)
+          setAllproducts([])
+          setHasMoreAllProducts(false)
+        })
+        .finally(() => {
+          setAllProductsLoading(false)
+          setAllProductsPage(1)
+        })
+    )
 
-      // Nearby market offers
-      fetchPromises.push(
-        fetch(
-          'https://6ammart-admin.6amtech.com/api/v1/stores/top-offer-near-me',
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              zoneId: zoneId,
-              moduleId: moduleId
-            }
+    // Latest items
+    fetchPromises.push(
+      fetch(`${API_URL}/user-products/latest`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(async (response) => {
+          const json = await response.json()
+          if (json?.products && json.products.length > 0) {
+            setLatestItem(json.products)
           }
+        })
+        .catch((error) =>
+          console.error('Error fetching latest items:', error)
         )
-          .then(async (response) => {
-            const json = await safeJsonResponse(response)
-            if (json?.stores && json.stores.length > 0) {
-              setNearbymarketsOffer(json.stores)
-            } else {
-              setNearbymarketsOffer([])
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching nearby market offers:', error)
+        .finally(() => setNearbyMarketsLoading(false))
+    )
+
+    // Nearby market offers
+    fetchPromises.push(
+      fetch(
+        'https://6ammart-admin.6amtech.com/api/v1/stores/top-offer-near-me',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            zoneId: zoneId,
+            moduleId: moduleId
+          }
+        }
+      )
+        .then(async (response) => {
+          const json = await safeJsonResponse(response)
+          if (json?.stores && json.stores.length > 0) {
+            setNearbymarketsOffer(json.stores)
+          } else {
             setNearbymarketsOffer([])
-          })
-          .finally(() => setNearbyMarketsOfferLoading(false))
-      )
-
-      // Popular items
-      fetchPromises.push(
-        fetch(`${API_URL}/user-products/popular`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
           }
         })
-          .then(async (response) => {
-            const json = await response.json()
-            if (json?.products && Array.isArray(json.products)) {
-              const validProducts = json.products.filter(
-                (product) =>
-                  product && typeof product === 'object' && product._id
-              )
-              setPopularItem(validProducts)
-            } else {
-              setPopularItem([])
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching popular items:', error)
+        .catch((error) => {
+          console.error('Error fetching nearby market offers:', error)
+          setNearbymarketsOffer([])
+        })
+        .finally(() => setNearbyMarketsOfferLoading(false))
+    )
+
+    // Popular items
+    fetchPromises.push(
+      fetch(`${API_URL}/user-products/popular`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(async (response) => {
+          const json = await response.json()
+          if (json?.products && Array.isArray(json.products)) {
+            const validProducts = json.products.filter(
+              (product) =>
+                product && typeof product === 'object' && product._id
+            )
+            setPopularItem(validProducts)
+          } else {
             setPopularItem([])
-          })
-          .finally(() => setPopularItemLoading(false))
-      )
-
-      // Flash sale items
-      fetchPromises.push(
-        fetch(`${API_URL}/user-products/flash-sale`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
           }
         })
-          .then(async (response) => {
-            const json = await response.json()
-            if (json?.products && Array.isArray(json.products)) {
-              const validProducts = json.products.filter(
-                (product) =>
-                  product && typeof product === 'object' && product._id
-              )
-              setFlashSaleItem(validProducts)
-            } else {
-              setFlashSaleItem([])
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching flash sale items:', error)
+        .catch((error) => {
+          console.error('Error fetching popular items:', error)
+          setPopularItem([])
+        })
+        .finally(() => setPopularItemLoading(false))
+    )
+
+    // Flash sale items
+    fetchPromises.push(
+      fetch(`${API_URL}/user-products/flash-sale`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(async (response) => {
+          const json = await response.json()
+          if (json?.products && Array.isArray(json.products)) {
+            const validProducts = json.products.filter(
+              (product) =>
+                product && typeof product === 'object' && product._id
+            )
+            setFlashSaleItem(validProducts)
+          } else {
             setFlashSaleItem([])
-          })
-          .finally(() => setFlashSaleItemLoading(false))
-      )
-
-      // Recommended items
-      fetchPromises.push(
-        fetch(`${API_URL}/user-products/recommended`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
           }
         })
-          .then(async (response) => {
-            const json = await response.json()
-            if (json?.products && Array.isArray(json.products)) {
-              const validProducts = json.products.filter(
-                (product) =>
-                  product && typeof product === 'object' && product._id
-              )
-              setRecommendedItem(validProducts)
-            } else {
-              setRecommendedItem([])
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching recommended items:', error)
+        .catch((error) => {
+          console.error('Error fetching flash sale items:', error)
+          setFlashSaleItem([])
+        })
+        .finally(() => setFlashSaleItemLoading(false))
+    )
+
+    // Recommended items
+    fetchPromises.push(
+      fetch(`${API_URL}/user-products/recommended`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(async (response) => {
+          const json = await response.json()
+          if (json?.products && Array.isArray(json.products)) {
+            const validProducts = json.products.filter(
+              (product) =>
+                product && typeof product === 'object' && product._id
+            )
+            setRecommendedItem(validProducts)
+          } else {
             setRecommendedItem([])
-          })
-          .finally(() => setRecommendedItemLoading(false))
-      )
-
-      // Events/flash sales
-      fetchPromises.push(
-        fetch(`${API_URL}/event/get-all-events`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
           }
         })
-          .then(async (response) => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`)
-            }
+        .catch((error) => {
+          console.error('Error fetching recommended items:', error)
+          setRecommendedItem([])
+        })
+        .finally(() => setRecommendedItemLoading(false))
+    )
 
-            const contentType = response.headers.get('content-type')
-            if (!contentType || !contentType.includes('application/json')) {
-              throw new Error('Response is not JSON')
-            }
+    // Events/flash sales
+    fetchPromises.push(
+      fetch(`${API_URL}/event/get-all-events`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
 
-            const json = await response.json()
-            if (json?.success && Array.isArray(json?.events)) {
-              const validEvents = json.events.filter(
-                (event) =>
-                  event &&
-                  typeof event === 'object' &&
-                  event._id &&
-                  event.status === 'Running' &&
-                  new Date(event.Finish_Date) > new Date()
-              )
-              setEvents(validEvents)
-            } else {
-              setEvents([])
-            }
-          })
-          .catch((error) => {
-            console.error('Error fetching events:', error)
+          const contentType = response.headers.get('content-type')
+          if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Response is not JSON')
+          }
+
+          const json = await response.json()
+          if (json?.success && Array.isArray(json?.events)) {
+            const validEvents = json.events.filter(
+              (event) =>
+                event &&
+                typeof event === 'object' &&
+                event._id &&
+                event.status === 'Running' &&
+                new Date(event.Finish_Date) > new Date()
+            )
+            setEvents(validEvents)
+          } else {
             setEvents([])
-          })
-          .finally(() => {
-            setEventsLoading(false)
-          })
-      )
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching events:', error)
+          setEvents([])
+        })
+        .finally(() => {
+          setEventsLoading(false)
+        })
+    )
 
-      // Execute all promises in parallel
-      await Promise.allSettled(fetchPromises)
+    // Execute all promises in parallel
+    await Promise.allSettled(fetchPromises)
+  }, [moduleId, zoneId, ITEMS_PER_PAGE])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        fetchAllData(),
+        fetchData(selectedFilter)
+      ])
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      setRefreshing(false)
     }
+  }, [fetchAllData, selectedFilter])
 
+  // Optimized parallel data fetching useEffect
+  useEffect(() => {
     fetchAllData()
-  }, [moduleId, zoneId])
+  }, [fetchAllData])
 
   // Update fetchData
   const fetchData = async (category) => {
@@ -1330,8 +1345,8 @@ function Menu() {
                       <RefreshControl
                         progressViewOffset={0}
                         colors={[currentTheme.iconColorPink]}
-                        refreshing={searchLoading}
-                        onRefresh={() => debouncedSearch(search)}
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
                       />
                     }
                     data={filteredSearchResults}
@@ -1357,6 +1372,13 @@ function Menu() {
                   onEndReachedThreshold={0.1}
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: scale(70) }}
+                  refreshControl={
+                    <RefreshControl
+                      colors={[currentTheme.iconColorPink]}
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                    />
+                  }
                   renderItem={({ item }) => {
                     switch (item.type) {
                       case 'categories':
