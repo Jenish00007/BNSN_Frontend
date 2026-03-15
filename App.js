@@ -41,7 +41,7 @@ const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
         Accept: 'application/json',
         Referer: 'https://quixo.com'
       },
-      timeout: 10000 // 10 second timeout
+      timeout: 10000
     })
 
     if (response.status === 403) {
@@ -52,7 +52,7 @@ const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
     if (response.status === 429) {
       console.warn('App.js: Nominatim returned 429 Too Many Requests')
       if (retryCount < maxRetries) {
-        const delay = baseDelay * Math.pow(2, retryCount) // Exponential backoff
+        const delay = baseDelay * Math.pow(2, retryCount)
         console.log(`App.js: Retrying in ${delay}ms...`)
         await new Promise((resolve) => setTimeout(resolve, delay))
         return geocodeLocation(latitude, longitude, retryCount + 1)
@@ -77,7 +77,6 @@ const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
       error.message
     )
 
-    // Try fallback service if primary fails and we haven't exhausted retries
     if (retryCount < maxRetries) {
       const delay = baseDelay * Math.pow(2, retryCount)
       console.log(`App.js: Trying fallback service in ${delay}ms...`)
@@ -85,7 +84,6 @@ const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
       await new Promise((resolve) => setTimeout(resolve, delay))
 
       try {
-        // Fallback: Use a different geocoding service
         const fallbackUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
 
         const fallbackResponse = await fetch(fallbackUrl, {
@@ -93,7 +91,7 @@ const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
             'User-Agent': 'QuixoApp/1.0 (contact@quixo.com)',
             Accept: 'application/json'
           },
-          timeout: 8000 // 8 second timeout
+          timeout: 8000
         })
 
         if (fallbackResponse.ok) {
@@ -108,7 +106,6 @@ const geocodeLocation = async (latitude, longitude, retryCount = 0) => {
         )
       }
 
-      // Try again with primary service
       return geocodeLocation(latitude, longitude, retryCount + 1)
     }
 
@@ -120,20 +117,15 @@ import messaging from '@react-native-firebase/messaging'
 
 async function getFCMToken() {
   try {
-    // Request permission (iOS)
     const authStatus = await messaging().requestPermission()
     const enabled =
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
       authStatus === messaging.AuthorizationStatus.PROVISIONAL
 
     if (enabled) {
-      // Get FCM token
       const fcmToken = await messaging().getToken()
       console.log('FCM Token:', fcmToken)
-
-      // Save token to AsyncStorage
       await AsyncStorage.setItem('fcmToken', fcmToken)
-
       return fcmToken
     } else {
       console.log('Notification permission denied')
@@ -155,7 +147,10 @@ import {
   I18nManager,
   View,
   Text,
-  AppState
+  AppState,
+  Alert,
+  Linking,
+  TouchableOpacity
 } from 'react-native'
 import * as Location from 'expo-location'
 import { ApolloProvider } from '@apollo/client'
@@ -185,16 +180,13 @@ LogBox.ignoreLogs([
   'Warning: ...',
   'Sentry Logger ',
   'Constants.deviceYearClass'
-]) // Ignore log notification by message
-LogBox.ignoreAllLogs() // Ignore all log notifications
+])
+LogBox.ignoreAllLogs()
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const notificationType = notification?.request?.content?.data?.type
-
-    // Always play sound for chat messages
     const shouldPlaySound = notificationType !== 'REVIEW_ORDER'
-
     return {
       shouldShowAlert: true,
       shouldPlaySound: shouldPlaySound,
@@ -223,14 +215,88 @@ export default function App() {
   const [currentPermissionAttempt, setCurrentPermissionAttempt] = useState(0)
   const [locationPermissionGranted, setLocationPermissionGranted] =
     useState(false)
+  const [locationPermissionDeniedPermanently, setLocationPermissionDeniedPermanently] =
+    useState(false)
   useWatchLocation()
 
-  // Custom wrapper for location permission with tracking
+  // ─── Helper: fetch coords + geocode and update location state ──────────────
+  const initializeLocationFromCoords = async (coords) => {
+    try {
+      const data = await geocodeLocation(coords.latitude, coords.longitude)
+      console.log('App.js: Geocoding successful:', data)
+
+      let address = ''
+      if (data.display_name) {
+        address = data.display_name
+      } else if (data.localityInfo && data.localityInfo.informative) {
+        const locality = data.localityInfo.informative[0]
+        address = `${locality.name}, ${locality.administrative[1].name}, ${locality.administrative[0].name}`
+      } else {
+        address = `Lat: ${coords.latitude.toFixed(4)}, Lon: ${coords.longitude.toFixed(4)}`
+      }
+
+      if (address.length > 21) {
+        address = address.substring(0, 21) + '...'
+      }
+
+      const currentLocation = {
+        label: 'currentLocation',
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        deliveryAddress: address,
+        timestamp: Date.now()
+      }
+      console.log('App.js: Setting current location:', currentLocation)
+      setLocation(currentLocation)
+      await AsyncStorage.setItem('location', JSON.stringify(currentLocation))
+      return true
+    } catch (geocodingError) {
+      console.warn('App.js: Geocoding failed:', geocodingError.message)
+      const fallbackAddress = `Lat: ${coords.latitude.toFixed(4)}, Lon: ${coords.longitude.toFixed(4)}`
+      const currentLocation = {
+        label: 'currentLocation',
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        deliveryAddress: fallbackAddress,
+        timestamp: Date.now()
+      }
+      setLocation(currentLocation)
+      await AsyncStorage.setItem('location', JSON.stringify(currentLocation))
+      return true
+    }
+  }
+
+  // ─── AppState listener: re-check permission when user returns from Settings ─
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'active') {
+        const { status } = await Location.getForegroundPermissionsAsync()
+        if (status === 'granted') {
+          console.log('App.js: Permission granted after returning from Settings — fetching location...')
+          setLocationPermissionDeniedPermanently(false)
+          setLocationPermissionGranted(true)
+          if (!location) {
+            try {
+              const { coords, error } = await getCurrentLocation()
+              if (!error && coords) {
+                await initializeLocationFromCoords(coords)
+              }
+            } catch (e) {
+              console.warn('App.js: Error re-fetching location after settings:', e)
+            }
+          }
+        }
+      }
+    })
+    return () => subscription.remove()
+  }, [location])
+
+  // ─── Custom wrapper for location permission ────────────────────────────────
   const requestLocationPermissionWithTracking = async () => {
     let attempts = 0
-    const maxAttempts = 20 // Increased attempts to be more persistent
-    const initialDelay = 1000 // Start with 1 second delay
-    const maxDelay = 8000 // Maximum delay between attempts (8 seconds)
+    const maxAttempts = 3
+    const initialDelay = 1000
+    const maxDelay = 5000
 
     while (attempts < maxAttempts) {
       attempts++
@@ -248,12 +314,24 @@ export default function App() {
       }
 
       if (!canAskAgain) {
-        console.log('App.js: Cannot ask for location permission again')
-        // Instead of returning, throw an error to restart the process
-        throw new Error('Cannot ask for location permission again')
+        console.log(
+          'App.js: Cannot ask for location permission again — directing user to Settings'
+        )
+        // Permission permanently denied — force user to open Settings, no skip option
+        Alert.alert(
+          'Location Permission Required',
+          'This app requires location access to work. Please enable location permission in your device settings to continue.',
+          [
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings()
+            }
+          ],
+          { cancelable: false } // Prevent dismissing by tapping outside
+        )
+        return { granted: false, canAskAgain: false }
       }
 
-      // Request permission with proper error handling
       try {
         const { status: newStatus } =
           await Location.requestForegroundPermissionsAsync()
@@ -264,8 +342,6 @@ export default function App() {
           return { granted: true, canAskAgain: true }
         }
 
-        // If permission was denied, calculate delay for next attempt
-        // Use exponential backoff: 1s, 2s, 4s, 8s, etc.
         if (attempts < maxAttempts) {
           const delay = Math.min(
             initialDelay * Math.pow(2, attempts - 1),
@@ -276,15 +352,11 @@ export default function App() {
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
         } else {
-          // Max attempts reached, throw error to restart process
-          console.log(
-            'App.js: Max attempts reached, restarting permission request...'
-          )
-          throw new Error('Max attempts reached, restarting permission request')
+          console.log('App.js: Max attempts reached, returning permission denied...')
+          return { granted: false, canAskAgain: false }
         }
       } catch (error) {
         console.warn('App.js: Error requesting permission:', error.message)
-        // If there's an error requesting permission, wait before trying again
         if (attempts < maxAttempts) {
           const delay = Math.min(
             initialDelay * Math.pow(2, attempts - 1),
@@ -295,21 +367,16 @@ export default function App() {
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
         } else {
-          // Max attempts reached, throw error to restart process
-          console.log(
-            'App.js: Max attempts reached due to errors, restarting...'
-          )
-          throw new Error(
-            'Max attempts reached due to errors, restarting permission request'
-          )
+          console.log('App.js: Max attempts reached due to errors, returning permission denied...')
+          return { granted: false, canAskAgain: false }
         }
       }
     }
 
-    // This should never be reached, but just in case
     console.log('App.js: Unexpected end of permission request loop')
-    throw new Error('Unexpected end of permission request loop')
+    return { granted: false, canAskAgain: false }
   }
+
   useEffect(() => {
     const loadAppData = async () => {
       try {
@@ -320,39 +387,35 @@ export default function App() {
           MuseoSans700: require('./src/assets/font/MuseoSans/MuseoSans700.ttf')
         })
 
-        // Initialize location with mandatory permission request
         let locationInitialized = false
+        let permissionAttempts = 0
+        const maxPermissionAttempts = 3
 
-        while (!locationInitialized) {
+        while (!locationInitialized && permissionAttempts < maxPermissionAttempts) {
+          permissionAttempts++
           try {
             console.log('App.js: Starting location permission request...')
             setIsWaitingForLocationPermission(true)
-            setLocationPermissionGranted(false) // Reset for this iteration
+            setLocationPermissionGranted(false)
 
             let permissionResult = null
             try {
-              // Custom wrapper to track attempts
               permissionResult = await requestLocationPermissionWithTracking()
             } catch (permissionError) {
               console.error(
                 'App.js: Error during permission request:',
                 permissionError.message
               )
-              // Error occurred, restart the process
-              console.log(
-                'App.js: Restarting location permission request due to error...'
-              )
+              console.log('App.js: Permission request failed, breaking loop to prevent crash...')
               setIsWaitingForLocationPermission(false)
               setLocationPermissionGranted(false)
-              continue // Restart the loop
+              break
             }
 
             console.log('App.js: Permission request result:', permissionResult)
 
             if (permissionResult.granted) {
-              console.log(
-                'App.js: Location permission granted, getting current location...'
-              )
+              console.log('App.js: Location permission granted, getting current location...')
               setIsWaitingForLocationPermission(false)
               setCurrentPermissionAttempt(0)
               setLocationPermissionGranted(true)
@@ -366,143 +429,75 @@ export default function App() {
                     coords.latitude,
                     coords.longitude
                   )
-
-                  try {
-                    const data = await geocodeLocation(
-                      coords.latitude,
-                      coords.longitude
-                    )
-                    console.log('App.js: Geocoding successful:', data)
-
-                    let address = ''
-                    if (data.display_name) {
-                      // Nominatim response
-                      address = data.display_name
-                    } else if (
-                      data.localityInfo &&
-                      data.localityInfo.informative
-                    ) {
-                      // BigDataCloud response
-                      const locality = data.localityInfo.informative[0]
-                      address = `${locality.name}, ${locality.administrative[1].name}, ${locality.administrative[0].name}`
-                    } else {
-                      // Fallback to coordinates
-                      address = `Lat: ${coords.latitude.toFixed(4)}, Lon: ${coords.longitude.toFixed(4)}`
-                    }
-
-                    if (address.length > 21) {
-                      address = address.substring(0, 21) + '...'
-                    }
-
-                    const currentLocation = {
-                      label: 'currentLocation',
-                      latitude: coords.latitude,
-                      longitude: coords.longitude,
-                      deliveryAddress: address,
-                      timestamp: Date.now()
-                    }
-                    console.log(
-                      'App.js: Setting current location:',
-                      currentLocation
-                    )
-                    setLocation(currentLocation)
-                    // Store in AsyncStorage for persistence
-                    await AsyncStorage.setItem(
-                      'location',
-                      JSON.stringify(currentLocation)
-                    )
-
-                    locationInitialized = true // Successfully initialized, exit loop
-                    setLocationPermissionGranted(true) // Mark permission as granted
-                  } catch (geocodingError) {
-                    console.warn(
-                      'App.js: Geocoding failed:',
-                      geocodingError.message
-                    )
-                    // Use coordinates as fallback address
-                    const fallbackAddress = `Lat: ${coords.latitude.toFixed(4)}, Lon: ${coords.longitude.toFixed(4)}`
-                    const currentLocation = {
-                      label: 'currentLocation',
-                      latitude: coords.latitude,
-                      longitude: coords.longitude,
-                      deliveryAddress: fallbackAddress,
-                      timestamp: Date.now()
-                    }
-                    setLocation(currentLocation)
-                    await AsyncStorage.setItem(
-                      'location',
-                      JSON.stringify(currentLocation)
-                    )
-
-                    locationInitialized = true // Successfully initialized, exit loop
-                    setLocationPermissionGranted(true) // Mark permission as granted
+                  const success = await initializeLocationFromCoords(coords)
+                  if (success) {
+                    locationInitialized = true
+                    setLocationPermissionGranted(true)
                   }
                 } else {
                   console.warn(
                     'App.js: Location error after permission granted:',
                     error?.message
                   )
-                  // Error getting location, restart the process
-                  console.log(
-                    'App.js: Restarting location permission request due to location error...'
-                  )
+                  console.log('App.js: Location retrieval failed, breaking loop to prevent crash...')
                   setIsWaitingForLocationPermission(false)
                   setLocationPermissionGranted(false)
-                  continue // Restart the loop
+                  break
                 }
               } catch (locationError) {
                 console.warn(
                   'App.js: Error getting current location:',
                   locationError.message
                 )
-                // Error getting location, restart the process
-                console.log(
-                  'App.js: Restarting location permission request due to location error...'
-                )
+                console.log('App.js: Location retrieval error, breaking loop to prevent crash...')
                 setIsWaitingForLocationPermission(false)
                 setLocationPermissionGranted(false)
-                continue // Restart the loop
+                break
               }
-            } else {
-              console.warn(
-                'App.js: Location permission denied after persistent requests'
-              )
-              // User denied permission - restart the permission request process
-              console.log('App.js: Restarting location permission request...')
-              // Clean up states and restart the loop
+            } else if (!permissionResult.canAskAgain) {
+              // Permanently denied — Alert already shown, block app until user enables from Settings
+              console.log('App.js: Permission permanently denied, blocking app until user enables from Settings...')
               setIsWaitingForLocationPermission(false)
               setLocationPermissionGranted(false)
-              continue // Restart the loop
+              setLocationPermissionDeniedPermanently(true)
+              break
+            } else {
+              console.warn('App.js: Location permission denied after request')
+              console.log('App.js: Location permission denied, breaking loop to continue app...')
+              setIsWaitingForLocationPermission(false)
+              setLocationPermissionGranted(false)
+              break
             }
           } catch (locationError) {
             console.warn(
               'App.js: Location initialization failed:',
               locationError.message
             )
-            // Error occurred - restart the permission request process
-            console.log(
-              'App.js: Restarting location permission request due to error...'
-            )
+            console.log('App.js: Location initialization error, breaking loop to prevent crash...')
             setIsWaitingForLocationPermission(false)
             setLocationPermissionGranted(false)
-            continue // Restart the loop
+            break
           }
         }
 
-        // Final verification: Check if location permission is actually granted
+        if (permissionAttempts >= maxPermissionAttempts && !locationInitialized) {
+          console.warn('App.js: Maximum permission attempts reached, continuing without location')
+          setIsWaitingForLocationPermission(false)
+          setLocationPermissionGranted(false)
+        }
+
+        // Final verification
         const { status: finalStatus } =
           await Location.getForegroundPermissionsAsync()
         if (finalStatus !== 'granted') {
           console.warn(
-            'App.js: Final verification failed - permission not granted'
+            'App.js: Final verification - location permission not granted, app will continue without location features'
           )
-          throw new Error(
-            'Location permission not granted after initialization'
-          )
+          setLocationPermissionGranted(false)
+        } else {
+          console.log('App.js: Final verification - location permission confirmed')
+          setLocationPermissionGranted(true)
         }
-
-        // Mark location permission as handled (whether granted or not)
-        setLocationPermissionGranted(true)
         setIsWaitingForLocationPermission(false)
         setCurrentPermissionAttempt(0)
 
@@ -510,14 +505,13 @@ export default function App() {
         setAppIsReady(true)
       } catch (e) {
         console.warn('App initialization error:', e)
-        // If there's an initialization error, restart the entire process
-        // This ensures the app doesn't proceed without proper location setup
-        console.log('App.js: Restarting app initialization due to error...')
-        // Don't set app as ready, the useEffect will run again
+        console.log('App.js: Initialization error occurred, continuing app to prevent crash...')
+        setIsWaitingForLocationPermission(false)
+        setLocationPermissionGranted(false)
+        setCurrentPermissionAttempt(0)
+        setAppIsReady(true)
         return
       } finally {
-        // Always clean up the permission states
-        setLocationPermissionGranted(true)
         setIsWaitingForLocationPermission(false)
         setCurrentPermissionAttempt(0)
       }
@@ -534,28 +528,23 @@ export default function App() {
     try {
       themeSetter({ type: systemTheme === 'dark' ? 'Dark' : 'Pink' })
     } catch (error) {
-      // Error retrieving data
       console.log('Theme Error : ', error.message)
     }
   }, [systemTheme])
 
   useEffect(() => {
     if (!appIsReady) return
-
     const hideSplashScreen = async () => {
       await SplashScreen.hideAsync()
     }
-
     hideSplashScreen()
   }, [appIsReady])
 
   useEffect(() => {
     if (!location) return
-
     const saveLocation = async () => {
       await AsyncStorage.setItem('location', JSON.stringify(location))
     }
-
     saveLocation()
   }, [location])
 
@@ -563,7 +552,6 @@ export default function App() {
     requestTrackingPermissions()
     getFCMToken()
 
-    // Initialize Firebase messaging handlers
     try {
       initializeMessaging()
       console.log('🔔 [APP] Firebase messaging initialized')
@@ -626,28 +614,22 @@ export default function App() {
         const notificationType = notification?.request?.content?.data?.type
         const notificationData = notification?.request?.content?.data
 
-        // Handle chat notifications
         if (notificationType === 'chat') {
           console.log('Chat notification received:', notificationData)
-
-          // Navigate to chat screen if app is in foreground
           if (notificationData?.conversationId) {
-            // Use the navigation ref to navigate
             const { navigationRef } = require('./src/routes/navigationService')
             if (navigationRef.isReady()) {
               navigationRef.navigate('Chat', {
                 conversationId: notificationData.conversationId,
-                // Pass other relevant data if needed
                 groupTitle: notificationData.senderName
                   ? `Chat with ${notificationData.senderName}`
                   : 'New Message',
-                forceNavigate: true // Force navigation even if already in chat
+                forceNavigate: true
               })
             }
           }
         }
 
-        // Handle review order notifications (existing logic)
         if (notificationType === NOTIFICATION_TYPES.REVIEW_ORDER) {
           const id = notificationData?._id
           if (id) {
@@ -663,10 +645,8 @@ export default function App() {
           response?.notification?.request?.content?.data?.type
         const notificationData = response?.notification?.request?.content?.data
 
-        // Handle chat notifications when user taps on notification
         if (notificationType === 'chat') {
           console.log('Chat notification response received:', notificationData)
-
           if (notificationData?.conversationId) {
             const { navigationRef } = require('./src/routes/navigationService')
             if (navigationRef.isReady()) {
@@ -681,7 +661,6 @@ export default function App() {
           }
         }
 
-        // Handle review order notifications (existing logic)
         if (notificationType === NOTIFICATION_TYPES.REVIEW_ORDER) {
           const id = notificationData?._id
           if (id) {
@@ -690,6 +669,7 @@ export default function App() {
           }
         }
       })
+
     return () => {
       Notifications.removeNotificationSubscription(notificationListener.current)
       Notifications.removeNotificationSubscription(responseListener.current)
@@ -707,7 +687,9 @@ export default function App() {
   if (
     !appIsReady ||
     showSplash ||
-    (isWaitingForLocationPermission && currentPermissionAttempt > 0)
+    (isWaitingForLocationPermission &&
+      currentPermissionAttempt > 0 &&
+      currentPermissionAttempt <= 3)
   ) {
     return (
       <View style={{ flex: 1 }}>
@@ -737,24 +719,72 @@ export default function App() {
               textColor={Theme[theme].white}
               style={styles.waitingSubText}
             >
-              This app requires location permission to function
+              This app requires location permission to function properly.
             </TextDefault>
             <TextDefault
               textColor={Theme[theme].white}
               style={styles.waitingSubText}
             >
-              Please grant permission to continue using the app
-            </TextDefault>
-            <TextDefault
-              textColor={Theme[theme].white}
-              style={styles.waitingSubText}
-            >
-              {currentPermissionAttempt > 10
-                ? "Please check your device settings if permission dialog doesn't appear"
-                : ''}
+              Please grant permission to continue using the app.
             </TextDefault>
           </View>
         )}
+      </View>
+    )
+  }
+
+  // ─── Blocking screen: location permission permanently denied ─────────────
+  if (locationPermissionDeniedPermanently) {
+    return (
+      <View
+        style={[
+          styles.flex,
+          styles.mainContainer,
+          { backgroundColor: Theme[theme].startColor, padding: 30 }
+        ]}
+      >
+        <TextDefault
+          textColor={Theme[theme].white}
+          bold
+          style={{ fontSize: 20, marginBottom: 16, textAlign: 'center' }}
+        >
+          Location Permission Required
+        </TextDefault>
+        <TextDefault
+          textColor={Theme[theme].white}
+          style={{ fontSize: 15, marginBottom: 12, textAlign: 'center', opacity: 0.9 }}
+        >
+          This app requires location access to work. Please enable location permission in your device settings.
+        </TextDefault>
+        <TextDefault
+          textColor={Theme[theme].white}
+          style={{ fontSize: 13, marginBottom: 30, textAlign: 'center', opacity: 0.7 }}
+        >
+          Settings {'>'} Apps {'>'} This App {'>'} Permissions {'>'} Location
+        </TextDefault>
+        <TouchableOpacity
+          onPress={() => Linking.openSettings()}
+          style={{
+            backgroundColor: Theme[theme].white,
+            paddingVertical: 14,
+            paddingHorizontal: 32,
+            borderRadius: 10
+          }}
+        >
+          <TextDefault
+            textColor={Theme[theme].startColor}
+            bold
+            style={{ fontSize: 16, textAlign: 'center' }}
+          >
+            Open Settings
+          </TextDefault>
+        </TouchableOpacity>
+        <TextDefault
+          textColor={Theme[theme].white}
+          style={{ fontSize: 12, marginTop: 20, textAlign: 'center', opacity: 0.6 }}
+        >
+          After enabling, return to the app to continue.
+        </TextDefault>
       </View>
     )
   }
@@ -829,6 +859,7 @@ const styles = StyleSheet.create({
     opacity: 0.8
   }
 })
+
 async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -836,18 +867,17 @@ async function registerForPushNotificationsAsync() {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
-      sound: 'default', // Enable default notification sound
-      enableVibrate: true, // Enable vibration
-      playSound: true // Ensure sound plays
+      sound: 'default',
+      enableVibrate: true,
+      playSound: true
     })
 
-    // Create a separate channel for chat messages with sound
     await Notifications.setNotificationChannelAsync('chat_messages', {
       name: 'Chat Messages',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 500, 250],
       lightColor: '#007AFF',
-      sound: 'message_sound', // Custom sound for chat messages
+      sound: 'message_sound',
       enableVibrate: true,
       playSound: true
     })

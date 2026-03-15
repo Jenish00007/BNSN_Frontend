@@ -27,15 +27,17 @@ function Location({
   const branding = useAppBranding()
 
   let translatedLabel
-  if (location.label === 'Current Location') {
+  if (!location) {
+    translatedLabel = t('currentLocation')
+  } else if (location.label === 'Current Location') {
     translatedLabel = t('currentLocation')
   } else {
-    translatedLabel = t(location.label)
+    translatedLabel = t(location.label || 'currentLocation')
   }
 
-  const translatedAddress = location.deliveryAddress === 'Current Location'
+  const translatedAddress = !location || location.deliveryAddress === 'Current Location'
     ? t('currentLocation')
-    : location.deliveryAddress
+    : location.deliveryAddress || t('currentLocation')
 
   const onLocationPress = (event) => {
     if (screenName === 'checkout') {
@@ -45,7 +47,7 @@ function Location({
         })
       } else {
         navigation.navigate('CartAddress', {
-          address: location
+          address: location || {}
         })
       }
     }
