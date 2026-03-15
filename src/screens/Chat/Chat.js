@@ -972,7 +972,7 @@ const Chat = ({ navigation }) => {
   }, [productId])
 
   // Replace with your PC's IP address on the same Wi‑Fi network
-  const SOCKET_URL = 'http://192.168.31.121:8000' // ── Socket init ──
+  const SOCKET_URL = 'https://7ark.in' // ── Socket init ──
   useEffect(() => {
     if (!socketInitializedRef.current) {
       initializeChat()
