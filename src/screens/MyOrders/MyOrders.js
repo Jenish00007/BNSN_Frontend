@@ -166,12 +166,6 @@ function MyOrders(props) {
           error={errorOrders}
           reFetchOrders={reloadOrders}
         />
-        <View
-          style={{
-            paddingBottom: inset.bottom,
-            backgroundColor: branding.backgroundColor
-          }}
-        />
       </View>
       <BottomTab screen="ORDERS" />
       <ReviewModal 

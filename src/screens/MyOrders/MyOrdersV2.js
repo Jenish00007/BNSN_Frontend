@@ -274,12 +274,6 @@ function MyOrders(props) {
         )}
         onEndReached={fetchMoreOrdersFunc}
       />
-      <View
-        style={{
-          paddingBottom: inset.bottom,
-          backgroundColor: currentTheme.themeBackground
-        }}
-      />
       <BottomTab screen="ORDERS" />
     </>
   )

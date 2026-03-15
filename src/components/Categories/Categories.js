@@ -9,6 +9,7 @@ import {
   ScrollView
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
+import { scale } from '../../utils/scaling'
 
 const Categories = React.memo(function Categories({ categories }) {
   const navigation = useNavigation()
@@ -113,8 +114,8 @@ const Categories = React.memo(function Categories({ categories }) {
         windowSize={8}
         removeClippedSubviews={false}
         getItemLayout={(data, index) => ({
-          length: 80,
-          offset: 80 * Math.floor(index / 4) * 2,
+          length: scale(80),
+          offset: scale(80) * Math.floor(index / 4) * 2,
           index
         })}
         contentContainerStyle={styles.listContainer}
@@ -130,44 +131,44 @@ const styles = StyleSheet.create({
     flex: 1
   },
   listContainer: {
-    paddingHorizontal: 5 // Reduced from 10
+    paddingHorizontal: scale(10)
   },
   touchableContainer: {
     flex: 1,
-    margin: 5,
-    maxWidth: 80
+    margin: scale(5),
+    maxWidth: scale(80)
   },
   iconContainer: {
     backgroundColor: '#F5F5F5',
-    padding: 8, // Reduced from 10
-    borderRadius: 8, // Reduced from 10
+    padding: scale(8),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
-    width: 60, // Reduced from 70
-    height: 60 // Reduced from 70
+    width: scale(60),
+    height: scale(60)
   },
   container: {
     alignItems: 'center',
-    padding: 5, // Reduced from 10
-    width: 80 // Reduced from 100
+    padding: scale(5),
+    width: scale(80)
   },
   icon: {
-    width: 40, // Reduced from 50
-    height: 40, // Reduced from 50
-    borderRadius: 16 // Reduced from 20
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(16)
   },
   text: {
-    marginTop: 3, // Reduced from 5
-    fontSize: 11, // Reduced from 12
+    marginTop: scale(3),
+    fontSize: scale(11),
     textAlign: 'center',
     fontWeight: '500'
   },
   emptyContainer: {
-    padding: 20,
+    padding: scale(20),
     alignItems: 'center'
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: scale(16),
     color: '#666'
   }
 })

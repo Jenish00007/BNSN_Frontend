@@ -95,7 +95,7 @@ export default function Help() {
   });
 
   const handleEmailPress = () => {
-    Linking.openURL(`mailto:${contactInfo?.email || 'support@7ark.com'}`);
+    Linking.openURL(`mailto:${contactInfo?.email || '7ark.ynm@gmail.com'}`);
   };
 
   const handlePhonePress = () => {
@@ -120,7 +120,7 @@ export default function Help() {
           <View style={styles.faqItem}>
             <Text style={styles.faqQuestion}>Is posting ads free?</Text>
             <Text style={styles.faqAnswer}>
-              Yes! Posting ads on {appBranding.appName || 'BNSN'} is completely free. There are no hidden fees, no subscription costs, and no charges for posting as many ads as you want.
+              Yes! Posting ads on {appBranding.appName || '7ARK'} is completely free. There are no hidden fees, no subscription costs, and no charges for posting as many ads as you want.
             </Text>
           </View>
 
@@ -148,7 +148,7 @@ export default function Help() {
           <View style={styles.faqItem}>
             <Text style={styles.faqQuestion}>What items can I sell?</Text>
             <Text style={styles.faqAnswer}>
-              You can sell almost anything on {appBranding.appName || 'BNSN'} - from cars and electronics to furniture, clothing, and more. However, illegal items, weapons, drugs, and other prohibited items are not allowed. Please refer to our Terms and Conditions for the complete list.
+              You can sell almost anything on {appBranding.appName || '7ARK'} - from cars and electronics to furniture, clothing, and more. However, illegal items, weapons, drugs, and other prohibited items are not allowed. Please refer to our Terms and Conditions for the complete list.
             </Text>
           </View>
 
@@ -170,7 +170,7 @@ export default function Help() {
               color={appBranding.primaryColor}
               style={styles.contactIcon}
             />
-            <Text style={styles.contactText}>Email: {contactInfo?.email || 'support@7ark.com'}</Text>
+            <Text style={styles.contactText}>Email: {contactInfo?.email || '7ark.ynm@gmail.com'}</Text>
           </TouchableOpacity>
 
           <View style={styles.contactItem}>

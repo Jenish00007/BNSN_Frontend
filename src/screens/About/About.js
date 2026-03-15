@@ -136,14 +136,14 @@ export default function About() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Our Mission</Text>
           <Text style={styles.sectionText}>
-            At {appBranding.appName || 'BNSN'}, we believe that everyone should have access to a simple, safe, and free platform to buy and sell items in their local community. Our mission is to connect neighbors and build local communities through trusted trading.
+            At {appBranding.appName || '7ARK'}, we believe that everyone should have access to a simple, safe, and free platform to buy and sell items in their local community. Our mission is to connect neighbors and build local communities through trusted trading.
           </Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What We Do</Text>
           <Text style={styles.sectionText}>
-            {appBranding.appName || 'BNSN'} is a classified ads marketplace where you can post free ads for anything you want to sell - from cars and electronics to furniture and clothing. Buyers can browse thousands of listings, contact sellers directly, and complete transactions locally.
+            {appBranding.appName || '7ARK'} is a classified ads marketplace where you can post free ads for anything you want to sell - from cars and electronics to furniture and clothing. Buyers can browse thousands of listings, contact sellers directly, and complete transactions locally.
           </Text>
         </View>
 
@@ -161,7 +161,7 @@ export default function About() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Our Story</Text>
           <Text style={styles.sectionText}>
-            {appBranding.appName || 'BNSN'} was founded with a simple vision: to make buying and selling as easy as possible for everyone. We recognized that people needed a trusted, local platform where they could safely trade items with neighbors.
+            {appBranding.appName || '7ARK'} was founded with a simple vision: to make buying and selling as easy as possible for everyone. We recognized that people needed a trusted, local platform where they could safely trade items with neighbors.
           </Text>
           <Text style={styles.sectionText}>
             Today, we're proud to serve thousands of users daily, helping them find great deals and sell items they no longer need. We're committed to building a vibrant local marketplace that benefits everyone in the community.

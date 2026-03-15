@@ -464,7 +464,7 @@ function Menu() {
       <View
         style={{
           flexDirection: horizontal ? 'row' : 'column',
-          paddingHorizontal: scale(12)
+          paddingHorizontal: scale(15)
         }}
       >
         {[...Array(count)].map((_, index) => (
@@ -1258,8 +1258,8 @@ function Menu() {
   return (
     <>
       <SafeAreaView
-        edges={['left', 'right', 'bottom']}
-        style={[styles().flex, { backgroundColor: 'black' }]}
+        edges={['left', 'right']}
+        style={[styles().flex, { backgroundColor: currentTheme.backgroundColor }]}
       >
         <View
           style={[
@@ -1288,7 +1288,7 @@ function Menu() {
                     contentInset={{ top: 0 }}
                     contentContainerStyle={{
                       paddingTop: 0,
-                      paddingHorizontal: scale(12),
+                      paddingHorizontal: scale(15),
                       paddingBottom: scale(70)
                     }}
                     contentOffset={{ y: 0 }}
@@ -1433,6 +1433,7 @@ function Menu() {
                                   data={recommendedItem}
                                   horizontal={true}
                                   showsHorizontalScrollIndicator={false}
+                                  contentContainerStyle={{ paddingHorizontal: scale(15) }}
                                   renderItem={({
                                     item: productItem,
                                     index
@@ -1488,6 +1489,7 @@ function Menu() {
                                   data={popularItem}
                                   horizontal={true}
                                   showsHorizontalScrollIndicator={false}
+                                  contentContainerStyle={{ paddingHorizontal: scale(15) }}
                                   renderItem={({ item: productItem }) => (
                                     <Products
                                       item={productItem}
@@ -1544,6 +1546,7 @@ function Menu() {
                                   data={events}
                                   horizontal={true}
                                   showsHorizontalScrollIndicator={false}
+                                  contentContainerStyle={{ paddingHorizontal: scale(15) }}
                                   renderItem={({ item: eventItem }) => (
                                     <Products
                                       item={eventItem}
@@ -1562,11 +1565,13 @@ function Menu() {
                       case 'allProducts':
                         return (
                           <>
-                            <TextDefault style={styles().sectionTitle}>
-                              All Items 🔥
-                            </TextDefault>
+                            <View style={styles().sectionHeader}>
+                              <TextDefault style={styles().sectionTitle}>
+                                All Items 🔥
+                              </TextDefault>
+                            </View>
                             {allProductsLoading ? (
-                              <View style={{ paddingHorizontal: scale(12) }}>
+                              <View style={{ paddingHorizontal: scale(15) }}>
                                 <ListLoadingComponent
                                   horizontal={false}
                                   count={3}
@@ -1574,7 +1579,7 @@ function Menu() {
                                 />
                               </View>
                             ) : (
-                              <View style={{ padding: 10, paddingBottom: 0 }}>
+                              <View style={{ paddingHorizontal: scale(15), paddingBottom: 0 }}>
                                 {allproducts && allproducts.length > 0 ? (
                                   <>
                                     <View

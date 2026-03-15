@@ -9,7 +9,7 @@ This document shows the current status of configuration integration in the Quixo
 **File:** `translations/en.js`
 - **Status:** ✅ Updated
 - **Changes:** Welcome messages now use dynamic app name
-- **Before:** `welcome: "Welcome to Qauds, sometimes all you need is love..."`
+- **Before:** `welcome: "Welcome to 7ARK, sometimes all you need is love..."`
 - **After:** `welcome: (appName) => `Welcome to ${appName}, sometimes all you need is love...``
 
 ### 2. Configuration Service
@@ -61,7 +61,7 @@ This document shows the current status of configuration integration in the Quixo
 ## Configuration Values Already Dynamic
 
 ### App Information
-- ✅ App Name (`Qauds` → `{appName}`)
+- ✅ App Name (`7ARK` → `{appName}`)
 - ✅ App Logo
 - ✅ App Colors (Primary, Secondary, Accent)
 - ✅ App Package ID

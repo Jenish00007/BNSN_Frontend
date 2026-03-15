@@ -27,7 +27,9 @@ import {
   Dimensions,
   PixelRatio
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { KeyboardAwareFlatList } from 'react-native-keyboard-aware-scroll-view'
+import { useHeaderHeight } from '@react-navigation/elements'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useRoute, useFocusEffect } from '@react-navigation/native'
 import io from 'socket.io-client'
@@ -679,6 +681,8 @@ const getOppositeRole = (role) => {
 // ─── Chat component ───────────────────────────────────────────────────────────
 const Chat = ({ navigation }) => {
   const route = useRoute()
+  const headerHeight = useHeaderHeight()
+  const insets = useSafeAreaInsets()
   const {
     conversationId: initialConversationId,
     groupTitle,
@@ -821,7 +825,7 @@ const Chat = ({ navigation }) => {
       )
     }
   }, [initialConversationId, conversationId, route.params])
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  // const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [chatDisabled, setChatDisabled] = useState(Boolean(initialChatDisabled))
   const [typingTimeout, setTypingTimeout] = useState(null)
   const [chatDisabledReason, setChatDisabledReason] = useState(
@@ -1091,20 +1095,16 @@ const Chat = ({ navigation }) => {
     }
   }, [messages, loading, scrollToBottom])
 
-  // ── Keyboard handling (Android) ──
+  // ── Keyboard handling ──
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
-        setKeyboardHeight(e.endCoordinates.height)
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
         setTimeout(() => scrollToBottom(), 100)
-      })
-      const hideSub = Keyboard.addListener('keyboardDidHide', () =>
-        setKeyboardHeight(0)
-      )
-      return () => {
-        showSub.remove()
-        hideSub.remove()
       }
+    )
+    return () => {
+      showSub.remove()
     }
   }, [scrollToBottom])
 
@@ -1213,7 +1213,7 @@ const Chat = ({ navigation }) => {
           )}
           <TouchableOpacity
             style={{ padding: scaleSize(8) }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <MaterialIcons name='more-vert' size={scaleSize(24)} color='#fff' />
           </TouchableOpacity>
@@ -1742,15 +1742,15 @@ const Chat = ({ navigation }) => {
     const metaOpacity = messageRole === 'seller' ? 0.8 : 0.6
     const bubbleShapeStyles = isMyMessage
       ? {
-          backgroundColor: bubbleBg,
-          borderBottomRightRadius: isLastInGroup ? 20 : 4,
-          borderBottomLeftRadius: 20
-        }
+        backgroundColor: bubbleBg,
+        borderBottomRightRadius: isLastInGroup ? 20 : 4,
+        borderBottomLeftRadius: 20
+      }
       : {
-          backgroundColor: bubbleBg,
-          borderBottomLeftRadius: isLastInGroup ? 20 : 4,
-          borderBottomRightRadius: 20
-        }
+        backgroundColor: bubbleBg,
+        borderBottomLeftRadius: isLastInGroup ? 20 : 4,
+        borderBottomRightRadius: 20
+      }
     const readIconColor =
       messageRole === 'seller'
         ? 'rgba(255,255,255,0.9)'
@@ -1852,7 +1852,7 @@ const Chat = ({ navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size='large' color={branding.primaryColor} />
           <TextDefault style={styles.loadingText}>Loading chat...</TextDefault>
@@ -1972,37 +1972,18 @@ const Chat = ({ navigation }) => {
       )}
 
       <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        style={{ flex: 1 }}
+        behavior='padding'
+        keyboardVerticalOffset={headerHeight}
       >
-        <View style={{ flex: 1 }}>
-          {/* Debug Panel - Console logging only */}
-          {__DEV__ &&
-            (() => {
-              console.log('🔔 [CHAT DEBUG] Chat Debug Info:')
-              console.log(
-                '🔔 [CHAT DEBUG] Connected:',
-                isConnected ? '✅' : '❌'
-              )
-              console.log('🔔 [CHAT DEBUG] Messages:', messages.length)
-              console.log('🔔 [CHAT DEBUG] Room:', conversationId || 'None')
-              console.log('🔔 [CHAT DEBUG] User:', profile?._id || 'None')
-              console.log(
-                '🔔 [CHAT DEBUG] Last Message:',
-                messages.length > 0
-                  ? messages[messages.length - 1]?.text?.substring(0, 30) +
-                      '...'
-                  : 'None'
-              )
-              return null
-            })()}
-
+        <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+        
           <FlatList
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item, index) => item._id || index.toString()}
+            style={{ flex: 1 }}
             contentContainerStyle={[
               styles.messagesList,
               {
@@ -2022,13 +2003,9 @@ const Chat = ({ navigation }) => {
               }
             }}
             showsVerticalScrollIndicator={false}
-            maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
-              autoscrollToTopThreshold: 10
-            }}
             removeClippedSubviews={false}
             keyboardShouldPersistTaps='handled'
-            keyboardDismissMode='interactive'
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
                 <MaterialIcons
@@ -2106,7 +2083,8 @@ const Chat = ({ navigation }) => {
             <View
               style={[
                 styles.inputContainer,
-                { borderTopColor: branding.borderColor || '#f0f0f0' }
+                { borderTopColor: branding.borderColor || '#f0f0f0' },
+                Platform.OS === 'ios' && { paddingBottom: Math.max(insets.bottom, scaleSize(10)) }
               ]}
             >
               <View style={styles.inputWrapper}>
@@ -2120,13 +2098,9 @@ const Chat = ({ navigation }) => {
                   maxLength={1000}
                   editable={!sending && isConnected && !chatDisabled}
                   textAlignVertical='top'
-                  onFocus={() =>
-                    setTimeout(() => {
-                      if (flatListRef.current) {
-                        scrollToBottom()
-                      }
-                    }, 300)
-                  }
+                  onFocus={() => {
+                    setTimeout(() => scrollToBottom(), 300)
+                  }}
                 />
                 <Animated.View
                   style={{ transform: [{ scale: sendButtonScale }] }}
@@ -2139,7 +2113,7 @@ const Chat = ({ navigation }) => {
                         sending ||
                         !isConnected ||
                         chatDisabled) &&
-                        styles.sendButtonDisabled
+                      styles.sendButtonDisabled
                     ]}
                     onPress={sendMessage}
                     disabled={
@@ -2197,9 +2171,9 @@ const Chat = ({ navigation }) => {
                     {(() => {
                       const base = Number(
                         productForHeader.price ??
-                          productForHeader.discountPrice ??
-                          productForHeader.askingPrice ??
-                          0
+                        productForHeader.discountPrice ??
+                        productForHeader.askingPrice ??
+                        0
                       )
                       if (!base) return []
                       return [1, 0.95, 0.9, 0.85, 0.8].map((r) => base * r)

@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import UserContext from '../../context/User';
 import { useAppBranding } from '../../utils/translationHelper';
 import { verticalScale, scale } from '../../utils/scaling';
@@ -13,6 +14,7 @@ function BottomTab({ screen }) {
   const navigation = useNavigation();
   const { isLoggedIn } = useContext(UserContext);
   const branding = useAppBranding();
+  const insets = useSafeAreaInsets();
 
   const getIconColor = (currentScreen) =>
     screen === currentScreen ? branding.primaryColor : '#888888';
@@ -27,7 +29,14 @@ function BottomTab({ screen }) {
   };
 
   return (
-    <View style={[styles.footerContainer, { backgroundColor: branding.backgroundColor || '#FFFFFF' }]}>
+    <View style={[
+      styles.footerContainer, 
+      { 
+        backgroundColor: branding.backgroundColor || '#FFFFFF',
+        height: verticalScale(60) + insets.bottom,
+        paddingBottom: insets.bottom
+      }
+    ]}>
 
       {/* Home */}
       <TouchableOpacity onPress={() => navigate('Menu')} style={styles.tabItem}>
@@ -90,41 +99,45 @@ function BottomTab({ screen }) {
 const styles = StyleSheet.create({
   footerContainer: {
     width,
-    height: verticalScale(52),       // tight/compact like OLX
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',       // Items align to top of bar
     borderTopWidth: 0.5,
     borderTopColor: '#E0E0E0',
     backgroundColor: '#FFFFFF',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
 
   // Standard tab items
   tabItem: {
     width: '20%',
-    height: '100%',
-    justifyContent: 'center',        // true center — no extra top padding
+    height: verticalScale(60),       // Fixed height for top part of tab bar
+    justifyContent: 'center',
     alignItems: 'center',
   },
 
   // Sell tab: text at bottom, ring floats above
   sellTabItem: {
     width: '20%',
-    height: '100%',
+    height: verticalScale(60),
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: verticalScale(5),
+    paddingBottom: verticalScale(8),
   },
 
-  // Outer yellow/gold ring — pops above the bar
+  // Outer ring — floats above the bar
   sellRing: {
-    width: scale(52),
-    height: scale(52),
-    borderRadius: scale(26),
-    backgroundColor: '#F5C518',      // OLX signature yellow
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
+    backgroundColor: '#F5C518',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
-    top: -scale(24),                 // float above bar
+    top: -scale(28),                 // Float half above bar
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -132,11 +145,11 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
 
-  // White inner circle
+  // Inner white circle
   sellInnerCircle: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',

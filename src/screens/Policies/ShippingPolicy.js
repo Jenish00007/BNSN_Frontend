@@ -141,7 +141,7 @@ export default function ShippingPolicy() {
             7. Contact Us
           </Text>
           <Text style={styles.paragraph}>
-            For questions about our shipping policy or to track an order, contact our delivery support team at {contactInfo?.email || 'support@7ark.com'}
+            For questions about our shipping policy or to track an order, contact our delivery support team at {contactInfo?.email || '7ark.ynm@gmail.com'}
           </Text>
         </View>
       </ScrollView>

@@ -389,7 +389,7 @@ const SubCategory = ({ route }) => {
   return (
     <>
       <SafeAreaView
-        edges={['bottom', 'left', 'right']}
+        edges={['left', 'right']}
         style={[styles(branding).flex, { backgroundColor: branding.backgroundColor }]}>
         <View style={[styles(branding).flex, { backgroundColor: branding.backgroundColor }]}>
           <View style={styles(branding).flex}>

@@ -128,7 +128,7 @@ export default function PrivacyPolicy() {
           </Text>
           <Text style={styles.paragraph}>
             If you have any questions about this Privacy Policy, please contact us:{'\n'}
-            Email: {contactInfo?.email || 'support@7ark.com'}
+            Email: {contactInfo?.email || '7ark.ynm@gmail.com'}
           </Text>
         </View>
       </ScrollView>
