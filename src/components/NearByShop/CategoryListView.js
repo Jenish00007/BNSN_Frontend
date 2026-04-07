@@ -29,7 +29,7 @@ const CARD_HEIGHT = 260
 const sellerDetailsCache = new Map()
 
 // CategoryListView component
-const CategoryListView = ({ data }) => {
+const CategoryListView = ({ data, maxDistanceKm = null }) => {
   const navigation = useNavigation()
   const branding = useAppBranding()
 
@@ -74,17 +74,8 @@ const CategoryListView = ({ data }) => {
     }
   }, [data?.item?.shop, data?.item?.userId])
 
-  // Check if data is properly passed
-  if (!data) {
-    return null
-  }
-
-  const { index, item } = data
-
-  // Ensure item is defined before rendering
-  if (!item) {
-    return null
-  }
+  // All hooks must run before any conditional return
+  const item = data?.item || null
 
   const buyerCoordinates = useMemo(() => {
     if (
@@ -103,22 +94,41 @@ const CategoryListView = ({ data }) => {
     return getSellerCoordinates(item, sellerUser)
   }, [item, sellerUser])
 
-  const distanceLabel = useMemo(() => {
-    if (!buyerCoordinates || !sellerCoordinates) return 'N/A'
-    const distance = calculateDistanceKm(
+  const distanceKm = useMemo(() => {
+    if (!buyerCoordinates || !sellerCoordinates) return null
+    return calculateDistanceKm(
       buyerCoordinates.latitude,
       buyerCoordinates.longitude,
       sellerCoordinates.latitude,
       sellerCoordinates.longitude
     )
-    const formatted = formatDistanceKm(distance)
-    return formatted ? `${formatted} away` : 'N/A'
   }, [buyerCoordinates, sellerCoordinates])
+
+  const distanceLabel = useMemo(() => {
+    if (distanceKm === null) return 'N/A'
+    const formatted = formatDistanceKm(distanceKm)
+    return formatted ? `${formatted} away` : 'N/A'
+  }, [distanceKm])
 
   const sellerLocationLabel = useMemo(() => {
     if (item?.shop?.address) return item.shop.address
     return getSellerAddress(item, sellerUser)
   }, [item, sellerUser])
+
+  // Early returns AFTER all hooks
+  if (!data || !item) {
+    return null
+  }
+
+  const normalizedMax = maxDistanceKm !== null && Number.isFinite(Number(maxDistanceKm)) && Number(maxDistanceKm) > 0
+    ? Number(maxDistanceKm)
+    : null
+
+  if (normalizedMax !== null && distanceKm !== null && distanceKm > normalizedMax) {
+    return null
+  }
+
+  const { index } = data
 
   // Function to truncate text
   const truncateText = (text, maxLength = 30) => {

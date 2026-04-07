@@ -1,11 +1,10 @@
-import React, { useContext } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
+import React from 'react'
+import { View, Text, TouchableOpacity, Dimensions } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useSubscription } from '../../context/Subscription'
-import { useAppBranding } from '../../utils/translationHelper'
-import ThemeContext from '../../ui/ThemeContext/ThemeContext'
-import { theme } from '../../utils/themeColors'
 import { useNavigation } from '@react-navigation/native'
+
+const { width } = Dimensions.get('window')
 
 const ContactViewsIndicator = () => {
   const navigation = useNavigation()
@@ -64,7 +63,7 @@ const ContactViewsIndicator = () => {
           >
             <MaterialIcons name='star' size={16} color='#5B5EA6' />
             <Text style={[ciStyles.buttonText, { color: '#5B5EA6' }]}>
-              Go Elite Unlimited
+              Gold Membership
             </Text>
           </TouchableOpacity>
         </View>
@@ -98,15 +97,17 @@ const ContactViewsIndicator = () => {
   )
 }
 
+const isSmall = width < 360
+
 const ciStyles = {
   container: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: width * 0.03,
+    paddingVertical: width * 0.025,
     marginBottom: 10,
-    overflow: 'hidden'          // prevents children from leaking out
+    overflow: 'hidden'
   },
   wrapper: {
     flexDirection: 'row',
@@ -121,26 +122,28 @@ const ciStyles = {
     marginBottom: 8
   },
   label: {
-    fontSize: 13,
+    fontSize: isSmall ? 11 : 13,
     fontWeight: '600'
   },
   message: {
-    fontSize: 12,
+    fontSize: isSmall ? 10 : 12,
     color: '#666',
-    marginBottom: 12,
-    lineHeight: 16
+    marginBottom: 10,
+    lineHeight: isSmall ? 14 : 16
   },
   buttonContainer: {
-    gap: 8
+    gap: 8,
+    flexDirection: width >= 400 ? 'row' : 'column'
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8
+    gap: 6,
+    paddingVertical: isSmall ? 8 : 10,
+    paddingHorizontal: isSmall ? 8 : 12,
+    borderRadius: 8,
+    flex: width >= 400 ? 1 : undefined
   },
   primaryButton: {
     backgroundColor: '#5B5EA6'
@@ -151,7 +154,7 @@ const ciStyles = {
     borderColor: '#5B5EA6'
   },
   buttonText: {
-    fontSize: 13,
+    fontSize: isSmall ? 11 : 13,
     fontWeight: '600',
     color: 'white'
   },
@@ -159,7 +162,7 @@ const ciStyles = {
     height: 5,
     borderRadius: 4,
     backgroundColor: '#E0E0E0',
-    overflow: 'hidden'          // clips the fill bar at the track boundary
+    overflow: 'hidden'
   },
   fill: {
     height: 5,

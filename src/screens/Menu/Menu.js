@@ -167,6 +167,18 @@ function Menu() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [distanceFilterKm, setDistanceFilterKm] = useState(null)
+  const [activeChip, setActiveChip] = useState(null)
+  const distanceFilterTimerRef = useRef(null)
+
+  const handleDistanceFilterChange = useCallback((value) => {
+    setActiveChip(value)
+    if (distanceFilterTimerRef.current) {
+      clearTimeout(distanceFilterTimerRef.current)
+    }
+    distanceFilterTimerRef.current = setTimeout(() => {
+      setDistanceFilterKm(value)
+    }, 50)
+  }, [])
   const [isDistanceComputing, setIsDistanceComputing] = useState(false)
   const searchTimeoutRef = useRef(null)
   const themeContext = useContext(ThemeContext)
@@ -185,7 +197,7 @@ function Menu() {
     selectedType === 'restaurant' ? t('searchRestaurant') : t('Search Products')
   useEffect(() => {
     if (!search) {
-      setDistanceFilterKm(null)
+      handleDistanceFilterChange(null)
     }
   }, [search])
   const menuPageHeading =
@@ -353,35 +365,42 @@ function Menu() {
     setBusy(true)
     const { error, coords } = await getCurrentLocation()
 
-    const apiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`
-    fetch(apiUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error) {
-          console.log('Reverse geocoding request failed:', data.error)
-        } else {
-          let address = data.display_name
-          if (address.length > 21) {
-            address = address.substring(0, 21) + '...'
-          }
+    if (error || !coords) {
+      navigation.navigate('SelectLocation')
+      setBusy(false)
+      return
+    }
 
-          if (error) navigation.navigate('SelectLocation')
-          else {
-            modalRef.current.close()
-            setLocation({
-              label: 'currentLocation',
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              deliveryAddress: address
-            })
-            setBusy(false)
-          }
-          // console.log(address)
+    // Immediately update location with GPS coords so distance calculations refresh right away
+    setLocation({
+      label: 'currentLocation',
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      deliveryAddress: 'Getting address...'
+    })
+    modalRef.current.close()
+    setBusy(false)
+
+    // Then update address label in the background (non-blocking)
+    try {
+      const apiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`
+      const response = await fetch(apiUrl)
+      const data = await response.json()
+      if (!data.error) {
+        let address = data.display_name
+        if (address.length > 21) {
+          address = address.substring(0, 21) + '...'
         }
-      })
-      .catch((error) => {
-        console.error('Error fetching reverse geocoding data:', error)
-      })
+        setLocation({
+          label: 'currentLocation',
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          deliveryAddress: address
+        })
+      }
+    } catch (geocodeError) {
+      console.error('Geocoding failed:', geocodeError)
+    }
   }
 
   // Refresh location when user comes back from settings
@@ -389,21 +408,26 @@ function Menu() {
     try {
       const { error, coords } = await getCurrentLocation()
       if (!error && coords) {
-        const apiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`
-        const response = await fetch(apiUrl)
+        // Update coords immediately so distances recalculate at once
+        setLocation({
+          label: 'currentLocation',
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          deliveryAddress: 'Getting address...'
+        })
 
-        if (response.ok) {
-          try {
+        try {
+          const apiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`
+          const response = await fetch(apiUrl)
+          if (response.ok) {
             const contentType = response.headers.get('content-type')
             if (contentType && contentType.includes('application/json')) {
               const data = await response.json()
-
               if (!data.error) {
                 let address = data.display_name
                 if (address.length > 21) {
                   address = address.substring(0, 21) + '...'
                 }
-
                 setLocation({
                   label: 'currentLocation',
                   latitude: coords.latitude,
@@ -411,14 +435,10 @@ function Menu() {
                   deliveryAddress: address
                 })
               }
-            } else {
-              console.log('Non-JSON response from location API')
             }
-          } catch (jsonError) {
-            console.log('Error parsing location JSON response:', jsonError)
           }
-        } else {
-          console.log('Location API error:', response.status)
+        } catch (geocodeError) {
+          console.error('Geocoding failed during refresh:', geocodeError)
         }
       }
     } catch (error) {
@@ -1291,10 +1311,52 @@ function Menu() {
                 search={search}
                 newheaderColor={primaryColor}
                 placeHolder={searchPlaceholderText}
-                distanceFilter={distanceFilterKm}
-                onDistanceFilterChange={setDistanceFilterKm}
+                distanceFilter={activeChip}
+                onDistanceFilterChange={handleDistanceFilterChange}
                 isFilteringByDistance={isDistanceComputing}
               />
+
+              {/* OLX-style distance filter chips — always visible */}
+              <View style={{ paddingHorizontal: scale(12), paddingVertical: scale(6) }}>
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  data={[
+                    { label: 'All', value: null },
+                    { label: 'Within 5 km', value: 5 },
+                    { label: 'Within 10 km', value: 10 },
+                    { label: 'Within 25 km', value: 25 },
+                    { label: 'Within 50 km', value: 50 },
+                    { label: 'Within 100 km', value: 100 },
+                  ]}
+                  keyExtractor={(opt) => opt.value?.toString() ?? 'all'}
+                  contentContainerStyle={{ gap: scale(8), paddingRight: scale(8) }}
+                  renderItem={({ item: opt }) => {
+                    const isActive = activeChip === opt.value
+                    return (
+                      <TouchableOpacity
+                        onPress={() => handleDistanceFilterChange(opt.value)}
+                        style={{
+                          paddingHorizontal: scale(14),
+                          paddingVertical: scale(6),
+                          borderRadius: 20,
+                          borderWidth: 1.5,
+                          borderColor: isActive ? primaryColor : '#ccc',
+                          backgroundColor: isActive ? primaryColor : 'transparent',
+                        }}
+                      >
+                        <Text style={{
+                          fontSize: scale(12),
+                          fontWeight: isActive ? '700' : '400',
+                          color: isActive ? '#fff' : textColor,
+                        }}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  }}
+                />
+              </View>
 
               {search ? (
                 <View style={styles().searchList}>
@@ -1462,6 +1524,7 @@ function Menu() {
                                   }) => (
                                     <CategoryListView
                                       data={{ item: productItem, index }}
+                                      maxDistanceKm={distanceFilterKm}
                                     />
                                   )}
                                   keyExtractor={(productItem, index) =>
@@ -1516,6 +1579,7 @@ function Menu() {
                                     <Products
                                       item={productItem}
                                       horizontal={true}
+                                      maxDistanceKm={distanceFilterKm}
                                     />
                                   )}
                                   keyExtractor={(productItem, index) =>
@@ -1573,6 +1637,7 @@ function Menu() {
                                     <Products
                                       item={eventItem}
                                       horizontal={true}
+                                      maxDistanceKm={distanceFilterKm}
                                     />
                                   )}
                                   keyExtractor={(eventItem, index) =>
@@ -1612,18 +1677,12 @@ function Menu() {
                                       }}
                                     >
                                       {allproducts.map((productItem, index) => (
-                                        <View
-                                          key={`all-items-${productItem?._id?.toString() || index}-${index}`}
-                                          style={{
-                                            width: '48%',
-                                            marginBottom: 10
-                                          }}
-                                        >
-                                          <Products
-                                            item={productItem}
-                                            horizontal={false}
-                                          />
-                                        </View>
+                                        <Products
+                                          key={`all-items-${productItem?._id?.toString() || index}`}
+                                          item={productItem}
+                                          horizontal={false}
+                                          maxDistanceKm={distanceFilterKm}
+                                        />
                                       ))}
                                     </View>
                                     {allProductsLoadingMore && (

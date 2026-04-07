@@ -833,6 +833,7 @@ const Chat = ({ navigation }) => {
   )
   const [productDetails, setProductDetails] = useState(initialProduct || null)
   const [eliteModalVisible, setEliteModalVisible] = useState(false)
+  const [menuVisible, setMenuVisible] = useState(false)
   const [activeTab, setActiveTab] = useState('chat')
   const [offerAmount, setOfferAmount] = useState(null)
   const [fetchingSellerPhone, setFetchingSellerPhone] = useState(false)
@@ -1213,7 +1214,7 @@ const Chat = ({ navigation }) => {
           )}
           <TouchableOpacity
             style={{ padding: scaleSize(8) }}
-            onPress={() => { }}
+            onPress={() => setMenuVisible(true)}
           >
             <MaterialIcons name='more-vert' size={scaleSize(24)} color='#fff' />
           </TouchableOpacity>
@@ -1867,6 +1868,60 @@ const Chat = ({ navigation }) => {
         barStyle='light-content'
         backgroundColor={branding.primaryColor}
       />
+
+      {menuVisible && (
+        <TouchableOpacity
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              top: scaleSize(4),
+              right: scaleSize(8),
+              backgroundColor: '#fff',
+              borderRadius: scaleSize(6),
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              minWidth: scaleSize(180),
+              zIndex: 1000
+            }}
+            onStartShouldSetResponder={() => true}
+          >
+            {[
+              { icon: 'block', label: 'Block User', color: '#ef4444' },
+              { icon: 'flag', label: 'Report', color: '#f97316' },
+              { icon: 'delete-outline', label: 'Delete Conversation', color: '#ef4444' },
+            ].map((opt) => (
+              <TouchableOpacity
+                key={opt.label}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: scaleSize(16),
+                  paddingVertical: scaleSize(12),
+                  borderBottomWidth: opt.label !== 'Delete Conversation' ? 0.5 : 0,
+                  borderBottomColor: '#f0f0f0'
+                }}
+                onPress={() => {
+                  setMenuVisible(false)
+                  Alert.alert(opt.label, `Are you sure you want to ${opt.label.toLowerCase()}?`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Confirm', style: 'destructive', onPress: () => {} }
+                  ])
+                }}
+              >
+                <MaterialIcons name={opt.icon} size={scaleSize(20)} color={opt.color} style={{ marginRight: scaleSize(12) }} />
+                <Text style={{ fontSize: scaleSize(14), color: opt.color, fontWeight: '500' }}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      )}
 
       {!isConnected && (
         <View style={styles.connectionStatus}>

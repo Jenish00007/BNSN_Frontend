@@ -101,8 +101,7 @@ const ProductDetail = () => {
   const [userDetailsError, setUserDetailsError] = useState(null)
   const isMountedRef = useRef(true)
   const [contactViewed, setContactViewed] = useState(false)
-  const [phoneRevealedForContactId, setPhoneRevealedForContactId] =
-    useState(null)
+  const [contactRevealedId, setContactRevealedId] = useState(null)
 
   // Get the current color scheme (system preference)
   const colorScheme = useColorScheme()
@@ -589,13 +588,38 @@ const ProductDetail = () => {
     setReviews(product?.reviews || [])
   }
 
-  const handleViewPhoneNumber = useCallback(
+  const handleViewContact = useCallback(
     async (contactId) => {
+      if (!isLoggedIn) {
+        navigation.navigate('Login')
+        return
+      }
       const ok = await addViewedContact(contactId)
-      if (ok) setPhoneRevealedForContactId(contactId)
+      if (ok) {
+        setContactRevealedId(contactId)
+      } else {
+        Alert.alert(
+          'No Credits Left',
+          'You have used all your contact credits. Buy more or upgrade to Gold Membership.',
+          [
+            { text: 'Buy Credits', onPress: () => navigation.navigate('BuyContacts') },
+            { text: 'Gold Membership', onPress: () => navigation.navigate('Subscription') },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        )
+      }
     },
-    [addViewedContact]
+    [addViewedContact, isLoggedIn, navigation]
   )
+
+  const formatEmail = (email) => {
+    if (!email) return ''
+    const [user, domain] = email.split('@')
+    if (!domain) return email
+    const visible = user.slice(0, 2)
+    const masked = '*'.repeat(Math.max(user.length - 2, 3))
+    return `${visible}${masked}@${domain}`
+  }
 
   const renderContactRow = (
     icon,
@@ -606,30 +630,15 @@ const ProductDetail = () => {
   ) => {
     if (!value) return null
 
-    // Phone: only reduce credit when user explicitly clicks "View phone number"
-    let displayValue = value
-    let showUpgradeButton = false
-    let showViewPhoneButton = false
-    let alreadyViewed = false
-    let userHasRevealed = false
+    const revealed = contactId
+      ? hasViewedContact(contactId) || contactRevealedId === contactId
+      : true
 
-    if (isPhone && contactId) {
-      alreadyViewed = hasViewedContact(contactId)
-      userHasRevealed = phoneRevealedForContactId === contactId
-
-      if (!canViewContact() && !alreadyViewed) {
-        // User has used all free contacts and hasn't viewed this contact - hide number and show upgrade
-        displayValue = formatPhoneNumber(value, true)
-        showUpgradeButton = true
-      } else if (alreadyViewed || userHasRevealed) {
-        // Already viewed or user clicked to reveal - show full number (no credit reduction)
-        displayValue = value
-      } else {
-        // User has credits but hasn't clicked yet - show masked + "View phone number" button
-        displayValue = formatPhoneNumber(value, true)
-        showViewPhoneButton = true
-      }
-    }
+    const displayValue = revealed
+      ? value
+      : isPhone
+        ? formatPhoneNumber(value, true)
+        : formatEmail(value)
 
     return (
       <View style={styles.contactInfoRow}>
@@ -649,89 +658,83 @@ const ProductDetail = () => {
             <Text
               style={[
                 styles.contactInfoValue,
-                {
-                  color: branding.textColor,
-                  opacity: showUpgradeButton || showViewPhoneButton ? 0.6 : 0.85
-                }
+                { color: branding.textColor, opacity: revealed ? 0.85 : 0.6 }
               ]}
             >
               {displayValue}
             </Text>
-            {showViewPhoneButton && (
-              <TouchableOpacity
-                style={[
-                  styles.viewPhoneButton,
-                  { borderColor: branding.primaryColor }
-                ]}
-                onPress={() => handleViewPhoneNumber(contactId)}
-              >
-                <MaterialIcons
-                  name='phone'
-                  size={14}
-                  color={branding.primaryColor}
-                  style={{ marginRight: 4 }}
-                />
-                <Text
-                  style={[
-                    styles.viewPhoneButtonText,
-                    { color: branding.primaryColor }
-                  ]}
-                >
-                  View phone number
-                </Text>
-              </TouchableOpacity>
-            )}
-            {showUpgradeButton && (
-              <View style={styles.upgradeButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.upgradeButton, styles.buyCreditsButton]}
-                  onPress={() => navigation.navigate('BuyContacts')}
-                >
-                  <Text
-                    style={[
-                      styles.upgradeButtonText,
-                      { color: branding.primaryColor }
-                    ]}
-                  >
-                    Buy 7 Credits - ₹49
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.upgradeButton, styles.premiumButton]}
-                  onPress={() => navigation.navigate('Subscription')}
-                >
-                  <Text
-                    style={[
-                      styles.upgradeButtonText,
-                      { color: branding.primaryColor }
-                    ]}
-                  >
-                    Premium Unlimited
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {isPhone &&
-              !showUpgradeButton &&
-              !showViewPhoneButton &&
-              (alreadyViewed || userHasRevealed) && (
-                <Text style={[styles.viewedText, { color: '#4CAF50' }]}>
-                  ✓ Already viewed
-                </Text>
-              )}
-            {isPhone &&
-              !showUpgradeButton &&
-              !alreadyViewed &&
-              getRemainingFreeContacts() <= 1 && (
-                <Text style={[styles.warningText, { color: '#ff6b6b' }]}>
-                  {getRemainingFreeContacts() === 1
-                    ? 'Last free contact!'
-                    : 'No free contacts left!'}
-                </Text>
-              )}
           </View>
         </View>
       </View>
+    )
+  }
+
+  // Render a single "View Contact" button + upgrade options for a contactId
+  const renderViewContactButton = (contactId) => {
+    if (!contactId) return null
+
+    // Already revealed this session or previously viewed
+    const alreadyViewed = hasViewedContact(contactId)
+    const revealed = alreadyViewed || contactRevealedId === contactId
+
+    if (revealed) {
+      return (
+        <Text style={[styles.viewedText, { color: '#4CAF50' }]}>
+          ✓ Contact revealed
+        </Text>
+      )
+    }
+
+    // Not logged in — show login prompt button
+    if (!isLoggedIn) {
+      return (
+        <TouchableOpacity
+          style={[styles.viewPhoneButton, { borderColor: branding.primaryColor }]}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <MaterialIcons name='lock' size={14} color={branding.primaryColor} style={{ marginRight: 4 }} />
+          <Text style={[styles.viewPhoneButtonText, { color: branding.primaryColor }]}>
+            Login to View Contact
+          </Text>
+        </TouchableOpacity>
+      )
+    }
+
+    // Logged in but no credits left
+    if (!canViewContact()) {
+      return (
+        <View style={styles.upgradeButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.upgradeButton, styles.buyCreditsButton]}
+            onPress={() => navigation.navigate('BuyContacts')}
+          >
+            <Text style={[styles.upgradeButtonText, { color: branding.primaryColor }]}>
+              Buy 7 Credits - ₹49
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.upgradeButton, styles.premiumButton]}
+            onPress={() => navigation.navigate('Subscription')}
+          >
+            <Text style={[styles.upgradeButtonText, { color: branding.primaryColor }]}>
+              Gold Membership
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
+
+    // Logged in with credits available
+    return (
+      <TouchableOpacity
+        style={[styles.viewPhoneButton, { borderColor: branding.primaryColor }]}
+        onPress={() => handleViewContact(contactId)}
+      >
+        <MaterialIcons name='visibility' size={14} color={branding.primaryColor} style={{ marginRight: 4 }} />
+        <Text style={[styles.viewPhoneButtonText, { color: branding.primaryColor }]}>
+          View Contact Details
+        </Text>
+      </TouchableOpacity>
     )
   }
 
@@ -1335,9 +1338,11 @@ const ProductDetail = () => {
                 ((product?.shop?.phoneNumber || product?.shop?.phone) &&
                   !product?.shop?.hidePhoneNumber)) && (
                 <>
-                  <ContactViewsIndicator />
+                  <View style={{ marginTop: 12, marginBottom: 4 }}>
+                    <ContactViewsIndicator />
+                  </View>
                   <View style={styles.contactInfoContainer}>
-                    {renderContactRow('email', 'Email', product?.shop?.email)}
+                    {renderContactRow('email', 'Email', product?.shop?.email, false, product?.shop?._id || product?.shop?.id)}
                     {!product?.shop?.hidePhoneNumber &&
                       renderContactRow(
                         'phone',
@@ -1346,6 +1351,9 @@ const ProductDetail = () => {
                         true,
                         product?.shop?._id || product?.shop?.id
                       )}
+                    <View style={{ marginTop: 8 }}>
+                      {renderViewContactButton(product?.shop?._id || product?.shop?.id)}
+                    </View>
                   </View>
                 </>
               )}
@@ -1407,9 +1415,11 @@ const ProductDetail = () => {
                     (userDetails?.phoneNumber &&
                       !userDetails?.hidePhoneNumber)) && (
                     <>
-                      <ContactViewsIndicator />
+                      <View style={{ marginTop: 12, marginBottom: 4 }}>
+                        <ContactViewsIndicator />
+                      </View>
                       <View style={styles.contactInfoContainer}>
-                        {renderContactRow('email', 'Email', userDetails?.email)}
+                        {renderContactRow('email', 'Email', userDetails?.email, false, userDetails?._id || userDetails?.id)}
                         {!userDetails?.hidePhoneNumber &&
                           renderContactRow(
                             'phone',
@@ -1418,6 +1428,9 @@ const ProductDetail = () => {
                             true,
                             userDetails?._id || userDetails?.id
                           )}
+                        <View style={{ marginTop: 8 }}>
+                          {renderViewContactButton(userDetails?._id || userDetails?.id)}
+                        </View>
                       </View>
                     </>
                   )}

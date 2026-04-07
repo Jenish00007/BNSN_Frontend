@@ -93,7 +93,7 @@ const ChatList = () => {
               // Last resort fallback: check otherUser.role from backend
               if (otherUser.role) {
                 otherUserRole = otherUser.role
-                currentUserRole = otherUserRole === 'seller' ? 'buyer' : 'seller'
+                currentUserRole = currentUserRole === 'seller' ? 'buyer' : 'seller'
               } else {
                 // Cannot determine — default to buyer (safer assumption)
                 currentUserRole = 'buyer'
@@ -167,12 +167,10 @@ const ChatList = () => {
     }
 
     // Determine the correct shopId and role context for navigation
-    const shopId = conversation.otherUserRole === 'seller' 
+    const shopId = conversation.currentUserRole === 'seller' 
       ? conversation.otherUser?._id 
       : conversation.sellerId
     
-    const isCurrentUserSeller = conversation.currentUserRole === 'seller'
-
     // Log navigation data for debugging
     console.log('🔔 [CHATLIST] Navigating to Chat with:')
     console.log('🔔 [CHATLIST] Conversation ID:', conversation._id)
@@ -208,27 +206,14 @@ const ChatList = () => {
     const displayName = otherUser?.name || item.groupTitle || 'Conversation'
     const avatar = otherUser?.avatar
     const currentUserRole = item.currentUserRole
-    const otherUserRole = item.otherUserRole || item.conversationRole
-    
-    // Determine role label based on who the other person is
-    const roleLabel = otherUserRole === 'seller' 
-      ? 'Seller' 
-      : otherUserRole === 'buyer' 
-        ? 'Buyer' 
+
+    const roleLabel = currentUserRole === 'seller'
+      ? 'Selling'
+      : currentUserRole === 'buyer'
+        ? 'Buying'
         : null
-    
-    // Show context about current user's role in this conversation
-    const getContextText = () => {
-      if (currentUserRole === 'seller') {
-        return 'You are selling'
-      } else if (currentUserRole === 'buyer') {
-        return 'You are buying'
-      }
-      return null
-    }
 
     const statusText = item.statusLabel
-    const contextText = getContextText()
 
     return (
       <TouchableOpacity
@@ -263,11 +248,6 @@ const ChatList = () => {
           <TextDefault H5 bold numberOfLines={1}>
             {displayName}
           </TextDefault>
-          {contextText && (
-            <TextDefault small style={styles.contextText}>
-              {contextText}
-            </TextDefault>
-          )}
           {statusText && (
             <View
               style={[
@@ -309,11 +289,11 @@ const ChatList = () => {
                 styles.roleBadge,
                 {
                   backgroundColor:
-                    otherUserRole === 'seller'
+                    currentUserRole === 'seller'
                       ? (branding.primaryColor || '#007AFF') + '20'
                       : (branding.accentColor || '#38A169') + '20',
                   borderColor:
-                    otherUserRole === 'seller'
+                    currentUserRole === 'seller'
                       ? branding.primaryColor || '#007AFF'
                       : branding.accentColor || '#38A169'
                 }
@@ -326,7 +306,7 @@ const ChatList = () => {
                   styles.roleBadgeText,
                   {
                     color:
-                      otherUserRole === 'seller'
+                      currentUserRole === 'seller'
                         ? branding.primaryColor || '#007AFF'
                         : branding.accentColor || '#38A169'
                   }
@@ -380,8 +360,8 @@ const ChatList = () => {
   const renderRoleFilters = () => {
     const filters = [
       { key: 'all', label: 'All' },
-      { key: 'seller', label: 'Seller' },
-      { key: 'buyer', label: 'Buyer' }
+      { key: 'seller', label: 'Selling' },
+      { key: 'buyer', label: 'Buying' }
     ]
 
     return (

@@ -163,10 +163,6 @@ const Products = ({
     distanceKm !== null &&
     distanceKm > normalizedMaxDistance
 
-  if (exceedsDistanceFilter) {
-    return null
-  }
-
   const sellerAddressLabel = useMemo(() => {
     if (item?.shop?.address) return item.shop.address
     return (
@@ -176,6 +172,11 @@ const Products = ({
       null
     )
   }, [item, sellerUser])
+
+  // Early return AFTER all hooks to avoid violating Rules of Hooks
+  if (exceedsDistanceFilter) {
+    return null
+  }
 
   const scheduleQuantityCommit = (cartItemId, desiredQuantity) => {
     pendingQuantityRef.current = desiredQuantity

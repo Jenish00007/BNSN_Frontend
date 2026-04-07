@@ -215,8 +215,10 @@ export default function App() {
   const [currentPermissionAttempt, setCurrentPermissionAttempt] = useState(0)
   const [locationPermissionGranted, setLocationPermissionGranted] =
     useState(false)
-  const [locationPermissionDeniedPermanently, setLocationPermissionDeniedPermanently] =
-    useState(false)
+  const [
+    locationPermissionDeniedPermanently,
+    setLocationPermissionDeniedPermanently
+  ] = useState(false)
   useWatchLocation()
 
   // ─── Helper: fetch coords + geocode and update location state ──────────────
@@ -268,26 +270,34 @@ export default function App() {
 
   // ─── AppState listener: re-check permission when user returns from Settings ─
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextState) => {
-      if (nextState === 'active') {
-        const { status } = await Location.getForegroundPermissionsAsync()
-        if (status === 'granted') {
-          console.log('App.js: Permission granted after returning from Settings — fetching location...')
-          setLocationPermissionDeniedPermanently(false)
-          setLocationPermissionGranted(true)
-          if (!location) {
-            try {
-              const { coords, error } = await getCurrentLocation()
-              if (!error && coords) {
-                await initializeLocationFromCoords(coords)
+    const subscription = AppState.addEventListener(
+      'change',
+      async (nextState) => {
+        if (nextState === 'active') {
+          const { status } = await Location.getForegroundPermissionsAsync()
+          if (status === 'granted') {
+            console.log(
+              'App.js: Permission granted after returning from Settings — fetching location...'
+            )
+            setLocationPermissionDeniedPermanently(false)
+            setLocationPermissionGranted(true)
+            if (!location) {
+              try {
+                const { coords, error } = await getCurrentLocation()
+                if (!error && coords) {
+                  await initializeLocationFromCoords(coords)
+                }
+              } catch (e) {
+                console.warn(
+                  'App.js: Error re-fetching location after settings:',
+                  e
+                )
               }
-            } catch (e) {
-              console.warn('App.js: Error re-fetching location after settings:', e)
             }
           }
         }
       }
-    })
+    )
     return () => subscription.remove()
   }, [location])
 
@@ -352,7 +362,9 @@ export default function App() {
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
         } else {
-          console.log('App.js: Max attempts reached, returning permission denied...')
+          console.log(
+            'App.js: Max attempts reached, returning permission denied...'
+          )
           return { granted: false, canAskAgain: false }
         }
       } catch (error) {
@@ -367,7 +379,9 @@ export default function App() {
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
         } else {
-          console.log('App.js: Max attempts reached due to errors, returning permission denied...')
+          console.log(
+            'App.js: Max attempts reached due to errors, returning permission denied...'
+          )
           return { granted: false, canAskAgain: false }
         }
       }
@@ -391,7 +405,10 @@ export default function App() {
         let permissionAttempts = 0
         const maxPermissionAttempts = 3
 
-        while (!locationInitialized && permissionAttempts < maxPermissionAttempts) {
+        while (
+          !locationInitialized &&
+          permissionAttempts < maxPermissionAttempts
+        ) {
           permissionAttempts++
           try {
             console.log('App.js: Starting location permission request...')
@@ -406,7 +423,9 @@ export default function App() {
                 'App.js: Error during permission request:',
                 permissionError.message
               )
-              console.log('App.js: Permission request failed, breaking loop to prevent crash...')
+              console.log(
+                'App.js: Permission request failed, breaking loop to prevent crash...'
+              )
               setIsWaitingForLocationPermission(false)
               setLocationPermissionGranted(false)
               break
@@ -415,7 +434,9 @@ export default function App() {
             console.log('App.js: Permission request result:', permissionResult)
 
             if (permissionResult.granted) {
-              console.log('App.js: Location permission granted, getting current location...')
+              console.log(
+                'App.js: Location permission granted, getting current location...'
+              )
               setIsWaitingForLocationPermission(false)
               setCurrentPermissionAttempt(0)
               setLocationPermissionGranted(true)
@@ -439,7 +460,9 @@ export default function App() {
                     'App.js: Location error after permission granted:',
                     error?.message
                   )
-                  console.log('App.js: Location retrieval failed, breaking loop to prevent crash...')
+                  console.log(
+                    'App.js: Location retrieval failed, breaking loop to prevent crash...'
+                  )
                   setIsWaitingForLocationPermission(false)
                   setLocationPermissionGranted(false)
                   break
@@ -449,21 +472,27 @@ export default function App() {
                   'App.js: Error getting current location:',
                   locationError.message
                 )
-                console.log('App.js: Location retrieval error, breaking loop to prevent crash...')
+                console.log(
+                  'App.js: Location retrieval error, breaking loop to prevent crash...'
+                )
                 setIsWaitingForLocationPermission(false)
                 setLocationPermissionGranted(false)
                 break
               }
             } else if (!permissionResult.canAskAgain) {
               // Permanently denied — Alert already shown, block app until user enables from Settings
-              console.log('App.js: Permission permanently denied, blocking app until user enables from Settings...')
+              console.log(
+                'App.js: Permission permanently denied, blocking app until user enables from Settings...'
+              )
               setIsWaitingForLocationPermission(false)
               setLocationPermissionGranted(false)
               setLocationPermissionDeniedPermanently(true)
               break
             } else {
               console.warn('App.js: Location permission denied after request')
-              console.log('App.js: Location permission denied, breaking loop to continue app...')
+              console.log(
+                'App.js: Location permission denied, breaking loop to continue app...'
+              )
               setIsWaitingForLocationPermission(false)
               setLocationPermissionGranted(false)
               break
@@ -473,15 +502,22 @@ export default function App() {
               'App.js: Location initialization failed:',
               locationError.message
             )
-            console.log('App.js: Location initialization error, breaking loop to prevent crash...')
+            console.log(
+              'App.js: Location initialization error, breaking loop to prevent crash...'
+            )
             setIsWaitingForLocationPermission(false)
             setLocationPermissionGranted(false)
             break
           }
         }
 
-        if (permissionAttempts >= maxPermissionAttempts && !locationInitialized) {
-          console.warn('App.js: Maximum permission attempts reached, continuing without location')
+        if (
+          permissionAttempts >= maxPermissionAttempts &&
+          !locationInitialized
+        ) {
+          console.warn(
+            'App.js: Maximum permission attempts reached, continuing without location'
+          )
           setIsWaitingForLocationPermission(false)
           setLocationPermissionGranted(false)
         }
@@ -495,7 +531,9 @@ export default function App() {
           )
           setLocationPermissionGranted(false)
         } else {
-          console.log('App.js: Final verification - location permission confirmed')
+          console.log(
+            'App.js: Final verification - location permission confirmed'
+          )
           setLocationPermissionGranted(true)
         }
         setIsWaitingForLocationPermission(false)
@@ -505,7 +543,9 @@ export default function App() {
         setAppIsReady(true)
       } catch (e) {
         console.warn('App initialization error:', e)
-        console.log('App.js: Initialization error occurred, continuing app to prevent crash...')
+        console.log(
+          'App.js: Initialization error occurred, continuing app to prevent crash...'
+        )
         setIsWaitingForLocationPermission(false)
         setLocationPermissionGranted(false)
         setCurrentPermissionAttempt(0)
@@ -740,7 +780,7 @@ export default function App() {
         style={[
           styles.flex,
           styles.mainContainer,
-          { backgroundColor: Theme[theme].startColor, padding: 30 }
+          { backgroundColor: Theme[theme].lightBlue, padding: 30 }
         ]}
       >
         <TextDefault
@@ -752,13 +792,24 @@ export default function App() {
         </TextDefault>
         <TextDefault
           textColor={Theme[theme].white}
-          style={{ fontSize: 15, marginBottom: 12, textAlign: 'center', opacity: 0.9 }}
+          style={{
+            fontSize: 15,
+            marginBottom: 12,
+            textAlign: 'center',
+            opacity: 0.9
+          }}
         >
-          This app requires location access to work. Please enable location permission in your device settings.
+          This app requires location access to work. Please enable location
+          permission in your device settings.
         </TextDefault>
         <TextDefault
           textColor={Theme[theme].white}
-          style={{ fontSize: 13, marginBottom: 30, textAlign: 'center', opacity: 0.7 }}
+          style={{
+            fontSize: 13,
+            marginBottom: 30,
+            textAlign: 'center',
+            opacity: 0.7
+          }}
         >
           Settings {'>'} Apps {'>'} This App {'>'} Permissions {'>'} Location
         </TextDefault>
@@ -781,7 +832,12 @@ export default function App() {
         </TouchableOpacity>
         <TextDefault
           textColor={Theme[theme].white}
-          style={{ fontSize: 12, marginTop: 20, textAlign: 'center', opacity: 0.6 }}
+          style={{
+            fontSize: 12,
+            marginTop: 20,
+            textAlign: 'center',
+            opacity: 0.6
+          }}
         >
           After enabling, return to the app to continue.
         </TextDefault>
