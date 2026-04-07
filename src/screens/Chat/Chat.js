@@ -1197,21 +1197,6 @@ const Chat = ({ navigation }) => {
               )}
             </TouchableOpacity>
           )}
-          {resolvedSelfRole === 'seller' && (
-            <TouchableOpacity
-              style={{ padding: scaleSize(8), marginRight: scaleSize(4) }}
-              onPress={() => {
-                Alert.alert(
-                  'Seller Tools',
-                  'As a seller, you can:\n\n• View buyer inquiries\n• Respond to messages\n• Manage your listings',
-                  [{ text: 'OK', style: 'default' }]
-                )
-              }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <MaterialIcons name='store' size={scaleSize(24)} color='#fff' />
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             style={{ padding: scaleSize(8) }}
             onPress={() => setMenuVisible(true)}
@@ -1892,33 +1877,43 @@ const Chat = ({ navigation }) => {
             }}
             onStartShouldSetResponder={() => true}
           >
-            {[
-              { icon: 'block', label: 'Block User', color: '#ef4444' },
-              { icon: 'flag', label: 'Report', color: '#f97316' },
-              { icon: 'delete-outline', label: 'Delete Conversation', color: '#ef4444' },
-            ].map((opt) => (
-              <TouchableOpacity
-                key={opt.label}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: scaleSize(16),
-                  paddingVertical: scaleSize(12),
-                  borderBottomWidth: opt.label !== 'Delete Conversation' ? 0.5 : 0,
-                  borderBottomColor: '#f0f0f0'
-                }}
-                onPress={() => {
-                  setMenuVisible(false)
-                  Alert.alert(opt.label, `Are you sure you want to ${opt.label.toLowerCase()}?`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Confirm', style: 'destructive', onPress: () => {} }
-                  ])
-                }}
-              >
-                <MaterialIcons name={opt.icon} size={scaleSize(20)} color={opt.color} style={{ marginRight: scaleSize(12) }} />
-                <Text style={{ fontSize: scaleSize(14), color: opt.color, fontWeight: '500' }}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: scaleSize(16),
+                paddingVertical: scaleSize(12),
+              }}
+              onPress={() => {
+                setMenuVisible(false)
+                Alert.alert('Delete Conversation', 'Are you sure you want to delete this conversation?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete', style: 'destructive', onPress: async () => {
+                      try {
+                        const convId = conversationId || initialConversationId
+                        if (!convId) return
+                        const token = await AsyncStorage.getItem('token')
+                        const res = await fetch(`${API_URL}/conversation/delete-conversation/${convId}`, {
+                          method: 'DELETE',
+                          headers: { Authorization: `Bearer ${token}` },
+                        })
+                        if (res.ok) {
+                          navigation.goBack()
+                        } else {
+                          Alert.alert('Error', 'Failed to delete conversation')
+                        }
+                      } catch (e) {
+                        Alert.alert('Error', 'Failed to delete conversation')
+                      }
+                    }
+                  }
+                ])
+              }}
+            >
+              <MaterialIcons name="delete-outline" size={scaleSize(20)} color="#ef4444" style={{ marginRight: scaleSize(12) }} />
+              <Text style={{ fontSize: scaleSize(14), color: '#ef4444', fontWeight: '500' }}>Delete Conversation</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       )}
@@ -1945,11 +1940,13 @@ const Chat = ({ navigation }) => {
 
       {/* Product header strip */}
       {hasProductHeader && productForHeader && (
-        <View
+        <TouchableOpacity
+          activeOpacity={0.8}
           style={[
             styles.productHeaderStrip,
             { borderBottomColor: branding.borderColor || '#e2e8f0' }
           ]}
+          onPress={() => navigation.navigate('ProductDetail', { product: productForHeader })}
         >
           <Image
             source={{
@@ -1984,7 +1981,7 @@ const Chat = ({ navigation }) => {
                 '—'}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* CTA Banner */}
@@ -2192,11 +2189,14 @@ const Chat = ({ navigation }) => {
               </View>
             </View>
           ) : (
-            <View
+            <ScrollView
+              keyboardShouldPersistTaps='handled'
+              showsVerticalScrollIndicator={false}
               style={[
                 styles.makeOfferContainer,
                 { borderTopColor: branding.borderColor || '#e2e8f0' }
               ]}
+              contentContainerStyle={{ paddingBottom: insets.bottom || scaleSize(12) }}
             >
               <TouchableOpacity
                 style={[
@@ -2288,7 +2288,7 @@ const Chat = ({ navigation }) => {
                   </TouchableOpacity>
                 </>
               )}
-            </View>
+            </ScrollView>
           )}
         </View>
       </KeyboardAvoidingView>
