@@ -40,6 +40,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import moment from 'moment'
 import { API_URL } from '../../config/api'
 import ContactViewsIndicator from '../../components/ContactViewsIndicator/ContactViewsIndicator'
+import { extractAddressFromEntity } from '../../utils/geolocation'
 
 const { width } = Dimensions.get('window')
 
@@ -1330,7 +1331,7 @@ const ProductDetail = () => {
                   <Text
                     style={[styles.shopAddress, { color: branding.textColor }]}
                   >
-                    {product?.shop?.address || 'Address Not Available'}
+                    {extractAddressFromEntity(product?.shop) || 'Address Not Available'}
                   </Text>
                 </View>
               </View>

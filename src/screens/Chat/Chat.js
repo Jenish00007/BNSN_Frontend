@@ -951,9 +951,10 @@ const Chat = ({ navigation }) => {
   // ── Fetch product details ──
   useEffect(() => {
     const hasFullProduct =
-      productDetails?.price != null ||
-      productDetails?.discountPrice != null ||
-      productDetails?.image
+      (productDetails?.price != null ||
+        productDetails?.discountPrice != null ||
+        productDetails?.image) &&
+      productDetails?.shop?.address
     if (productId && !hasFullProduct) {
       let cancelled = false
       const fetchProduct = async () => {
