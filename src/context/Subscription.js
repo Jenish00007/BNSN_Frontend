@@ -124,7 +124,8 @@ export const SubscriptionProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/contact-views/${userId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ contactViews, viewedContacts })
       })
@@ -153,22 +154,24 @@ export const SubscriptionProvider = ({ children }) => {
   }
 
   // Add contact credits to user (handled in backend/database)
-  const addContactCredits = async (credits = 7, duration = 30) => {
+  // paymentData must include Razorpay params: razorpay_payment_id, razorpay_signature, etc.
+  const addContactCredits = async (credits = 7, duration = 30, paymentData = {}) => {
     try {
       if (!userId) return false
 
       const response = await fetch(`${API_URL}/contact-credits/add`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           userId,
           credits,
-          duration, // Duration in days
-          amount: 49, // ₹49 for 7 contacts
+          duration,
           currency: 'INR',
-          plan: 'contact_credits'
+          plan: 'contact_credits',
+          ...paymentData // razorpay_payment_id, razorpay_signature, amount, etc.
         })
       })
 
@@ -281,7 +284,8 @@ export const SubscriptionProvider = ({ children }) => {
         const response = await fetch(`${API_URL}/subscription/activate`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
           },
           body: JSON.stringify({
             userId,

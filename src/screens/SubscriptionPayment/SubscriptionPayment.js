@@ -193,12 +193,15 @@ const SubscriptionPayment = () => {
     }
   }
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (razorpayParams = {}) => {
     try {
       setPaymentProcessing(true)
-      
-      // Add 7 contact credits for 30 days
-      const success = await addContactCredits(credits)
+
+      // Pass Razorpay payment params so the backend can verify the signature
+      const success = await addContactCredits(credits, duration, {
+        amount,
+        ...razorpayParams,
+      })
       
       if (success) {
         Alert.alert(
@@ -317,9 +320,29 @@ const SubscriptionPayment = () => {
           source={{ uri: paymentUrl }}
           style={s.webview}
           onNavigationStateChange={(navState) => {
-            if (navState.url.includes('/payment-success') || navState.url.includes('/success')) {
-              handlePaymentSuccess()
-            } else if (navState.url.includes('/payment-failed') || navState.url.includes('/failure')) {
+            const url = navState.url || ''
+            // Razorpay redirects to callback_url with payment params in query string
+            if (url.includes('/payment-success') && url.includes('razorpay_payment_id')) {
+              // Parse Razorpay payment params from the redirect URL
+              const parseParams = (rawUrl) => {
+                const params = {}
+                const qs = rawUrl.split('?')[1]
+                if (!qs) return params
+                qs.split('&').forEach((pair) => {
+                  const [k, v] = pair.split('=')
+                  if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '')
+                })
+                return params
+              }
+              const p = parseParams(url)
+              handlePaymentSuccess({
+                razorpay_payment_id: p.razorpay_payment_id,
+                razorpay_payment_link_id: p.razorpay_payment_link_id,
+                razorpay_payment_link_reference_id: p.razorpay_payment_link_reference_id,
+                razorpay_payment_link_status: p.razorpay_payment_link_status,
+                razorpay_signature: p.razorpay_signature,
+              })
+            } else if (url.includes('/payment-failed') || url.includes('/failure')) {
               handlePaymentError('Payment failed')
             }
           }}
