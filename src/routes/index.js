@@ -104,6 +104,7 @@ import { isVersionLower } from '../utils/version'
 import ProfilePage from '../screens/Profile/Profile'
 import Subscription from '../screens/Subscription/Subscription'
 import BuyContacts from '../screens/BuyContacts/BuyContacts'
+import SubscriptionPayment from '../screens/SubscriptionPayment/SubscriptionPayment'
 
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
@@ -235,6 +236,7 @@ function NoDrawer() {
       <NavigationStack.Screen name='ProfilePage' component={ProfilePage} />
       <NavigationStack.Screen name='Subscription' component={Subscription} />
       <NavigationStack.Screen name='BuyContacts' component={BuyContacts} />
+      <NavigationStack.Screen name='SubscriptionPayment' component={SubscriptionPayment} />
       <NavigationStack.Screen name='OrderSummary' component={OrderSummary} />
       <NavigationStack.Screen name='OrderDetails' component={OrderDetail} />
       <NavigationStack.Screen
