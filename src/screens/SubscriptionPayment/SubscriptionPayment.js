@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useContext, useRef } from 'react'
 import {
   View,
   Text,
@@ -8,26 +8,20 @@ import {
   StatusBar,
   ScrollView,
   Alert,
-  BackHandler,
-  Dimensions
+  BackHandler
 } from 'react-native'
 import { WebView } from 'react-native-webview'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { MaterialIcons, Ionicons } from '@expo/vector-icons'
 import { useSubscription } from '../../context/Subscription'
-import { useAppBranding } from '../../utils/translationHelper'
-import ThemeContext from '../../ui/ThemeContext/ThemeContext'
 import { API_URL } from '../../config/api'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import AuthContext from '../../context/Auth'
 import UserContext from '../../context/User'
 
-const { width } = Dimensions.get('window')
-
 /* Design tokens matching Subscription screen */
 const GOLD = '#C9A84C'
-const GOLD_LIGHT = '#E8CC7A'
 const DARK_BG = '#0F0F0F'
 const CARD_BG = '#1A1A1A'
 const CARD_BORDER = '#2A2A2A'
@@ -39,8 +33,6 @@ const SubscriptionPayment = () => {
   const navigation = useNavigation()
   const route = useRoute()
   const { addContactCredits } = useSubscription()
-  const { primaryColor } = useAppBranding()
-  const themeContext = useContext(ThemeContext)
   const authContext = useContext(AuthContext)
   const userContext = useContext(UserContext)
   
@@ -50,6 +42,10 @@ const SubscriptionPayment = () => {
   const [paymentUrl, setPaymentUrl] = useState(null)
   const [userData, setUserData] = useState(null)
   const [userToken, setUserToken] = useState(null)
+
+  // Guard: onNavigationStateChange fires multiple times for the same redirect;
+  // this ref ensures handlePaymentSuccess is called only once per payment session.
+  const paymentHandled = useRef(false)
   
   const amount = route?.params?.amount || 49
   const title = route?.params?.title || 'Gold Membership'
@@ -253,14 +249,13 @@ const SubscriptionPayment = () => {
     await createPaymentLink()
   }
 
-  const PaymentMethodCard = ({ 
-    icon, 
-    title, 
-    description, 
-    value, 
-    selected, 
-    onClick, 
-    disabled = false 
+  const PaymentMethodCard = ({
+    icon,
+    title,
+    description,
+    selected,
+    onClick,
+    disabled = false
   }) => (
     <TouchableOpacity 
       style={[
@@ -319,11 +314,45 @@ const SubscriptionPayment = () => {
         <WebView
           source={{ uri: paymentUrl }}
           style={s.webview}
+          onShouldStartLoadWithRequest={(request) => {
+            const url = request.url || ''
+            const parseParams = (rawUrl) => {
+              const params = {}
+              const qs = rawUrl.split('?')[1]
+              if (!qs) return params
+              qs.split('&').forEach((pair) => {
+                const [k, v] = pair.split('=')
+                if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '')
+              })
+              return params
+            }
+            if (url.includes('/payment-success') && url.includes('razorpay_payment_id')) {
+              if (!paymentHandled.current) {
+                paymentHandled.current = true
+                const p = parseParams(url)
+                handlePaymentSuccess({
+                  razorpay_payment_id: p.razorpay_payment_id,
+                  razorpay_payment_link_id: p.razorpay_payment_link_id,
+                  razorpay_payment_link_reference_id: p.razorpay_payment_link_reference_id,
+                  razorpay_payment_link_status: p.razorpay_payment_link_status,
+                  razorpay_signature: p.razorpay_signature,
+                })
+              }
+              return false // Block WebView from loading the redirect URL
+            }
+            if (url.includes('/payment-failed') || url.includes('/failure')) {
+              if (!paymentHandled.current) {
+                paymentHandled.current = true
+                handlePaymentError('Payment failed')
+              }
+              return false
+            }
+            return true
+          }}
           onNavigationStateChange={(navState) => {
             const url = navState.url || ''
-            // Razorpay redirects to callback_url with payment params in query string
-            if (url.includes('/payment-success') && url.includes('razorpay_payment_id')) {
-              // Parse Razorpay payment params from the redirect URL
+            if (!paymentHandled.current && url.includes('/payment-success') && url.includes('razorpay_payment_id')) {
+              paymentHandled.current = true
               const parseParams = (rawUrl) => {
                 const params = {}
                 const qs = rawUrl.split('?')[1]
@@ -342,7 +371,8 @@ const SubscriptionPayment = () => {
                 razorpay_payment_link_status: p.razorpay_payment_link_status,
                 razorpay_signature: p.razorpay_signature,
               })
-            } else if (url.includes('/payment-failed') || url.includes('/failure')) {
+            } else if (!paymentHandled.current && (url.includes('/payment-failed') || url.includes('/failure'))) {
+              paymentHandled.current = true
               handlePaymentError('Payment failed')
             }
           }}
@@ -414,7 +444,6 @@ const SubscriptionPayment = () => {
             icon={<MaterialIcons name="credit-card" size={24} color={GOLD} />}
             title="Pay with Razorpay"
             description="Secure online payment with cards, UPI, net banking"
-            value="razorpay"
             selected={selectedPayment === "razorpay"}
             onClick={() => setSelectedPayment("razorpay")}
           />

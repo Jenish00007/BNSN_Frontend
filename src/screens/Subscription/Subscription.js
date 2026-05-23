@@ -108,7 +108,8 @@ const Subscription = () => {
   const {
     activateUnlimitedContacts,
     subscriptionLoading,
-    hasUnlimitedContacts
+    hasUnlimitedContacts,
+    contactCredits
   } = useSubscription()
   const { primaryColor } = useAppBranding()
   const themeContext = useContext(ThemeContext)
@@ -232,6 +233,19 @@ const Subscription = () => {
             <Text style={s.valuePillText}>7 Contact Credits</Text>
           </View>
         </View>
+
+        {/* Current credits banner */}
+        {contactCredits > 0 && !hasUnlimitedContacts && (
+          <View style={s.creditsBanner}>
+            <View style={s.creditsIconWrap}>
+              <MaterialIcons name='toll' size={20} color={GOLD} />
+            </View>
+            <View style={s.creditsTextWrap}>
+              <Text style={s.creditsBannerTitle}>You have {contactCredits} credit{contactCredits !== 1 ? 's' : ''} remaining</Text>
+              <Text style={s.creditsBannerSub}>Buy more to keep viewing seller contacts</Text>
+            </View>
+          </View>
+        )}
 
         {/* Features */}
         <Text style={s.sectionLabel}>What's included</Text>
@@ -423,6 +437,40 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3
+  },
+  creditsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: GOLD + '12',
+    borderWidth: 1,
+    borderColor: GOLD + '35',
+    borderRadius: 14,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 14
+  },
+  creditsIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: GOLD + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12
+  },
+  creditsTextWrap: {
+    flex: 1
+  },
+  creditsBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: GOLD,
+    marginBottom: 2
+  },
+  creditsBannerSub: {
+    fontSize: 12,
+    color: TEXT_SECONDARY,
+    lineHeight: 17
   },
   sectionLabel: {
     fontSize: 11,

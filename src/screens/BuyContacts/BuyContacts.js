@@ -1,25 +1,18 @@
-import React, { useState, useContext, useRef, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import {
   View,
   Text,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   StatusBar,
   Animated,
-  Dimensions,
   StyleSheet
 } from 'react-native'
 import { MaterialIcons, Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { useSubscription } from '../../context/Subscription'
-import { useAppBranding } from '../../utils/translationHelper'
-import ThemeContext from '../../ui/ThemeContext/ThemeContext'
-import { theme } from '../../utils/themeColors'
-
-const { width } = Dimensions.get('window')
 
 const contactPackages = [
   {
@@ -179,10 +172,8 @@ const PackageCard = ({ pkg, index, onPurchase, processingPayment }) => {
 /* ── Main Screen ── */
 const BuyContacts = () => {
   const navigation = useNavigation()
-  const { addContactCredits, subscriptionLoading } = useSubscription()
-  const { primaryColor } = useAppBranding()
-  const themeContext = useContext(ThemeContext)
-  const [processingPayment, setProcessingPayment] = useState(false)
+  const { subscriptionLoading } = useSubscription()
+  const processingPayment = false
 
   const headerAnim = useRef(new Animated.Value(0)).current
 
@@ -194,25 +185,13 @@ const BuyContacts = () => {
     }).start()
   }, [])
 
-  const handlePurchase = async (credits, price) => {
-    setProcessingPayment(true)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const success = await addContactCredits(credits)
-      if (success) {
-        Alert.alert(
-          '✓ Payment Successful',
-          `${credits} contact credits added to your account.`,
-          [{ text: 'Continue', onPress: () => navigation.goBack() }]
-        )
-      } else {
-        Alert.alert('Payment Failed', 'Please try again or contact support.')
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.')
-    } finally {
-      setProcessingPayment(false)
-    }
+  const handlePurchase = (_credits, price) => {
+    navigation.navigate('SubscriptionPayment', {
+      amount: price,
+      title: 'Gold Membership',
+      credits: 7,
+      duration: 30
+    })
   }
 
   if (subscriptionLoading) {
