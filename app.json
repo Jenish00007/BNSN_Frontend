@@ -48,7 +48,7 @@
       "androidCollapsedTitle": "7ARK"
     },
     "android": {
-      "versionCode": 13,
+      "versionCode": 14,
       "package": "com.sevenark.app",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
