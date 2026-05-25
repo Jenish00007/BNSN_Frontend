@@ -18,7 +18,7 @@ export const SubscriptionProvider = ({ children }) => {
   // Access contexts safely - provider hierarchy ensures they're available
   const authContext = useContext(AuthContext)
   const userContext = useContext(UserContext)
-  
+
   const token = authContext?.token
   const dataProfile = userContext?.dataProfile
 
@@ -45,17 +45,17 @@ export const SubscriptionProvider = ({ children }) => {
         setUserId(dataProfile._id)
         return dataProfile._id
       }
-      
+
       // If not in UserContext, try to fetch from API using token
       if (token) {
         const response = await fetch(`${API_URL}/user/getuser`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         })
-        
+
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.user && data.user._id) {
@@ -64,7 +64,7 @@ export const SubscriptionProvider = ({ children }) => {
           }
         }
       }
-      
+
       // Fallback to AsyncStorage (for backward compatibility)
       const userData = await AsyncStorage.getItem('user')
       if (userData) {
@@ -155,23 +155,40 @@ export const SubscriptionProvider = ({ children }) => {
 
   // Add contact credits to user (handled in backend/database)
   // paymentData must include Razorpay params: razorpay_payment_id, razorpay_signature, etc.
-  const addContactCredits = async (credits = 7, duration = 30, paymentData = {}) => {
+  const addContactCredits = async (
+    credits = 7,
+    duration = 30,
+    paymentData = {}
+  ) => {
     try {
-      if (!userId) return false
+      // Lazily resolve userId — it may not be set yet when called right after payment
+      const effectiveUserId = userId || (await getUserId())
+      if (!effectiveUserId) {
+        console.error('addContactCredits: could not resolve userId')
+        return false
+      }
+
+      // Resolve token from context or AsyncStorage
+      let effectiveToken = token
+      if (!effectiveToken) {
+        effectiveToken = await AsyncStorage.getItem('token')
+      }
 
       const response = await fetch(`${API_URL}/contact-credits/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          ...(effectiveToken
+            ? { Authorization: `Bearer ${effectiveToken}` }
+            : {})
         },
         body: JSON.stringify({
-          userId,
+          userId: effectiveUserId,
           credits,
           duration,
           currency: 'INR',
           plan: 'contact_credits',
-          ...paymentData // razorpay_payment_id, razorpay_signature, amount, etc.
+          ...paymentData
         })
       })
 
@@ -179,9 +196,11 @@ export const SubscriptionProvider = ({ children }) => {
         const data = await response.json()
         setContactViewsCount(data.contactViews || 0)
         setContactCredits(data.contactCredits || credits)
-        // Reload subscription data to get the latest state
         await loadSubscriptionData()
         return true
+      } else {
+        const errData = await response.json().catch(() => ({}))
+        console.error('addContactCredits failed:', response.status, errData)
       }
     } catch (error) {
       console.error('Error adding contact credits:', error)
