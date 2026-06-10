@@ -2111,6 +2111,90 @@ export const CATEGORY_FORMS = {
     ]
   },
 
+  CYCLE: {
+    name: 'Cycles',
+    price: 0,
+    freePosts: 999,
+    fields: [
+      {
+        key: 'cycleName',
+        label: 'Cycle Name',
+        type: 'text',
+        placeholder: 'Mountain Bike / Road Bike / Hybrid / Kids Cycle / Electric Cycle / Other',
+        required: true
+      },
+      {
+        key: 'brand',
+        label: 'Brand / Manufacturer',
+        type: 'text',
+        placeholder: 'Enter brand',
+        required: true
+      },
+      {
+        key: 'modelName',
+        label: 'Model Name',
+        type: 'text',
+        placeholder: 'Enter model name',
+        required: true
+      },
+      {
+        key: 'color',
+        label: 'Color',
+        type: 'text',
+        placeholder: 'Enter color',
+        required: true
+      },
+      {
+        key: 'purchaseYear',
+        label: 'Purchase Year',
+        type: 'year',
+        required: true
+      },
+      {
+        key: 'condition',
+        label: 'Condition',
+        type: 'radio',
+        options: ['New', 'Like New', 'Good', 'Used', 'Needs Repair'],
+        required: true
+      },
+      {
+        key: 'usageDuration',
+        label: 'Usage Duration',
+        type: 'text',
+        placeholder: 'e.g. 6 months / 2 years',
+        required: false
+      },
+      {
+        key: 'workingStatus',
+        label: 'Working Status',
+        type: 'radio',
+        options: ['Fully Working', 'Partially Working'],
+        required: true
+      },
+      {
+        key: 'price',
+        label: 'Price (₹)',
+        type: 'number',
+        placeholder: 'Enter price',
+        required: true
+      },
+      {
+        key: 'priceType',
+        label: 'Price Type',
+        type: 'radio',
+        options: ['Fixed', 'Negotiable'],
+        required: true
+      },
+      {
+        key: 'description',
+        label: 'Additional Details',
+        type: 'textarea',
+        placeholder: 'Additional details',
+        required: false
+      }
+    ]
+  },
+
   BOOK: {
     name: 'Books',
     price: 0,
@@ -2264,7 +2348,8 @@ const getCategoryAreaField = (categoryKey) => {
     SERVICE: 'Area / Locality',
     SCRAP: 'Area / Locality',
     SPORTS_ITEM: 'Area / Locality',
-    BOOK: 'Area / Locality'
+    BOOK: 'Area / Locality',
+    CYCLE: 'Area / Locality'
   }
 
   const label = areaConfigs[categoryKey]

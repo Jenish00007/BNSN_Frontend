@@ -8,7 +8,7 @@ buildscript {
         targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
         kotlinVersion = findProperty('android.kotlinVersion') ?: '1.8.10'
 
-        ndkVersion = "25.1.8937393"
+        ndkVersion = "26.1.10909125"
     }
     repositories {
         google()
@@ -22,6 +22,32 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// Add 16 KB page size support for all native modules (required for Play Store)
+allprojects {
+    plugins.withType(com.android.build.gradle.LibraryPlugin) {
+        android {
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+                    }
+                }
+            }
+        }
+    }
+    plugins.withType(com.android.build.gradle.AppPlugin) {
+        android {
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+                    }
+                }
+            }
+        }
+    }
+}
 
 allprojects {
     repositories {
